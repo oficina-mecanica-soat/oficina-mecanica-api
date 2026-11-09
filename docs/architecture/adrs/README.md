@@ -2,6 +2,10 @@
 
 Registro das decisões arquiteturais do projeto, no padrão definido pela equipe desde a Fase 1.
 
+## Padrão de escrita
+
+Use ADR-0001 a ADR-0004 como referência. Toda ADR deve conter título, status, data, autores e as seis seções: Contexto e Problema; Fatores Decisivos (Drivers); Decisão Proposta; Justificativa; Consequências (Trade-offs), separando ganhos e perdas/riscos; e Referências. Explique o problema, os motivos da escolha e as limitações concretas. Diferencie exigência do enunciado de decisão da equipe e decisão aceita de implementação comprovada. Preserve datas, autoria e histórico; alterações de decisão exigem registro sucessor. Não deixe frases interrompidas, referências genéricas quando houver documento identificável ou seções vazias.
+
 ## Índice
 
 | ADR | Título | Data | Status |
