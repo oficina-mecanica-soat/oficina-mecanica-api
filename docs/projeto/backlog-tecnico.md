@@ -1,5 +1,17 @@
 # Backlog técnico
 
+## Preparação da próxima entrega
+
+Os itens abaixo são pontos de partida e não substituem decisões arquiteturais aprovadas. O enunciado exige ao menos três microsserviços independentes, bancos próprios com SQL e NoSQL, mensageria, Saga com compensação, cobertura mínima de 80% por serviço, BDD, CI/CD, Kubernetes e observabilidade.
+
+| Prioridade | Frente | Trabalho e critério de aceite | Responsável inicial |
+| --- | --- | --- | --- |
+| P0 | Ambiente | Executar a solução atual e conhecer os fluxos no Postman; registrar bloqueios sem alterar infraestrutura remota. | Gabriel |
+| P0 | Arquitetura | Definir limites dos serviços e evolução do monólito em ADR sucessora; detalhar contratos e Saga em RFC antes de integrar. | Geovanna |
+| P0 | AWS | Verificar permissão de criação, uso e limpeza de DynamoDB e SQS no laboratório antes do provisionamento. SNS apenas se necessário. | A definir |
+| P0 | Serviços | Planejar três serviços com bancos próprios, fluxo ponta a ponta e integração Mercado Pago; decompor por contratos aprovados. | A definir |
+| P0 | Qualidade e entrega | Preservar esteiras existentes como referência; garantir testes, cobertura, BDD, Sonar, deploy, observabilidade, documentação, vídeo e PDF exigidos. | Ambos |
+
 Este backlog guarda melhorias técnicas, itens de código e evoluções operacionais que não precisam entrar imediatamente na entrega principal. A ideia é separar bem o que é escopo do Tech Challenge do que é maturidade de produção para depois.
 
 ## Como usar
