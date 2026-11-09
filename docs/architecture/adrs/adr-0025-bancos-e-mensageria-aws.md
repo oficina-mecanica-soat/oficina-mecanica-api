@@ -29,4 +29,3 @@ Provisionamento, publicação e destruição reais exclusivamente pelas esteiras
 - [DynamoDB: transações](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html)
 - [SQS: visibility timeout](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html)
 - ADR-0022, ADR-0023 e RFC-0005.
-

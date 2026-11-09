@@ -23,4 +23,3 @@ Há mais estados e mensagens, mas um coordenador permite acompanhar recuperaçã
 ## Referências
 
 RFC-0007 e ADR-0024/ADR-0025.
-

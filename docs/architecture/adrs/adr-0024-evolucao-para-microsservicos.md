@@ -29,4 +29,3 @@ Três serviços atendem ao mínimo sem criar um serviço para cada cadastro. Reu
 ## Referências
 
 RFC-0007, ADR-0001, ADR-0023 e enunciado da Fase 4.
-
