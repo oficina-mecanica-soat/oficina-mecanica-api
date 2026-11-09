@@ -6,6 +6,9 @@ Registro das decisões arquiteturais do projeto, no padrão definido pela equipe
 
 | ADR | Título | Data | Status |
 | --- | --- | --- | --- |
+| [ADR-0024](adr-0024-evolucao-para-microsservicos.md) | Evolução para três microsserviços | 09/11/2026 | Aceita para implementação |
+| [ADR-0025](adr-0025-bancos-e-mensageria-aws.md) | Bancos isolados e mensageria AWS | 09/11/2026 | Aceita para implementação |
+| [ADR-0026](adr-0026-saga-orquestrada.md) | Saga orquestrada no serviço de OS | 09/11/2026 | Aceita para implementação |
 | [ADR-0001](adr-0001-clean-architecture-monolito.md) | Clean Architecture em monólito | 01/05/2026 | ✅ Aceito |
 | [ADR-0002](adr-0002-linguagem-framework-dotnet.md) | Linguagem e framework (.NET) | 01/05/2026 | ✅ Aceito |
 | [ADR-0003](adr-0003-banco-dados-sql-server.md) | Banco de dados relacional (SQL Server) | 01/05/2026 | ✅ Aceito |
