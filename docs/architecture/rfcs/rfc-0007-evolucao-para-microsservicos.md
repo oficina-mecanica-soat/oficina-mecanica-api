@@ -29,11 +29,11 @@ O enunciado da Fase 4 exige ao menos três microsserviços independentes, reposi
 
 ## Contrato de mensagens v1
 
-Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServicoId`, `correlationId`, `causationId`, `ocorridoEm` (UTC ISO-8601) e `dados`. IDs de domínio são UUIDs; valores monetários usam decimal BRL, nunca float. Não transportar JWT, CPF/CNPJ ou credenciais. Propagar também o contexto de trace suportado pelo Datadog. A chave de idempotência de negócio é operação + OS + versão, além de mensagemId.
+Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServicoId`, `correlationId`, `causationId`, `ocorridoEm` (UTC ISO-8601) e `dados`. IDs de domínio são UUIDs; valores monetários usam decimal BRL, nunca float. Não transportar JWT, CPF/CNPJ ou credenciais. Propagar também o contexto de trace suportado pelo Datadog. A chave de idempotência de negócio é operação + OS + versão de negócio, além de `mensagemId`; a versão do envelope não compõe essa versão de negócio.
 
 | Origem → destino | Tipo e dados mínimos | Resultado para OS |
 | --- | --- | --- |
-| OS → Execução | PrepararExecucao: filialId, veiculoId, mecanicoId, itens [{itemId, quantidade}], servicos [{servicoId, descricao, valor}] | ExecucaoPreparada: preparacaoId, versao, itens reservados e diagnóstico; ou PreparacaoRecusada: codigoMotivo |
+| OS → Execução | PrepararExecucao: versao, filialId, veiculoId, mecanicoId, itens [{itemId, quantidade}], servicos [{servicoId, descricao, valor}] | ExecucaoPreparada: preparacaoId, versao, itens reservados e diagnóstico; ou PreparacaoRecusada: versao, codigoMotivo |
 | OS → Orçamento/Pagamento | GerarOrcamento: versao, clienteId, itens e serviços com quantidade e valor unitário congelados | OrcamentoGerado: orcamentoId, versao, valorTotal |
 | Orçamento/Pagamento → OS | OrcamentoDecidido: orcamentoId, versao, decisao (Aprovado/Recusado) | OS valida versão e estado antes de avançar |
 | OS → Execução | AutorizarExecucao: preparacaoId, versaoOrcamento | ExecucaoIniciada; depois ExecucaoFinalizada com finalizadoEm |
@@ -42,6 +42,18 @@ Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServic
 | OS → Orçamento/Pagamento | CancelarOrcamento: orcamentoId ou OS + versao, motivo | OrcamentoCancelado, preservando histórico |
 
 Publicações de resultado usam a fila de OS; comandos usam a fila do destinatário. Cada handler valida tipo/versão e dados; mensagem desconhecida vai para investigação via DLQ, sem processamento permissivo.
+
+### Versão de contrato e versão da preparação
+
+- `envelope.versao` identifica o formato da mensagem e permanece `1` neste contrato. Não é contador de tentativas, versão de orçamento ou versão de preparação.
+- `PrepararExecucao.dados.versao` é um inteiro positivo que identifica o snapshot de preparação solicitado para a OS. O serviço de OS é dono desse número: inicia em `1` e persiste a versão junto do estado da Saga e do comando na outbox.
+- Reenvio, timeout ou resposta incerta preservam a versão e o snapshot. Uma nova tentativa de transporte não cria uma nova preparação de negócio. `ExecucaoPreparada.dados.versao` e `PreparacaoRecusada.dados.versao` devolvem exatamente a versão solicitada, permitindo a OS rejeitar resultados antigos.
+- A chave de idempotência de preparação é `PrepararExecucao + ordemServicoId + dados.versao`. Repetir essa chave com os mesmos dados não reserva novamente, mesmo com outro `mensagemId`; mantém a preparação e o resultado persistidos. A mesma chave com dados diferentes é conflito de contrato e exige investigação, sem sobrescrever o snapshot ou movimentar estoque.
+- Cada `preparacaoId` identifica uma única combinação de OS e versão. `CancelarPreparacao` continua usando `preparacaoId` e `motivo`: o serviço de Execução resolve OS/versão pelo registro persistido e usa `CancelarPreparacao + ordemServicoId + versão persistida` como chave de negócio. Não é necessário acrescentar versão ao comando de cancelamento.
+- Uma versão cancelada não pode ser reaberta por reenvio. Se o fluxo exigir outro snapshot, OS solicita uma versão maior, mantendo o histórico; a nova reserva só pode ocorrer após confirmação da liberação da preparação anterior e antes do início físico da execução. Não há duas preparações ativas da mesma OS. Mensagens antigas não substituem uma versão mais recente.
+- `versaoOrcamento` continua identificando o orçamento aprovado. Sua associação à preparação deve ser validada pelo estado da Saga; não presumir que seus números são iguais. Versões técnicas usadas no controle de concorrência do banco também são separadas das versões de contrato e negócio.
+
+Exemplo: uma segunda preparação usa `envelope.versao = 1` e `dados.versao = 2`. Seu reenvio mantém ambos os valores. O resultado devolve `dados.versao = 2`; cancelar usa o `preparacaoId` desse resultado, sem alterar o formato do envelope.
 
 ## Estados, compensação e recuperação
 
