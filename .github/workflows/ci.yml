@@ -347,6 +347,9 @@ jobs:
         with:
           terraform_version: "1.15.8"
           terraform_wrapper: false
+      - name: "🧪 Validar recuperação segura de destroy"
+        run: node --test .github/scripts/prepare-destroy.test.cjs
+
       - run: terraform fmt -check -recursive infra/terraform
       - run: terraform -chdir=infra/terraform/environments/dev init -backend=false -input=false
       - run: terraform -chdir=infra/terraform/environments/dev validate
