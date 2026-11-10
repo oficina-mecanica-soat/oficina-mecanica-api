@@ -12,3 +12,13 @@ output "api_service_hostname" {
   description = "Hostname publico do Load Balancer da API, quando disponivel."
   value       = try(kubernetes_service_v1.oficina_mecanica_api[0].status[0].load_balancer[0].ingress[0].hostname, null)
 }
+
+output "os_messaging_contracts" {
+  description = "Contratos não sensíveis da fila de resultados e DLQ de OS."
+  value       = local.os_messaging_contracts
+}
+
+output "os_messaging_ssm_prefix" {
+  description = "Prefixo SSM da mensageria de OS, mantida no repositório API."
+  value       = local.os_ssm_prefix
+}

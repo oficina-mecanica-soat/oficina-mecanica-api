@@ -608,3 +608,19 @@ O retorno isolado de terraform-action.env para apply ainda é reconhecido como m
 As chaves de cache incluem o ID da conta retornado pela autenticação AWS, antes do ambiente e da execução. A restauração só pesquisa esse escopo, sem fallback para chaves históricas sem conta. Os caches anteriores permanecem preservados como histórico do laboratório encerrado 058264466885, inclusive quando contêm referências que a conta atual não consegue consultar. AccessDenied não é convertido em ausência.
 
 Sem cache no escopo atual, a esteira bloqueia apply. Um destroy dedicado só pode iniciar state novo depois de consultas read-only confirmarem que não existem recursos ou contratos do projeto na conta atual. Recursos internos do laboratório são preservados. Depois disso, o plano exclusivo de destroy e a validação de state vazio produzem o cache usado pelas próximas execuções da mesma conta. Em laboratório com recursos existentes e cache ausente, é necessário recuperar o state correto; o bootstrap não libera provisionamento automático.
+
+## Mensageria de OS — preparação da Fase 4
+
+A infraestrutura da entrada FIFO de resultados da OS e de sua DLQ está preparada neste repositório, conforme ADR-0025/RFC-0007. Os nomes propostos, quatro contratos SSM sob `/oficina-mecanica/{ambiente}/api/`, status de infraestrutura, validações e recuperação estão em [Mensageria de OS](docs/deploy/mensageria-os.md). O contrato `entrada_queue_url` é o futuro destino dos resultados de Execução e Orçamento/Pagamento.
+
+Este incremento não implementa nem ativa Saga, consumidor ou outbox SQL; essa parte continua com Geovanna na F4-06. Não altera rotas ou regras de negócio .NET. `status/api=ready` indica somente infraestrutura de mensageria, sem afirmar prontidão da aplicação ou da Saga.
+
+**AWS continua desabilitada.** A variável de repositório `AWS_DEPLOY_ENABLED=false` impede provisionamento pelo CD e promoção de alteração implantável como se tivesse ocorrido deploy; o workflow reutilizável exige habilitação explícita. `terraform-action.env` permanece inalterado. Nenhum recurso foi criado nesta preparação. Antes de precisar do laboratório, avisar Gabriel para criá-lo e atualizar os environments.
+
+Validações locais: Terraform 1.15.8 com três testes simulados, formatação/validate e nove testes Node aprovados; workflows conferidos com actionlint. O CI repete os gates existentes. Não confundir mocks com prova de acesso SQS pelo workload.
+
+## Estrutura obrigatória dos PRs
+
+Validações operacionais e seus testes ficam nos YAMLs existentes de CI/CD. Não são versionadas pastas de scripts nem diretórios auxiliares adicionais. Trechos necessários à execução são gerados somente no diretório temporário do runner; não são enviados como conteúdo do repositório ou artefato de scripts.
+
+O job obrigatório de Git Flow verifica essa estrutura em todos os PRs, inclusive documentais: bloqueia qualquer pasta chamada `scripts` e diretórios de topo fora da estrutura aprovada do projeto. Funcionalidades devem seguir as camadas existentes. Exceções de estrutura precisam de alinhamento explícito, sem remover o gate para contornar a regra. `AGENTS.md` e as orientações locais registram o mesmo requisito.
