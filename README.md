@@ -594,3 +594,11 @@ Os módulos legados de VPC, EKS, RDS e ECR, o workflow de import e o arquivo tra
 - Ambientes AWS temporários devem ser destruídos após a demonstração.
 - O deploy para `main` deve usar branch protection e aprovação obrigatória de PR.
 - O projeto prioriza rastreabilidade e simplicidade operacional, sem depender de contexto externo para ser compreendido.
+
+### Reconciliação de destroy após reset do laboratório
+
+O destroy restaura o cache Terraform existente e usa uma configuração temporária sem data sources de contratos SSM. O state original não é editado nem descartado: o provider confirma os recursos ausentes durante o plano de destruição. Somente o plano salvo, sem criação ou atualização, pode ser aplicado. Ao terminar, a esteira verifica que o state não contém recursos gerenciados antes de persistir o cache final. Falhas de autenticação, permissão ou rede bloqueiam a operação.
+
+Na API, vínculos Kubernetes só podem ser retirados por blocos declarativos removed com destroy=false após ResourceNotFoundException confirmar que o EKS registrado no state não existe. Com EKS existente, permanece a configuração normal de destroy. Não há uso de state rm, import ou mv.
+
+O retorno isolado de terraform-action.env para apply ainda é reconhecido como mudança de infraestrutura pelo detector de CD; não faça esse retorno enquanto não existir separação segura entre rearmar e provisionar. Preserve destroy após a reconciliação e só autorize nova subida em tarefa própria.
