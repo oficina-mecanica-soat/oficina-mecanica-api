@@ -45,6 +45,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: "🛡️ Conferir habilitação do deploy AWS"
+        env:
+          DEPLOY_ENABLED: ${{ vars.AWS_DEPLOY_ENABLED }}
+        run: test "$DEPLOY_ENABLED" = true
+
       - name: "🚦 02 · Ler terraform-action.env e validar troca segura de destroy"
         id: resolve_terraform_action
         env:
@@ -182,7 +187,7 @@ jobs:
           path: |
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}
+          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-
 
@@ -251,6 +256,10 @@ jobs:
       - name: "🛡️ Validar state da conta AWS atual"
         run: node .github/scripts/bootstrap-account-state.cjs
 
+      - name: "🛡️ Bloquear destroy com mensagens pendentes na entrada/DLQ de OS"
+        if: env.TERRAFORM_ACTION == 'destroy'
+        run: node .github/scripts/verificar-mensageria-os.cjs before-destroy
+
       - name: "🛡️ Preparar configuração exclusiva de destroy"
         if: env.TERRAFORM_ACTION == 'destroy'
         run: node .github/scripts/prepare-destroy.cjs
@@ -268,7 +277,7 @@ jobs:
           path: |
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-prepared
+          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}-prepared
 
       - name: "📐 13 · Gerar plano do Terraform (apply)"
         if: env.TERRAFORM_ACTION == 'apply'
@@ -298,10 +307,11 @@ jobs:
       - name: "⬆️ 16 · Publicar plano do Terraform como artefato"
         uses: actions/upload-artifact@v7
         with:
-          name: tfplan-${{ github.run_id }}
+          name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ env.TF_WORKING_DIRECTORY }}/tfplan
             ${{ env.TF_WORKING_DIRECTORY }}/partial_destroy_override.tf
+            ${{ env.TF_WORKING_DIRECTORY }}/os-mensageria-destroy-context.json
           retention-days: 1
           if-no-files-found: error
 
@@ -405,6 +415,16 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
+      - name: "📦 05 · Restaurar cache do state do Terraform"
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
+          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}-prepared
+          restore-keys: |
+            tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-
+
       - name: "🛡️ Validar state da conta AWS atual"
         run: node .github/scripts/bootstrap-account-state.cjs
 
@@ -415,25 +435,19 @@ jobs:
       - name: "🚀 04 · Inicializar Terraform (baixa os plugins dos providers)"
         run: terraform -chdir="$TF_WORKING_DIRECTORY" init -input=false
 
-      - name: "📦 05 · Restaurar cache do state do Terraform"
-        uses: actions/cache/restore@v6
-        with:
-          path: |
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-prepared
-          restore-keys: |
-            tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-
-
       - name: "⬇️ 06 · Baixar plano do Terraform publicado"
         uses: actions/download-artifact@v8
         with:
-          name: tfplan-${{ github.run_id }}
+          name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.TF_WORKING_DIRECTORY }}
 
       - name: "🛡️ Validar plano exclusivo de destroy"
         if: env.TERRAFORM_ACTION == 'destroy'
         run: node .github/scripts/prepare-destroy.cjs verify-plan
+
+      - name: "🛡️ Revalidar pendências antes do destroy"
+        if: env.TERRAFORM_ACTION == 'destroy'
+        run: node .github/scripts/verificar-mensageria-os.cjs before-destroy
 
       - name: "✅ 07 · Aplicar plano do Terraform (apply ou destroy)"
         run: terraform -chdir="$TF_WORKING_DIRECTORY" apply -input=false -auto-approve tfplan
@@ -442,6 +456,14 @@ jobs:
         if: env.TERRAFORM_ACTION == 'destroy'
         run: node .github/scripts/prepare-destroy.cjs verify-state
 
+      - name: "🔎 Conferir filas e contratos após apply"
+        if: env.TERRAFORM_ACTION == 'apply'
+        run: node .github/scripts/verificar-mensageria-os.cjs after-apply
+
+      - name: "🔎 Confirmar remoção das filas e contratos de OS"
+        if: env.TERRAFORM_ACTION == 'destroy'
+        run: node .github/scripts/verificar-mensageria-os.cjs after-destroy
+
       - name: "💾 08 · Salvar cache final do state do Terraform"
         if: always()
         uses: actions/cache/save@v6
@@ -449,7 +471,7 @@ jobs:
           path: |
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}
+          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: "📖 09 · Ler nome do cluster EKS"
         id: read_outputs

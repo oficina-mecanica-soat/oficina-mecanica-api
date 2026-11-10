@@ -32,6 +32,10 @@ Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece par
 
 Cada tarefa deve ter PR com ID, critérios de aceite, validações reais e referência de contrato. Gabriel pode iniciar F4-03 depois de F4-02; não precisa aguardar todas as frentes. Não editar a mesma branch; compartilhar alterações de contrato antes de avançar nos dois lados. Cada pessoa revisa seus diffs e checks mesmo usando bypass de aprovação. Promoções continuam automáticas conforme as esteiras.
 
+### Alinhamento da infraestrutura da fila de OS — 10/11/2026
+
+Gabriel prepara em PR separado a entrada FIFO/DLQ de resultados de OS e seus contratos SSM no repositório API, conforme alinhamento explícito do responsável pelo projeto. Saga, outbox SQL, consumidor de resultados e transições de OS continuam com Geovanna na F4-06; a preparação da fila não conclui essa tarefa. O contrato proposto e os limites de ativação estão em [Mensageria de OS](../deploy/mensageria-os.md). Recursos reais e IAM dependem da janela de laboratório autorizada.
+
 ### Cortes e riscos
 
 Não incluir SNS sem múltiplos consumidores, novos serviços de cadastro, framework compartilhado, migração de Git Flow, plataforma de templates ou hardening corporativo nesta entrega. Não cortar Saga real, integração Mercado Pago, isolamento de bancos, BDD, cobertura, CI/CD ou observabilidade exigidos.
