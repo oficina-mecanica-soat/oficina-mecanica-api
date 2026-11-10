@@ -115,6 +115,7 @@ jobs:
 
       - name: "🔑 02 · Configurar credenciais AWS"
         uses: aws-actions/configure-aws-credentials@v6
+        id: aws_credentials
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -181,9 +182,9 @@ jobs:
           path: |
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ inputs.environment_name }}-${{ github.run_id }}
+          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}
           restore-keys: |
-            tfstate-${{ inputs.environment_name }}-
+            tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-
 
       - name: "📝 07 · Escrever variáveis do Terraform"
         env:
@@ -247,6 +248,9 @@ jobs:
           target.write_text(json.dumps(values), encoding="utf-8")
           PY
 
+      - name: "🛡️ Validar state da conta AWS atual"
+        run: node .github/scripts/bootstrap-account-state.cjs
+
       - name: "🛡️ Preparar configuração exclusiva de destroy"
         if: env.TERRAFORM_ACTION == 'destroy'
         run: node .github/scripts/prepare-destroy.cjs
@@ -264,7 +268,7 @@ jobs:
           path: |
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ inputs.environment_name }}-${{ github.run_id }}-prepared
+          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-prepared
 
       - name: "📐 13 · Gerar plano do Terraform (apply)"
         if: env.TERRAFORM_ACTION == 'apply'
@@ -320,6 +324,7 @@ jobs:
 
       - name: "🔑 02 · Configurar credenciais AWS"
         uses: aws-actions/configure-aws-credentials@v6
+        id: aws_credentials
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -387,6 +392,7 @@ jobs:
 
       - name: "🔑 02 · Configurar credenciais AWS"
         uses: aws-actions/configure-aws-credentials@v6
+        id: aws_credentials
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -398,6 +404,9 @@ jobs:
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
+
+      - name: "🛡️ Validar state da conta AWS atual"
+        run: node .github/scripts/bootstrap-account-state.cjs
 
       - name: "🛡️ Preparar configuração exclusiva de destroy"
         if: env.TERRAFORM_ACTION == 'destroy'
@@ -412,9 +421,9 @@ jobs:
           path: |
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ inputs.environment_name }}-${{ github.run_id }}-prepared
+          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-prepared
           restore-keys: |
-            tfstate-${{ inputs.environment_name }}-
+            tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-
 
       - name: "⬇️ 06 · Baixar plano do Terraform publicado"
         uses: actions/download-artifact@v8
@@ -440,7 +449,7 @@ jobs:
           path: |
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
             ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ inputs.environment_name }}-${{ github.run_id }}
+          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}
 
       - name: "📖 09 · Ler nome do cluster EKS"
         id: read_outputs
@@ -465,6 +474,7 @@ jobs:
     steps:
       - name: "🔑 01 · Configurar credenciais AWS"
         uses: aws-actions/configure-aws-credentials@v6
+        id: aws_credentials
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

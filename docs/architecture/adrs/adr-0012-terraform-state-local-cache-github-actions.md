@@ -47,3 +47,7 @@
 - **HASHICORP.** *Terraform Backend Configuration: local*. 2026.
 - **GITHUB.** *Caching dependencies to speed up workflows (actions/cache)*. 2026.
 - Detalhamento operacional: [`docs/deploy/deploy-aws.md`](../../deploy/deploy-aws.md).
+
+## Atualização operacional — troca de conta do AWS Academy (10/11/2026)
+
+Mantido o backend local com cache do GitHub Actions, o namespace do cache passa a incluir a conta AWS autenticada. O state de um laboratório não deve ser restaurado automaticamente em outra conta. Chaves históricas sem conta são preservadas, mas não entram no restore do novo escopo. A autorização para bootstrap de cache vazio exige destroy dedicado e confirmação read-only de ausência dos recursos do projeto na conta atual. Apply sem cache é bloqueado; ambientes existentes exigem recuperação do state correto. O encerramento definitivo da conta antiga não transforma AccessDenied em confirmação de ausência dos recursos nela.
