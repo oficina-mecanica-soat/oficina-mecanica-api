@@ -70,6 +70,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: "📥 Conferir estrutura do repositório"
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: "📁 Bloquear pastas extras e diretórios de scripts"
+        run: |
+          node <<'VALIDAR_ESTRUTURA'
+          const cp = require('node:child_process');
+          const nomes = args => cp.execFileSync('git', args, { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+          const assert = require('node:assert/strict');
+          // Estrutura aprovada do projeto, válida também em promoções para branches antigas.
+          const raizes = new Set([".agents", ".github", "docs", "infra", "k8s", "src", "tests"]);
+          function foraDoPadrao(arquivos) {
+            return arquivos.filter(nome => {
+              const pastas = nome.split('/').slice(0, -1);
+              return pastas.some(pasta => pasta.toLowerCase() === 'scripts') || (pastas.length > 0 && !raizes.has(pastas[0]));
+            });
+          }
+          assert.deepEqual(foraDoPadrao(['src/Caso/Novo.cs']), []);
+          assert.deepEqual(foraDoPadrao(['scripts/local.ps1', '.github/scripts/check.cjs', 'pasta-extra/arquivo']), ['scripts/local.ps1', '.github/scripts/check.cjs', 'pasta-extra/arquivo']);
+          const invalidos = foraDoPadrao(nomes(['ls-files']));
+          if (invalidos.length) throw new Error('Estrutura fora do padrão aprovado: ' + invalidos.join(', '));
+          console.log('Estrutura existente preservada; nenhuma pasta de scripts versionada.');
+          VALIDAR_ESTRUTURA
+
       - name: "🔀 01 · Conferir origem e destino do PR"
         env:
           BASE_BRANCH: ${{ github.base_ref }}
@@ -348,7 +373,119 @@ jobs:
           terraform_version: "1.15.8"
           terraform_wrapper: false
       - name: "🧪 Validar recuperação segura de destroy"
-        run: node --test .github/scripts/*.test.cjs
+        run: |
+          node <<'PREPARAR_TESTES_INLINE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const origem = fs.readFileSync('.github/workflows/aws-deploy.yml', 'utf8');
+          // Extrai os mesmos blocos literais usados pelo CD; não mantém outra cópia da lógica.
+          const blocos = [...origem.matchAll(/^([ ]*)cat > "\$RUNNER_TEMP\/([^"\/]+\.cjs)" <<'(VALIDACAO_INLINE_\d+)'\r?\n([\s\S]*?)^\1\3\r?$/gm)];
+          const esperados = ["bootstrap-account-state.cjs", "prepare-destroy.cjs", "verificar-mensageria-os.cjs"];
+          if (blocos.length !== esperados.length || !esperados.every(nome => blocos.some(bloco => bloco[2] === nome))) throw new Error('Blocos de validação ausentes ou divergentes.');
+          for (const bloco of blocos) {
+            const codigo = bloco[4].split('\n').map(linha => linha.slice(bloco[1].length)).join('\n');
+            fs.writeFileSync(path.join(process.env.RUNNER_TEMP, bloco[2]), codigo);
+          }
+          PREPARAR_TESTES_INLINE
+          cat > "$RUNNER_TEMP/bootstrap-account-state.test.cjs" <<'TESTE_INLINE_0'
+          const {test}=require('node:test');
+          const assert=require('node:assert/strict');
+          const {checkEmpty}=require('./bootstrap-account-state.cjs');
+          test('bootstrap rejeita recursos do projeto e respostas inválidas',()=>{
+            assert.throws(()=>checkEmpty('VPC',[{Tags:[{Key:'Project',Value:'OficinaMecanica'}]}]),/bloqueado/);
+            assert.throws(()=>checkEmpty('Lambda',[{FunctionName:'oficina-mecanica-auth-lambda-dev'}]),/bloqueado/);
+            assert.throws(()=>checkEmpty('EKS',null),/inválida/);
+            checkEmpty('Lambda',[{FunctionName:'MainMonitoringFunction'}]);
+            checkEmpty('VPC',[{IsDefault:true}]);
+          });
+          TESTE_INLINE_0
+          cat > "$RUNNER_TEMP/mensageria-os.test.cjs" <<'TESTE_INLINE_1'
+          const { test } = require('node:test');
+          const assert = require('node:assert/strict');
+          const { contratosDoState, verificarPendencias, verificarInfra, verificarRemocao, consultarAws } = require('./verificar-mensageria-os.cjs');
+          const contratos = { entrada_queue_url: 'entrada', entrada_queue_arn: 'arn:entrada', dlq_url: 'dlq', dlq_arn: 'arn:dlq' };
+          const vazia = { Attributes: { ApproximateNumberOfMessages: '0', ApproximateNumberOfMessagesNotVisible: '0', ApproximateNumberOfMessagesDelayed: '0' } };
+
+          test('destroy de OS bloqueia mensagens visíveis, em voo, atrasadas e em DLQ', () => {
+            verificarPendencias(contratos, servico => { assert.equal(servico, 'sqs'); return vazia; });
+            for (const atributo of Object.keys(vazia.Attributes)) {
+              for (const fila of ['entrada', 'dlq']) {
+                assert.throws(() => verificarPendencias(contratos, (servico, operacao, ...args) =>
+                  args.includes(fila) ? { Attributes: { ...vazia.Attributes, [atributo]: '1' } } : vazia), /Mensagens pendentes/);
+              }
+            }
+            assert.throws(() => verificarPendencias(contratos, () => ({ Attributes: {} })), /contagem inválida/);
+          });
+          test('ausência confirmada permite recuperação; resposta existente ou falha real bloqueia', () => {
+            verificarPendencias(contratos, () => null);
+            verificarRemocao(contratos, '/oficina-mecanica/development', () => null);
+            assert.throws(() => verificarPendencias(contratos, () => { throw new Error('AccessDenied'); }), /AccessDenied/);
+            assert.throws(() => verificarRemocao(contratos, '/oficina-mecanica/development', () => { throw new Error('Credencial expirada'); }), /Credencial expirada/);
+            assert.throws(() => verificarRemocao(contratos, '/oficina-mecanica/development', () => ({})), /ainda existe/);
+          });
+          test('contexto vem dos recursos de OS no state mesmo sem outputs após falha parcial', () => {
+            const recurso = (name, attributes) => ({ mode: 'managed', type: 'aws_sqs_queue', name, instances: [{ attributes }] });
+            assert.deepEqual(contratosDoState({ resources: [recurso('os_entrada', { id: 'entrada', arn: 'arn:entrada' }), recurso('os_dlq', { url: 'dlq', arn: 'arn:dlq' }), recurso('outro', { id: 'nao-pertence-a-este-contrato' })] }), contratos);
+            assert.ok(Object.values(contratosDoState({})).every(valor => valor === ''));
+          });
+          test('pós-apply compara FIFO, retenção, redrive e contratos do owner sem consultar bancos', () => {
+            const prefix = '/oficina-mecanica/development';
+            const consultar = (servico, operacao, ...args) => {
+              assert.ok(['sqs', 'ssm'].includes(servico));
+              if (servico === 'sqs') return { Attributes: { QueueArn: args.includes('entrada') ? 'arn:entrada' : 'arn:dlq', FifoQueue: 'true', ContentBasedDeduplication: 'false', MessageRetentionPeriod: args.includes('entrada') ? '345600' : '1209600', VisibilityTimeout: '60', ReceiveMessageWaitTimeSeconds: '20', RedrivePolicy: JSON.stringify({ maxReceiveCount: '5', deadLetterTargetArn: 'arn:dlq' }) } };
+              const nome = args[args.indexOf('--name') + 1];
+              if (nome === `${prefix}/status/api`) return { Parameter: { Value: 'ready' } };
+              const chave = nome.slice(`${prefix}/api/`.length);
+              assert.ok(chave in contratos);
+              return { Parameter: { Value: contratos[chave], Type: 'String' } };
+            };
+            verificarInfra(contratos, prefix, consultar);
+            assert.throws(() => verificarInfra({ ...contratos, dlq_arn: '' }, prefix, consultar), /State incompleto/);
+            assert.throws(() => verificarInfra(contratos, prefix, (servico, ...args) => servico === 'ssm' ? { Parameter: { Value: 'outro', Type: 'String' } } : consultar(servico, ...args)), /Contrato SSM/);
+            assert.throws(() => verificarInfra(contratos, prefix, (servico, ...args) => servico === 'sqs' ? { Attributes: {} } : consultar(servico, ...args)), /Fila real/);
+          });
+          test('classificação da resposta AWS não converte AccessDenied, rede ou JSON inválido em ausência', () => {
+            const cp = require('node:child_process');
+            const original = cp.execFileSync;
+            try {
+              for (const codigo of ['AWS.SimpleQueueService.NonExistentQueue', 'QueueDoesNotExist']) {
+                cp.execFileSync = () => { const erro = new Error('simulado'); erro.stderr = `An error occurred (${codigo})`; throw erro; };
+                assert.equal(consultarAws('sqs', 'get-queue-attributes'), null);
+              }
+              for (const codigo of ['AccessDenied', 'ExpiredToken', 'RequestTimeout']) {
+                cp.execFileSync = () => { const erro = new Error('simulado'); erro.stderr = `An error occurred (${codigo})`; throw erro; };
+                assert.throws(() => consultarAws('sqs', 'get-queue-attributes'), /sem comprovar ausência/);
+              }
+              for (const resposta of ['json-invalido', 'null', '[]', '"texto"']) {
+                cp.execFileSync = () => resposta;
+                assert.throws(() => consultarAws('sqs', 'get-queue-attributes'), /sem comprovar ausência/);
+              }
+            } finally { cp.execFileSync = original; }
+          });
+          TESTE_INLINE_1
+          cat > "$RUNNER_TEMP/prepare-destroy.test.cjs" <<'TESTE_INLINE_2'
+          const {test} = require('node:test');
+          const assert = require('node:assert/strict');
+          const {destroyConfig, verifyPlan} = require('./prepare-destroy.cjs');
+          test('destroy AWS não inclui contratos SSM nem modifica state', () => {
+            const state = {resources:[{mode:'managed',type:'aws_vpc',name:'this',provider:'provider["registry.terraform.io/hashicorp/aws"]'}]};
+            const before = JSON.stringify(state);
+            assert.match(destroyConfig(state,'us-east-1',()=>assert.fail()), /provider "aws"/);
+            assert.equal(JSON.stringify(state),before);
+          });
+          test('Kubernetes exige ausência comprovada do EKS e usa removed declarativo', () => {
+            const state = {resources:[{mode:'data',type:'aws_eks_cluster',instances:[{attributes:{name:'test'}}]}, {mode:'managed',type:'kubernetes_namespace_v1',name:'this'}]};
+            assert.throws(()=>destroyConfig(state,'us-east-1',()=>{throw Error('AccessDenied')}),/AccessDenied/);
+            assert.match(destroyConfig(state,'us-east-1',name=>assert.equal(name,'test')),/from = kubernetes_namespace_v1.this/);
+            assert.match(destroyConfig(state,'us-east-1',()=>{}),/destroy = false/);
+            assert.throws(()=>destroyConfig({resources:[state.resources[1]]},'us-east-1',()=>{}),/sem nome/);
+          });
+          test('plano rejeita criação, atualização e substituição', () => {
+            for(const actions of [['create'],['update'],['delete','create']]) assert.throws(()=>verifyPlan({resource_changes:[{address:'test',change:{actions}}]}),/proibida/);
+            for(const actions of [['no-op'],['delete'],['forget']]) verifyPlan({resource_changes:[{change:{actions}}]});
+          });
+          TESTE_INLINE_2
+          node --test "$RUNNER_TEMP/bootstrap-account-state.test.cjs" "$RUNNER_TEMP/mensageria-os.test.cjs" "$RUNNER_TEMP/prepare-destroy.test.cjs"
 
       - run: terraform fmt -check -recursive infra/terraform
       - run: terraform -chdir=infra/terraform/environments/dev init -backend=false -input=false
