@@ -2,8 +2,8 @@
 
 ## Status
 
-**Status:** Aceito  
-**Data:** 31/08/2026  
+**Status:** ✅ Aceito
+**Data:** 31/08/2026
 **Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio
 
 ---
@@ -18,7 +18,7 @@ Além do monitoramento técnico, a solução deve disponibilizar dashboards cont
 
 Diante desses requisitos, era necessário definir uma solução de observabilidade que pudesse acompanhar os diferentes componentes da arquitetura da Fase 3, incluindo a aplicação principal executada no Kubernetes, a Function Serverless de autenticação e o API Gateway.
 
-## 2. Fatores Decisivos
+## 2. Fatores Decisivos (Drivers)
 
 - Atender aos requisitos de monitoramento e observabilidade definidos no Tech Challenge.
 - Monitorar a latência das APIs.
@@ -35,7 +35,7 @@ Diante desses requisitos, era necessário definir uma solução de observabilida
 - Evitar a introdução de múltiplas ferramentas de observabilidade sem necessidade para o escopo da Fase 3.
 - Manter a solução simples e alinhada ao princípio de evitar overengineering definido no plano de execução.
 
-## 3. Decisão
+## 3. Decisão Proposta
 
 Será utilizado o **Datadog como solução única de observabilidade da arquitetura da Fase 3**.
 
@@ -138,9 +138,9 @@ O uso conjunto de `X-Correlation-Id`, `dd.trace_id` e `dd.span_id` permite combi
 
 A decisão também está alinhada ao plano de execução da Fase 3, que estabelece o Datadog como ferramenta única de observabilidade e define sua utilização no EKS, Lambda, API Gateway e aplicação principal.
 
-## 5. Consequências
+## 5. Consequências (Trade-offs)
 
-### Positivas
+### ✅ Positivo (Ganhos)
 
 - A observabilidade fica centralizada em uma única plataforma.
 - Logs, métricas e traces podem ser analisados em conjunto.
@@ -154,7 +154,7 @@ A decisão também está alinhada ao plano de execução da Fase 3, que estabele
 - A solução atende aos requisitos de observabilidade definidos no Tech Challenge.
 - A utilização dos recursos nativos do Datadog reduz a quantidade de componentes adicionais necessários.
 
-### Negativas e riscos
+### ❌ Negativo (Perdas/Riscos)
 
 - A solução passa a depender do Datadog para centralização da observabilidade.
 - A configuração incorreta dos agentes ou integrações pode resultar em perda de logs, métricas ou traces.

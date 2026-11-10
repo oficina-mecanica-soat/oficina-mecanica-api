@@ -2,8 +2,8 @@
 
 ## Status
 
-**Status:** Aceito  
-**Data:** 31/08/2026  
+**Status:** ✅ Aceito
+**Data:** 31/08/2026
 **Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio
 
 ---
@@ -16,7 +16,7 @@ A Fase 3 exige a implementação de um API Gateway para controle e roteamento. A
 
 Era necessário definir qual componente seria responsável pela entrada pública das requisições e como separar o acesso à Lambda de autenticação e à API executada no Kubernetes.
 
-## 2. Fatores Decisivos
+## 2. Fatores Decisivos (Drivers)
 
 - Cumprir o requisito de API Gateway da Fase 3.
 - Centralizar a entrada pública da solução.
@@ -26,7 +26,7 @@ Era necessário definir qual componente seria responsável pela entrada pública
 - Permitir logs de acesso e monitoramento em uma camada única.
 - Preservar o estilo RESTful da API existente.
 
-## 3. Decisão
+## 3. Decisão Proposta
 
 Será utilizado o AWS API Gateway no modelo HTTP API como porta pública única da solução. A rota da Lambda usará Lambda Proxy Integration com payload format 2.0, cujo evento futuro será `APIGatewayHttpApiV2ProxyRequest`.
 
@@ -54,8 +54,22 @@ O API Gateway centraliza o roteamento entre os dois fluxos principais:
 
 O uso do estágio `$default` mantém a URL pública mais simples e permite que as rotas da API sejam expostas sem um prefixo de ambiente.
 
-## 5. Consequências
+## 5. Consequências (Trade-offs)
 
-### Positivas
+### ✅ Positivo (Ganhos)
 
-- O API Gateway passa a
+- O API Gateway passa a centralizar a entrada pública e o roteamento da solução.
+- A API no Kubernetes pode permanecer privada, com integração por VPC Link.
+- O fluxo público de autenticação por documento mantém um endereço estável.
+
+### ❌ Negativo (Perdas/Riscos)
+
+- A disponibilidade da entrada pública depende do API Gateway e de sua integração privada.
+- VPC Link, rotas e permissões da Lambda exigem configuração e validação coordenadas.
+- HTTP API possui capacidades diferentes da REST API; requisitos futuros de API Keys ou Usage Plans exigem reavaliação.
+
+## 6. Referências
+
+- [RFC-0002 — API Gateway com VPC Link e NLB interno](../rfcs/rfc-0002-api-gateway-com-vpc-link-e-nlb-interno.md).
+- [ADR-0016 — NLB interno](adr-0016-migracao-do-load-balancer-publico-para-nlb-interno.md).
+- [ADR-0017 — VPC Link](adr-0017-uso-de-vpc-link-para-integracao-privada-entre-api-gateway-e-kubernetes.md).
