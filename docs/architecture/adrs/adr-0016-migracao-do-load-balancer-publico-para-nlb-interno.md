@@ -2,9 +2,9 @@
 
 ## Status
 
-**Status:** Aceito  
-**Data:** 31/08/2026  
-**Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio  
+**Status:** ✅ Aceito
+**Data:** 31/08/2026
+**Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio
 **Substitui:** ADR-0009 — Load Balancer provisionado via Kubernetes Service
 
 ---
@@ -15,7 +15,7 @@ Na Fase 2, a API no Kubernetes foi exposta por um Classic Load Balancer público
 
 É necessário um backend privado, com listener determinístico para o VPC Link, sem introduzir AWS Load Balancer Controller, Helm, Pod Identity, IRSA, TargetGroupBinding ou o Service Controller legado.
 
-## 2. Fatores Decisivos
+## 2. Fatores Decisivos (Drivers)
 
 - Garantir o API Gateway como única porta pública final.
 - Manter o backend privado e compatível com o VPC Link.
@@ -24,7 +24,7 @@ Na Fase 2, a API no Kubernetes foi exposta por um Classic Load Balancer público
 - Manter ownership explícito entre infraestrutura Kubernetes e workload da API.
 - Privilegiar simplicidade operacional e reconstrução reprodutível por Terraform.
 
-## 3. Decisão
+## 3. Decisão Proposta
 
 O repositório `oficina-mecanica-infra-kubernetes` cria explicitamente, por Terraform, o NLB interno `oficina-mecanica-api-nlb-dev`, seu Security Group, listener TCP/80, Target Group `oficina-mecanica-api-tg-dev` e o vínculo deste Target Group ao ASG do Managed Node Group.
 
@@ -50,16 +50,16 @@ O AWS Load Balancer Controller com target IP foi avaliado como abordagem moderna
 
 Foi escolhida a combinação NLB explícito, target `instance` e NodePort por manter recursos nomeados e state Terraform explícito, listener ARN determinístico, compatibilidade com o laboratório, ausência de mecanismo legado e menor complexidade operacional sem usar uma identidade IAM inadequada.
 
-## 5. Consequências
+## 5. Consequências (Trade-offs)
 
-### Positivas
+### ✅ Positivo (Ganhos)
 
 - O API Gateway é a única entrada pública final.
 - A infraestrutura de rede do private ingress possui ownership explícito e contratos SSM claros.
 - O NLB encaminha apenas para o NodePort, com regra SG por referência ao SG do NLB.
 - A associação ao ASG acompanha a substituição de instâncias do Managed Node Group.
 
-### Negativas e riscos
+### ❌ Negativo (Perdas/Riscos)
 
 - O SG do NLB inicia sem ingress; a futura esteira do API Gateway criará a regra VPC Link → NLB em TCP/80.
 - Até o PR posterior criar o Service NodePort, o Target Group pode não possuir alvo saudável. Isso não representa prontidão E2E.

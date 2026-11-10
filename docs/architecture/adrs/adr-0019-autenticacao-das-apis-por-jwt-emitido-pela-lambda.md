@@ -2,8 +2,8 @@
 
 ## Status
 
-**Status:** Aceito  
-**Data:** 31/08/2026  
+**Status:** ✅ Aceito
+**Data:** 31/08/2026
 **Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio
 
 ---
@@ -18,7 +18,7 @@ Na arquitetura definida, a `oficina-mecanica-auth-lambda` será responsável pel
 
 Era necessário definir o mecanismo de autenticação das chamadas posteriores à API e quais informações mínimas seriam transportadas no token.
 
-## 2. Fatores Decisivos
+## 2. Fatores Decisivos (Drivers)
 
 - Utilizar um mecanismo de autenticação compatível com APIs REST.
 - Permitir que a Lambda emita um token após validar e normalizar CPF ou CNPJ e verificar o status do cliente.
@@ -29,7 +29,7 @@ Era necessário definir o mecanismo de autenticação das chamadas posteriores �
 - Manter a autenticação compatível com o middleware de autorização já utilizado pela aplicação.
 - Evitar a criação de uma dependência da API em chamadas à Lambda para cada requisição autenticada.
 
-## 3. Decisão
+## 3. Decisão Proposta
 
 A autenticação das APIs protegidas será baseada em **JSON Web Token (JWT)** emitido pela `oficina-mecanica-auth-lambda` após a validação de um documento e do status do cliente.
 
@@ -93,9 +93,9 @@ A claim `jti` fornece um identificador único para cada token, permitindo rastre
 
 A decisão atende diretamente ao requisito da Fase 3: o fluxo `POST /auth/documento` valida CPF, consulta o cliente e gera o JWT. A aceitação de CNPJ é extensão necessária para a coerência com o domínio existente, não substituição do requisito de CPF.
 
-## 5. Consequências
+## 5. Consequências (Trade-offs)
 
-### Positivas
+### ✅ Positivo (Ganhos)
 
 - A autenticação de clientes por documento fica centralizada na Lambda.
 - A API consegue validar o token sem realizar nova chamada à Lambda.
@@ -107,7 +107,7 @@ A decisão atende diretamente ao requisito da Fase 3: o fluxo `POST /auth/docume
 - A solução é compatível com a utilização de `[Authorize]` na API.
 - A arquitetura atende diretamente ao requisito de autenticação da Fase 3.
 
-### Negativas e riscos
+### ❌ Negativo (Perdas/Riscos)
 
 - A segurança depende da proteção adequada da chave utilizada para assinatura dos tokens.
 - Tokens emitidos antes de uma alteração de status do cliente continuam válidos até sua expiração, caso não exista mecanismo adicional de revogação.

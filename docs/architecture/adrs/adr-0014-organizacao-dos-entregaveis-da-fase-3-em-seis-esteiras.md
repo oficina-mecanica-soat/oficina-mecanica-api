@@ -2,8 +2,8 @@
 
 ## Status
 
-**Status:** Aceito  
-**Data:** 31/08/2026  
+**Status:** ✅ Aceito
+**Data:** 31/08/2026
 **Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio
 
 ---
@@ -21,7 +21,7 @@ A arquitetura definida para a Oficina Mecânica também inclui uma VPC compartil
 
 Manter VPC, EKS, RDS, Lambda, API e API Gateway em um único repositório aumentaria o acoplamento entre as alterações e dificultaria o controle de deploy, destroy e responsabilidades. Por outro lado, criar repositórios adicionais não pode tornar ambígua a entrega dos quatro itens obrigatórios da FIAP.
 
-## 2. Fatores Decisivos
+## 2. Fatores Decisivos (Drivers)
 
 - Cumprir os quatro entregáveis obrigatórios da Fase 3.
 - Separar recursos com responsabilidades e ciclos de vida distintos.
@@ -31,7 +31,7 @@ Manter VPC, EKS, RDS, Lambda, API e API Gateway em um único repositório aument
 - Tornar a ordem de provisionamento e destruição mais clara.
 - Evitar que alterações na aplicação provoquem alterações desnecessárias em toda a infraestrutura.
 
-## 3. Decisão
+## 3. Decisão Proposta
 
 A solução será organizada em seis esteiras e seis repositórios:
 
@@ -67,9 +67,9 @@ A API continuará em seu próprio repositório porque concentra regras de negóc
 
 O API Gateway será isolado para manter a configuração de rotas públicas, VPC Link e integrações privadas independente da aplicação e da infraestrutura do cluster.
 
-## 5. Consequências
+## 5. Consequências (Trade-offs)
 
-### Positivas
+### ✅ Positivo (Ganhos)
 
 - Responsabilidades e limites de cada repositório ficam explícitos.
 - Cada esteira possui CI/CD, histórico e ciclo de deploy independentes.
@@ -78,7 +78,7 @@ O API Gateway será isolado para manter a configuração de rotas públicas, VPC
 - O projeto mantém os quatro entregáveis obrigatórios identificáveis para avaliação.
 - A documentação arquitetural e a apresentação da solução tornam-se mais fáceis de explicar.
 
-### Negativas e riscos
+### ❌ Negativo (Perdas/Riscos)
 
 - A solução exige coordenação entre múltiplos repositórios.
 - Algumas esteiras dependem de outputs produzidos por outras.

@@ -1,5 +1,43 @@
 # Backlog técnico
 
+## Execução da Fase 4 — 09 a 17/11/2026
+
+Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece para o escopo atual; itens históricos abaixo não viram trabalho automático. Responsável indica quem conduz a tarefa com seu Codex. Contratos são compartilhados; alterações incompatíveis devem ser alinhadas antes de implementação.
+
+| ID | Responsável | Dependências | Entrega e aceite |
+| --- | --- | --- | --- |
+| F4-01 | Gabriel | — | Validar ambiente atual via esteiras e Postman; registrar impedimentos e evidências, sem provisionamento direto. |
+| F4-02 | Geovanna | — | Revisar ADR-0024/25/26 e RFC-0007, conferir enunciado e fechar contratos usados pelas duas frentes. |
+| F4-03 | Gabriel | F4-01, F4-02 | Criar repositório Execução com AGENTS, Clean Architecture, testes, Dockerfile, CI/CD e governança derivados das referências; CI verde e execução local. |
+| F4-04 | Gabriel | F4-03 | Provisionar DynamoDB, fila de entrada e DLQ pela esteira; validar leitura/escrita/consumo pelo workload e publicar contratos SSM. Sem SNS inicialmente. |
+| F4-05 | Gabriel | F4-03, F4-02 | Extrair diagnóstico, estoque, reserva/liberação e execução preservando regras e testes. Garantir reserva atômica, idempotência, outbox e compensação; consumir os contratos v1 do RFC. Pode usar doubles enquanto F4-04 ocorre. |
+| F4-06 | Geovanna | F4-02 | Adaptar OS existente, estados persistidos da Saga, outbox, consumidor de resultados e testes; remover transação entre bancos de serviços. |
+| F4-07 | Geovanna | F4-02 | Criar serviço Orçamento/Pagamento, CI/CD independente, banco SQL isolado e fila/DLQ pela esteira; snapshot de orçamento e decisão versionada. |
+| F4-08 | Geovanna | F4-07 | Validar produto de checkout Mercado Pago com credenciais de teste; implementar cobrança, notificação verificada, consulta ao provedor e idempotência. Bloqueio de credenciais é P0 imediato. |
+| F4-09 | Geovanna | F4-06, F4-07 | Adequar Lambda ao contrato privado de clientes, JWT nos três serviços e roteamento Gateway; testes 401/403 e acesso por cliente. |
+| F4-10 | Gabriel | F4-05, F4-06, F4-07 | Integrar fluxo assíncrono, BDD e testes de duplicata, reinício, recusa e compensação; saldo e estados consistentes. Geovanna revisa o contrato e resultados. |
+| F4-11 | Gabriel | F4-04, F4-05 | Instrumentar serviço Execução e fluxos distribuídos no Datadog; painéis, logs seguros e falhas da Saga/DLQ observáveis. Geovanna instrumenta OS e cobrança nas respectivas tarefas. |
+| F4-12 | Ambos | F4-08 a F4-11 | Rodar deploy completo por esteiras; cobertura ≥80% por serviço, Sonar/equivalente e checks verdes; registrar links reais. |
+| F4-13 | Geovanna | F4-12 | Atualizar C4/diagrama geral, README, OpenAPI/Postman, roteiro e PDF; Gabriel revisa execução seguindo os documentos. |
+| F4-14 | Ambos | F4-13 | Gravar vídeo ≤15 min com sucesso, compensação, CI/CD e traces; conferir acesso aos repositórios e links; enviar até 17/11 23h59. |
+
+### Marcos e coordenação
+
+- 09/11: decisões e contratos revisáveis; ambiente atual; início dos dois scaffolds e código independente.
+- 10–11/11: serviços isolados e infraestrutura mínima; spike Mercado Pago e permissões AWS resolvidos.
+- 12–13/11: integração da Saga e compensações, autenticação/Gateway e pagamento de teste.
+- 14–15/11: testes, cobertura, Sonar, observabilidade e deploy demonstrável.
+- 16/11: documentação, PDF e gravação; congelar funcionalidades.
+- 17/11: buffer, conferência de links e envio; evitar deixar gravação/upload para o limite.
+
+Cada tarefa deve ter PR com ID, critérios de aceite, validações reais e referência de contrato. Gabriel pode iniciar F4-03 depois de F4-02; não precisa aguardar todas as frentes. Não editar a mesma branch; compartilhar alterações de contrato antes de avançar nos dois lados. Cada pessoa revisa seus diffs e checks mesmo usando bypass de aprovação. Promoções continuam automáticas conforme as esteiras.
+
+### Cortes e riscos
+
+Não incluir SNS sem múltiplos consumidores, novos serviços de cadastro, framework compartilhado, migração de Git Flow, plataforma de templates ou hardening corporativo nesta entrega. Não cortar Saga real, integração Mercado Pago, isolamento de bancos, BDD, cobertura, CI/CD ou observabilidade exigidos.
+
+Permissões DynamoDB/SQS, acesso Mercado Pago, conta Sonar e limite do laboratório são riscos P0 e devem ser resolvidos até 11/11. Compensação não pode ser simulada como sucesso. Provisionamento de bancos isolados precisa ser provado; qualquer inviabilidade muda ADR-0025 por decisão explícita, sem acesso cruzado a banco.
+
 ## Preparação da próxima entrega
 
 Os itens abaixo são pontos de partida e não substituem decisões arquiteturais aprovadas. O enunciado exige ao menos três microsserviços independentes, bancos próprios com SQL e NoSQL, mensageria, Saga com compensação, cobertura mínima de 80% por serviço, BDD, CI/CD, Kubernetes e observabilidade.

@@ -2,8 +2,8 @@
 
 ## Status
 
-**Status:** Aceito  
-**Data:** 31/08/2026  
+**Status:** ✅ Aceito
+**Data:** 31/08/2026
 **Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio
 
 ---
@@ -16,7 +16,7 @@ O API Gateway precisa encaminhar requisições destinadas a `/api/*` para a apli
 
 Era necessário definir o mecanismo de comunicação entre o API Gateway e o NLB interno que expõe a API no Kubernetes.
 
-## 2. Fatores Decisivos
+## 2. Fatores Decisivos (Drivers)
 
 - Manter a API principal privada dentro da VPC.
 - Impedir que o NLB interno seja acessado diretamente por clientes externos.
@@ -25,7 +25,7 @@ Era necessário definir o mecanismo de comunicação entre o API Gateway e o NLB
 - Evitar a criação de endpoints públicos adicionais.
 - Manter uma arquitetura simples para o MVP.
 
-## 3. Decisão
+## 3. Decisão Proposta
 
 Será utilizado o VPC Link na versão compatível com HTTP API para integrar o AWS API Gateway ao NLB interno da API.
 
@@ -65,9 +65,9 @@ A integração por VPC Link também preserva a responsabilidade de cada componen
 - NLB interno: encaminhamento de tráfego para a API.
 - API: autenticação JWT, autorização e regras de negócio.
 
-## 5. Consequências
+## 5. Consequências (Trade-offs)
 
-### Positivas
+### ✅ Positivo (Ganhos)
 
 - A API permanece privada dentro da VPC.
 - O NLB não precisa ser público.
@@ -76,7 +76,7 @@ A integração por VPC Link também preserva a responsabilidade de cada componen
 - A arquitetura fica mais alinhada aos requisitos de segurança e roteamento da Fase 3.
 - A separação entre camada pública e aplicação de negócio fica mais clara.
 
-### Negativas e riscos
+### ❌ Negativo (Perdas/Riscos)
 
 - O VPC Link adiciona um recurso adicional para provisionar, monitorar e destruir.
 - O API Gateway dependerá da disponibilidade do VPC Link e do NLB interno.
