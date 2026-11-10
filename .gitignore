@@ -25,3 +25,6 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+# Contexto temporário da verificação de destroy de mensageria
+**/os-mensageria-destroy-context.json
