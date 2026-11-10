@@ -2,8 +2,8 @@
 
 ## Status
 
-**Status:** Aceito  
-**Data:** 31/08/2026  
+**Status:** ✅ Aceito
+**Data:** 31/08/2026
 **Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio
 
 ---
@@ -18,7 +18,7 @@ Era necessário definir uma estratégia para compartilhar essas informações en
 
 Além dos outputs dos recursos, também era necessário possuir uma forma padronizada de registrar o estado das esteiras e dos recursos provisionados.
 
-## 2. Fatores Decisivos
+## 2. Fatores Decisivos (Drivers)
 
 - Permitir o compartilhamento de outputs entre diferentes repositórios.
 - Evitar acoplamento direto entre os estados Terraform das diferentes esteiras.
@@ -31,7 +31,7 @@ Além dos outputs dos recursos, também era necessário possuir uma forma padron
 - Facilitar a operação e a reconstrução do ambiente.
 - Manter a solução simples e compatível com a arquitetura proposta para a Fase 3.
 
-## 3. Decisão
+## 3. Decisão Proposta
 
 Será utilizado o **AWS Systems Manager Parameter Store (SSM Parameter Store)** como mecanismo padrão para compartilhamento de outputs e informações de estado entre as esteiras da Fase 3.
 
@@ -99,9 +99,9 @@ Essa distinção é especialmente importante durante operações de `destroy`, n
 
 A decisão também está alinhada ao plano de execução da Fase 3, que define uma convenção centralizada para os parâmetros e estabelece o SSM como mecanismo principal de compartilhamento entre as esteiras.
 
-## 5. Consequências
+## 5. Consequências (Trade-offs)
 
-### Positivas
+### ✅ Positivo (Ganhos)
 
 - As esteiras podem compartilhar outputs sem compartilhar diretamente seus estados Terraform.
 - Os repositórios permanecem desacoplados.
@@ -114,7 +114,7 @@ A decisão também está alinhada ao plano de execução da Fase 3, que define u
 - A solução utiliza um serviço gerenciado da AWS.
 - A estratégia facilita a reconstrução do ambiente seguindo a ordem de dependências definida na arquitetura.
 
-### Negativas e riscos
+### ❌ Negativo (Perdas/Riscos)
 
 - As esteiras passam a depender da disponibilidade e das permissões de acesso ao SSM Parameter Store.
 - Parâmetros incorretos ou desatualizados podem causar falhas em esteiras dependentes.

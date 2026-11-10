@@ -2,8 +2,8 @@
 
 ## Status
 
-**Status:** Aceito  
-**Data:** 31/08/2026  
+**Status:** ✅ Aceito
+**Data:** 31/08/2026
 **Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio
 
 ---
@@ -16,7 +16,7 @@ O RDS será executado em sub-redes privadas e não terá acesso público. Uma La
 
 Era necessário definir como a Lambda acessará o banco de dados mantendo a segurança da infraestrutura.
 
-## 2. Fatores Decisivos
+## 2. Fatores Decisivos (Drivers)
 
 - Permitir que a Lambda consulte clientes e seus status no RDS privado.
 - Manter o RDS sem exposição pública.
@@ -25,7 +25,7 @@ Era necessário definir como a Lambda acessará o banco de dados mantendo a segu
 - Permitir que a Lambda acesse o AWS Secrets Manager e envie telemetria ao Datadog.
 - Evitar a criação de acessos externos ao banco de dados.
 
-## 3. Decisão
+## 3. Decisão Proposta
 
 A Lambda de autenticação será anexada à VPC e executará em sub-redes privadas.
 
@@ -52,9 +52,9 @@ Anexar a Lambda à VPC permite que ela acesse o RDS sem abrir o banco para a int
 
 A solução também permite que a Lambda utilize o mesmo segredo de JWT armazenado no AWS Secrets Manager e envie logs e traces ao Datadog, mantendo a saída de rede controlada pela VPC.
 
-## 5. Consequências
+## 5. Consequências (Trade-offs)
 
-### Positivas
+### ✅ Positivo (Ganhos)
 
 - A Lambda consegue consultar o RDS privado.
 - O banco de dados permanece sem acesso público.
@@ -63,7 +63,7 @@ A solução também permite que a Lambda utilize o mesmo segredo de JWT armazena
 - A Lambda pode acessar o AWS Secrets Manager de forma controlada.
 - A arquitetura fica alinhada ao modelo de rede privada adotado para a solução.
 
-### Negativas e riscos
+### ❌ Negativo (Perdas/Riscos)
 
 - A Lambda passa a depender da VPC, das sub-redes privadas e dos grupos de segurança.
 - Configurações incorretas de rede podem causar timeout na autenticação.

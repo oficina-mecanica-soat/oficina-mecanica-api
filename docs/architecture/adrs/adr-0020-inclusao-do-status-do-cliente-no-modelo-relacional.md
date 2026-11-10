@@ -2,8 +2,8 @@
 
 ## Status
 
-**Status:** Aceito  
-**Data:** 31/08/2026  
+**Status:** ✅ Aceito
+**Data:** 31/08/2026
 **Autores:** Gabriel de Sousa Silva, Geovanna Monteiro Scabio
 
 ---
@@ -16,7 +16,7 @@ O requisito da Fase 3 determina que a Function Serverless seja responsável por 
 
 Na versão atual do modelo de dados, era necessário estabelecer uma forma explícita de representar a situação do cliente para que a Lambda pudesse diferenciar um cliente válido e ativo de um cliente existente, porém inativo.
 
-## 2. Fatores Decisivos
+## 2. Fatores Decisivos (Drivers)
 
 - Permitir verificar o status do cliente durante a autenticação.
 - Diferenciar clientes ativos de clientes que não devem receber um token.
@@ -26,7 +26,7 @@ Na versão atual do modelo de dados, era necessário estabelecer uma forma expl�
 - Permitir que os dados de demonstração representem clientes ativos e inativos.
 - Evitar depender de regras implícitas ou informações externas para determinar se um cliente pode se autenticar.
 
-## 3. Decisão
+## 3. Decisão Proposta
 
 Será adicionado um campo **`StatusCliente`** ao modelo de dados de cliente.
 
@@ -71,9 +71,9 @@ A migration mantém a evolução do modelo de dados rastreável e compatível co
 
 A decisão está alinhada ao plano da solução, que determina a inclusão do status do cliente, a criação de migration e a atualização dos dados de demonstração.
 
-## 5. Consequências
+## 5. Consequências (Trade-offs)
 
-### Positivas
+### ✅ Positivo (Ganhos)
 
 - A aplicação passa a possuir uma informação explícita sobre a situação do cliente.
 - A Lambda consegue verificar o status antes de emitir o JWT.
@@ -83,7 +83,7 @@ A decisão está alinhada ao plano da solução, que determina a inclusão do st
 - O comportamento pode ser validado com clientes ativos e inativos no ambiente de demonstração.
 - A solução atende diretamente ao requisito de consultar o status do cliente durante a autenticação.
 
-### Negativas e riscos
+### ❌ Negativo (Perdas/Riscos)
 
 - O modelo de dados passa a possuir uma nova informação que precisa ser mantida corretamente.
 - Alterações incorretas no status podem impedir a autenticação de clientes válidos.
