@@ -7,6 +7,10 @@ variable "ssm_environment_name" {
   description = "Nome do ambiente usado nos paths do SSM."
   type        = string
   default     = "development"
+  validation {
+    condition     = contains(["development", "homologation", "production"], var.ssm_environment_name)
+    error_message = "Use um nome de ambiente documentado no Git Flow."
+  }
 }
 
 variable "db_connection_string" {
