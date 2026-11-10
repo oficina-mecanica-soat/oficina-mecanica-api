@@ -57,7 +57,10 @@ terraform fmt -check -recursive infra/terraform
 terraform -chdir=infra/terraform/environments/dev init -backend=false -input=false
 terraform -chdir=infra/terraform/environments/dev validate
 terraform -chdir=infra/terraform/environments/dev test
-node --test .github/scripts/*.test.cjs
 ```
 
 O CI repete os gates completos da API, incluindo testes .NET/cobertura, Docker, manifests e Terraform. A próxima validação real exige janela autorizada e não conclui, isoladamente, a Saga ou o fluxo de negócio ponta a ponta.
+
+## Organização das validações
+
+Os nove testes operacionais continuam no CI, agora definidos diretamente em `ci.yml`, usando o mesmo conteúdo operacional incorporado em `aws-deploy.yml`. Nenhuma pasta de scripts é versionada. Os jobs e gates são preservados; arquivos auxiliares da execução existem apenas no diretório temporário do runner. O gate de estrutura é executado para todo PR, inclusive documental.

@@ -618,3 +618,9 @@ Este incremento não implementa nem ativa Saga, consumidor ou outbox SQL; essa p
 **AWS continua desabilitada.** A variável de repositório `AWS_DEPLOY_ENABLED=false` impede provisionamento pelo CD e promoção de alteração implantável como se tivesse ocorrido deploy; o workflow reutilizável exige habilitação explícita. `terraform-action.env` permanece inalterado. Nenhum recurso foi criado nesta preparação. Antes de precisar do laboratório, avisar Gabriel para criá-lo e atualizar os environments.
 
 Validações locais: Terraform 1.15.8 com três testes simulados, formatação/validate e nove testes Node aprovados; workflows conferidos com actionlint. O CI repete os gates existentes. Não confundir mocks com prova de acesso SQS pelo workload.
+
+## Estrutura obrigatória dos PRs
+
+Validações operacionais e seus testes ficam nos YAMLs existentes de CI/CD. Não são versionadas pastas de scripts nem diretórios auxiliares adicionais. Trechos necessários à execução são gerados somente no diretório temporário do runner; não são enviados como conteúdo do repositório ou artefato de scripts.
+
+O job obrigatório de Git Flow verifica essa estrutura em todos os PRs, inclusive documentais: bloqueia qualquer pasta chamada `scripts` e novos diretórios de topo em relação à base do PR. Funcionalidades devem seguir as camadas existentes. Exceções de estrutura precisam de alinhamento explícito, sem remover o gate para contornar a regra. `AGENTS.md` e as orientações locais registram o mesmo requisito.
