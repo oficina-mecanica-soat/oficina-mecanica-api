@@ -95,6 +95,29 @@ Filas FIFO: MessageGroupId = ordemServicoId, deduplicação = mensagemId. Visibi
 
 Preservar rotas públicas existentes da OS e autorização por papel/cliente. APIs novas usam /api/v1/orcamentos e /api/v1/pagamentos no serviço de cobrança e /api/v1/execucoes no serviço de execução. Atualizar Gateway, OpenAPI e Postman na mesma tarefa de integração. Operações assíncronas retornam 202 com identificador e endpoint de consulta; não devolver sucesso de negócio antes da confirmação.
 
+### Ações manuais HTTP do Execução
+
+Contrato alinhado explicitamente com Gabriel em 10/11/2026. Base do recurso: `/api/v1/execucoes/{ordemServicoId}/preparacoes/{preparacaoId}`. Os IDs são UUIDs, preservados da OS/preparação. Mantém os sufixos e os perfis usados pelas ações equivalentes de `OrdensServicoController`:
+
+| Método e sufixo da base | Operação | Acesso |
+| --- | --- | --- |
+| `GET` na base | Consultar o estado local da preparação/execução, inclusive antes da autorização ou após cancelamento | Administrador ou Mecanico |
+| `POST /servicos/{servicoId}/iniciar-execucao` | Iniciar manualmente um serviço após autorização | Administrador ou Mecanico |
+| `POST /servicos/{servicoId}/finalizar` | Finalizar um serviço individual | Administrador ou Mecanico |
+| `POST /finalizar` | Finalizar explicitamente a execução, com baixa atômica | Administrador ou Mecanico |
+
+O corpo dos POSTs é somente `{ "operacaoId": "UUID" }`, obrigatório e não vazio, estável na repetição da mesma ação. Reutilizar esse ID em outra ação/payload conflita; IDs de OS/preparação/serviço vêm da rota e não podem ser sobrescritos pelo corpo. Não há rota HTTP de autorização por orçamento: `AutorizarExecucao` continua sendo comando da Saga.
+
+Após confirmar a transação local, POST retorna `202` com `operacaoId`, `resultado` (preparacaoId, versaoOrcamento e estado da execução) e cabeçalho `Location` apontando ao GET da base. Falha antes do commit não retorna `202`. A confirmação é local: não afirma recebimento do evento pela OS, estado final da Saga, pagamento ou entrega. Repetição idempotente retorna o estado local atual, preservando datas e eventos anteriores.
+
+GET retorna `200` com `ordemServicoId`, `preparacaoId`, `versaoPreparacao`, `versaoOrcamento` (nula antes da autorização), `reservada`, `cancelada` e `execucao` (nula antes da autorização). O ciclo contém serviços com IDs da instância/catálogo, valor, status e datas UTC, mais `finalizadaEm` da execução. Status de serviço usa os nomes `Pendente`, `EmExecucao`, `Finalizado`. `reservada` registra a confirmação histórica da reserva, não o saldo reservado atual. O GET não é recibo de processamento pela OS e não expõe envelope de autorização, hashes ou credenciais.
+
+Reutilizar o contrato de erros da API (`mensagem`, `tipo`, `erros` opcional): `400` para corpo/IDs inválidos, `401` para JWT ausente/inválido, `403` para perfil sem acesso, `404` para preparação ausente ou incompatível com a OS da rota, `409` para conflito de operação/persistência e `422` para regra de negócio. Falha técnica retorna `500` genérico, sem detalhes do SDK ou segredos. A autenticação/role antecede a resolução da persistência; Cliente/Atendente não acionam essas rotas.
+
+O host atual do Execução compõe somente o modo local: estas rotas retornam `503` para identidade autorizada quando o processamento local não está habilitado em Development, antes de resolver clientes/persistência. Essa barreira impede fallback local em produção; não constitui implementação ou prova da composição remota. Healthcheck permanece público e verifica somente HTTP.
+
+Gabriel prepara as entradas do Execução, testes e seus contratos OpenAPI/Postman locais. Integração de emissores/audiences/chaves JWT, autorização compartilhada, produtor OS, roteamento Gateway e retirada/encaminhamento das rotas antigas permanecem coordenados com Geovanna na F4-06/F4-09/F4-10. Não ampliar emissores confiáveis nem presumir que o JWT de Cliente autorize ações do mecânico. Não alterar ou publicar o Gateway como efeito deste preparo; o contrato público legado permanece até o corte integrado. AWS continua bloqueada, sem deploy por aprovação de código.
+
 Decisão de orçamento exige identidade autorizada e versão atual. Consulta de cliente para a Lambda é privada, autenticada por identidade técnica segregada, e não pode ficar acessível por rota pública do Gateway. Mantém o contrato público do RFC-0001.
 
 Mercado Pago será integrado em ambiente de teste com credenciais próprias. Criar cobrança vinculada à OS e versão, persistir referência do provedor e chave idempotente antes da chamada; em resposta incerta consultar o provedor antes de repetir. Notificação não é prova de pagamento: validar autenticidade conforme API escolhida, consultar o pagamento no provedor e conferir referência, valor, moeda e estado. Duplicatas não confirmam duas vezes. Escolher e validar o produto de checkout no primeiro spike de integração, mantendo o contrato interno acima. Nenhuma cobrança real faz parte do teste.
