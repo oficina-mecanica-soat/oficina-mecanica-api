@@ -68,6 +68,14 @@ O futuro teste autorizado deverá comprovar acesso à tabela própria, consumo/r
 
 Este ajuste é somente arquitetural. Não cria recursos, muda roles, habilita acesso a metadados, ativa o runtime ou autoriza apply/deploy/destroy. A implementação e a prova real seguem em PR/janela próprios, pelas esteiras existentes. `AWS_DEPLOY_ENABLED=false` permanece até autorização específica.
 
+### Complemento aprovado para proposta — IMDSv2 do node acadêmico
+
+Na primeira implantação remota em 11/11/2026, o Execução falhou ao obter token IMDSv2; a instância estava com tokens obrigatórios e hop limit `1`. Gabriel autorizou propor, em PR da infraestrutura Kubernetes, hop limit `2` mantendo IMDSv2 obrigatório. Reconheceu que outros Pods no mesmo node também poderão alcançar metadados: a identidade continua compartilhada, sem isolamento IAM por aplicação.
+
+A proposta limita a alteração às instâncias atuais do node group existente, com `LabRole` da conta autenticada e inventário do cluster conferido pela esteira. Não permite copiar credenciais para Pods, alterar IAM/trust, tornar tokens opcionais, criar outro grupo/template ou usar fallback no serviço. Falhas de consulta/alteração bloqueiam a validação. Como ajuste operacional por instância, não persiste em nodes futuros substituídos pelo EKS: a esteira deverá ser reaplicada e os metadados reais conferidos antes da nova validação remota.
+
+O registro não afirma implantação ou acesso DynamoDB/SQS concluídos. Gabriel faz o merge dos PRs; a execução AWS segue na janela autorizada. Permanecem os requisitos de identidade e prova dentro do Pod descritos acima.
+
 ## 7. Referências
 
 - [DynamoDB: transações](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html)
