@@ -55,6 +55,19 @@ Publicações de resultado usam a fila de OS; comandos usam a fila do destinatá
 
 Exemplo: uma segunda preparação usa `envelope.versao = 1` e `dados.versao = 2`. Seu reenvio mantém ambos os valores. O resultado devolve `dados.versao = 2`; cancelar usa o `preparacaoId` desse resultado, sem alterar o formato do envelope.
 
+### Autorização e início físico manual
+
+Esclarecimento alinhado com Gabriel em 10/11/2026, preservando o modelo DDD e o fluxo atual de ações do mecânico:
+
+- `AutorizarExecucao` libera a preparação para o trabalho após a aprovação do orçamento; não inicia serviços automaticamente e não significa que o reparo físico começou. A associação entre preparação e orçamento aprovado continua validada pela Saga, sem pressupor igualdade entre suas versões.
+- O mecânico inicia cada serviço manualmente. `Servico` preserva as transições `Pendente` → `EmExecucao` → `Finalizado`; iniciar exige estado pendente e finalizar exige estado em execução. Autorização não substitui essas ações.
+- O primeiro início manual, após autorização válida, registra o início físico e `ExecucaoIniciada` na mesma transação local com a deduplicação/outbox. Iniciar outros serviços não gera outro evento de início da execução. Repetição não altera a data original nem reabre serviço concluído.
+- A finalização física também permanece explícita, como no modelo atual: exige todos os serviços finalizados e ao menos um serviço. Somente após confirmar atomicamente a baixa das reservas, o estado final e a outbox, publicar `ExecucaoFinalizada` com `finalizadoEm`. Finalizar um serviço individual não equivale a finalizar toda a execução nem a confirmar pagamento.
+- Antes do início físico, inclusive quando já autorizada mas ainda sem serviço iniciado, o cancelamento pode liberar reservas conforme o fluxo da Saga. A disputa entre cancelamento e primeiro início deve comparar o mesmo estado/revisão: ambos não podem confirmar. Se cancelamento vencer, um início posterior falha; se início vencer, o cancelamento não libera estoque nem confirma compensação fictícia.
+- Após o início físico, falha técnica exige recuperação e preserva as reservas/execução; não desfaz reparo por reentrega de `CancelarPreparacao`. Eventos e estado não regridem por mensagens antigas ou duplicadas.
+
+Este esclarecimento não cria outro comando SQS, não muda o envelope v1 e não define novas rotas públicas. Os handlers, persistência, autenticação e encaminhamento das ações do mecânico precisam ser implementados e integrados nas tarefas correspondentes. O fluxo público atual da API permanece até o corte coordenado; registrar autorização não conclui F4-05 nem comprova execução física.
+
 ## Estados, compensação e recuperação
 
 1. Abrir OS persiste Recebida e Saga Preparando; emite PrepararExecucao.
