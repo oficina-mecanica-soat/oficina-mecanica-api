@@ -619,6 +619,16 @@ Este incremento não implementa nem ativa Saga, consumidor ou outbox SQL; essa p
 
 Validações locais: Terraform 1.15.8 com três testes simulados, formatação/validate e nove testes Node aprovados; workflows conferidos com actionlint. O CI repete os gates existentes. Não confundir mocks com prova de acesso SQS pelo workload.
 
+## Preparação da subida da API — F4-04
+
+O controle da API retorna para `TERRAFORM_ACTION=apply`, mantendo `AWS_DEPLOY_ENABLED=false` até a janela autorizada. O workflow reutilizável exige habilitação explícita e a branch `develop`; arquivo de controle ausente, ação vazia ou inválida bloqueiam a operação, sem assumir `apply`. Destroy continua exigindo alteração dedicada no controle.
+
+Na futura execução autorizada, a esteira consome os contratos de Kubernetes/ECR e RDS, restaura e valida o state da conta e gera um plano salvo. Publica a mesma imagem produzida pela CI do PR integrado, conferindo a árvore de código, e aplica o plano da mesma tentativa, sem replanejar no job de aplicação. Mantém a validação de ownership, as verificações de filas/SSM e o rollout existente.
+
+O apply previsto inclui namespace, ConfigMap, Secret, Deployment, Service NodePort e HPA da API, além da entrada FIFO/DLQ de OS, redrive e contratos SSM já definidos. Não recria VPC, EKS, ECR ou RDS. A configuração atual aplica migrations e seed demo ao iniciar a API; isso faz parte da futura implantação, não desta preparação. `/status/api=ready` confirma a infraestrutura de mensageria, não a saúde HTTP ou a integração da Saga.
+
+Esta preparação não ativa o Execução remoto, não provisiona Lambda/Gateway e não altera contratos ou regras de negócio. A prova real de acesso DynamoDB/SQS pelo Pod do Execução permanece pendente da F4-04. Nenhum recurso AWS é criado por este PR enquanto o bloqueio permanecer ativo.
+
 ## Estrutura obrigatória dos PRs
 
 Validações operacionais e seus testes ficam nos YAMLs existentes de CI/CD. Não são versionadas pastas de scripts nem diretórios auxiliares adicionais. Trechos necessários à execução são gerados somente no diretório temporário do runner; não são enviados como conteúdo do repositório ou artefato de scripts.
