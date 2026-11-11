@@ -44,6 +44,12 @@ oficina-mecanica-auth-lambda
 oficina-mecanica-api-gateway
 ```
 
+Na Fase 4, Execução usa `DD_SERVICE=oficina-mecanica-execucao`, preservando os nomes anteriores. A instrumentação do workload segue a referência da API: Serilog JSON, Datadog APM nativo por admission controller do Kubernetes e tags env/service/version; o preparo atual fixa tracer/manual API `3.50.0`, a versão da referência. A versão da imagem `sha-*` identifica DD_VERSION. Não é autorização para alterar ou reinstalar a plataforma compartilhada.
+
+O contrato opcional de trace persistido na outbox está na RFC-0007. A preparação local verifica filtragem, persistência/repetição e logs; sem profiler/Agent, não declarar dd.trace_id/dd.span_id ou spans Datadog exportados como comprovados. IDs técnicos de Datadog só são registrados quando o tracer os fornece, como strings.
+
+Logs HTTP usam a rota do endpoint, sem valores de caminho/query, corpo ou cabeçalhos de autenticação. O scope padrão do servidor pode incluir o caminho bruto e deve ser removido da saída JSON. No workload do Execução, query strings não são adicionadas aos spans, e a propagação usa tracecontext. Logs de tentativa/publicação não equivalem a contadores únicos de negócio: reentregas são observáveis sem contar novas reservas/execuções.
+
 A versão deverá ser preferencialmente o SHA do commit ou a tag da imagem implantada.
 
 ## Logs estruturados
