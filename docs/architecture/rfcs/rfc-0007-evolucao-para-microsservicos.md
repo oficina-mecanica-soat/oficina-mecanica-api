@@ -136,6 +136,8 @@ Mercado Pago será integrado em ambiente de teste com credenciais próprias. Cri
 
 ## Infraestrutura, execução local e CI/CD
 
+Alinhamento com Gabriel em 11/11/2026: a identidade do Execução no AWS Academy segue a exceção acadêmica da ADR-0025, utilizando explicitamente a identidade existente dos nodes (`LabRole`), sem isolamento IAM por aplicação. A configuração e o acesso real dentro do Pod ainda precisam de implementação e validação; simulação de permissões não comprova o runtime. Não copiar credenciais do runner para o workload ou ativar fallback silencioso. A concessão não muda contratos de mensagens/HTTP, ownership de bancos/filas ou permissões das outras frentes e não autoriza deploy por merge.
+
 Cada serviço mantém Dockerfile, manifests, workload Terraform, CI/CD e README próprios; dados e filas seguem ADR-0025. Workloads no EKS existente, com validação JWT, health checks, requests/limits e observabilidade conforme API. Nenhum serviço acessa banco alheio. Recursos reais somente por esteira.
 
 Ambiente local: SQL Server em Docker conforme projeto atual, DynamoDB Local e adaptador de mensageria substituível para testes de processo. Testes de integração com SQS real usam ambiente de teste provisionado pela esteira; não afirmar equivalência completa com execução local. Cada serviço deve rodar e testar isoladamente.
