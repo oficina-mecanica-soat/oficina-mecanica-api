@@ -38,6 +38,8 @@ Gabriel prepara em PR separado a entrada FIFO/DLQ de resultados de OS e seus con
 
 ### Cortes e riscos
 
+F4-04, alinhamento em 11/11/2026: Gabriel aprovou a exceção acadêmica da ADR-0025 para identidade do Execução pela `LabRole` dos nodes, reconhecendo ausência de isolamento IAM entre aplicações. Implementação explícita e prova dentro do Pod permanecem pendentes; não confundir simulação de políticas com acesso real ou transportar credenciais do runner para o workload. AWS continua bloqueada até a janela específica de implantação. A exceção não amplia automaticamente o escopo das frentes da Geovanna.
+
 Preparação da F4-11 alinhada com Gabriel em 10/11/2026: Execução reutiliza Serilog/APM nativo da referência e prepara `traceContext` opcional persistido na outbox, conforme RFC-0007, sem alterar idempotência de negócio. Metadados do workload seguem a plataforma existente; não criar outro Agent, OpenTelemetry ou esteira. Métricas/painéis/alertas de Saga/DLQ e prova real de ingestão permanecem pendentes da integração e janela autorizada; não definir limites sem medição.
 
 Alinhamento da entrada HTTP da F4-05 em 10/11/2026: Gabriel prepara as ações manuais e consulta local do Execução no contrato detalhado da RFC-0007, preservando Administrador/Mecanico e os sufixos atuais. Inclui OpenAPI/Postman locais e testes de 401/403, commit antes de 202 e persistência. Não transfere a F4-09: emissores JWT, Gateway e corte das rotas antigas continuam coordenados com Geovanna. Não declarar integração pública ou AWS concluída por esse preparo.

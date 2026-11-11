@@ -54,7 +54,21 @@ SQL Server preserva a persistência relacional existente e atende ao registro de
 - IAM, custos e permissões do laboratório precisam ser comprovados pela esteira.
 - Outbox, DLQ e compensações acrescentam operação e testes.
 
-## 6. Referências
+## 6. Exceção acadêmica de identidade do Execução — 11/11/2026
+
+Gabriel aprovou o uso excepcional da identidade existente dos nodes (`LabRole`) pelo workload do Execução no laboratório AWS Academy. Esta decisão complementa a escolha de identidade condicionada à capacidade real do laboratório; não substitui o objetivo de identidade própria e menor privilégio fora desse ambiente. Não autoriza alteração da trust policy, ampliação de permissões ou criação de role, IRSA/EKS Pod Identity como efeito indireto.
+
+O levantamento read-only não encontrou cluster EKS ativo em `us-east-1` ou role com trust para IRSA/EKS Pod Identity. A simulação da `LabRole` indicou acesso às operações DynamoDB/SQS exigidas pelos adaptadores. A simulação de administração IAM retornou negação implícita com contexto faltante, e a leitura das políticas da sessão foi negada; isso não comprova indisponibilidade universal desses recursos no Academy. A exceção é uma decisão explícita para este laboratório, não uma conclusão de que IAM isolado seja impossível em qualquer ambiente.
+
+A identidade é compartilhada: não há isolamento IAM entre aplicações que consigam obter as credenciais do node, e as permissões efetivas da role podem exceder a matriz mínima do Execução. A separação de bancos, ausência de consultas cruzadas e configuração por serviço permanecem obrigatórias, mas não constituem barreira IAM contra outros Pods. O risco e a limitação devem constar das evidências finais. A concessão não se estende automaticamente a outros serviços.
+
+A implementação deverá selecionar esse caminho explicitamente e verificar a identidade efetivamente obtida dentro do workload antes de habilitar o processamento remoto. Não aceitar como prova a identidade do runner, a presença do nome `LabRole`, um healthcheck HTTP ou apenas a simulação IAM. Ausência de credenciais, identidade divergente ou acesso negado devem bloquear a ativação; não usar modo local ou outra fonte de credenciais por fallback silencioso. Não copiar secrets AWS do GitHub para o Pod, persistir credenciais no Terraform ou registrá-las em logs.
+
+O futuro teste autorizado deverá comprovar acesso à tabela própria, consumo/renovação/ACK da entrada e publicação na fila de OS, com reinício/outbox e duplicatas, conforme a matriz do README do Execução. Restrições de rede/metadados e a configuração do SDK precisam ser verificadas no Pod; este registro não altera esses controles. IRSA/Pod Identity e isolamento por workload ficam como evolução para um ambiente que permita a configuração apropriada.
+
+Este ajuste é somente arquitetural. Não cria recursos, muda roles, habilita acesso a metadados, ativa o runtime ou autoriza apply/deploy/destroy. A implementação e a prova real seguem em PR/janela próprios, pelas esteiras existentes. `AWS_DEPLOY_ENABLED=false` permanece até autorização específica.
+
+## 7. Referências
 
 - [DynamoDB: transações](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html)
 - [SQS: visibility timeout](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html)
