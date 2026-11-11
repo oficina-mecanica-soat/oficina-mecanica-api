@@ -43,6 +43,18 @@ Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServic
 
 Publicações de resultado usam a fila de OS; comandos usam a fila do destinatário. Cada handler valida tipo/versão e dados; mensagem desconhecida vai para investigação via DLQ, sem processamento permissivo.
 
+### Contexto técnico de rastreamento — F4-11
+
+Alinhamento explícito com Gabriel em 10/11/2026: o envelope v1 pode incluir `traceContext` opcional, fora de `dados`. Neste incremento, sua única chave permitida é `traceparent`, no formato W3C versão `00`, com trace-id hexadecimal minúsculo de 32 caracteres, parent-id de 16, flags de 2 e IDs não nulos. Exemplo: `{ "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" }`. Campo ausente/nulo mantém o contrato anterior. Não incluir baggage, tracestate, JWT, documento, credenciais ou cabeçalhos livres.
+
+O contexto é metadado técnico: não participa da chave/hash de negócio ou da decisão de estoque/Saga. Campos não permitidos e valores de traceparent inválidos são descartados do carrier, sem fabricar IDs; o formato estrutural JSON do envelope continua obrigatório. Reentrega com outro contexto não cria nova operação nem substitui o contexto do resultado/outbox já persistido.
+
+O resultado captura o contexto técnico ativo e o persiste junto da transação de negócio/outbox; na ausência de um contexto ativo válido, pode preservar somente o contexto de origem validado. Após reinício, o publicador retoma o contexto persistido e preserva mensagemId, agrupamento/deduplicação e payload nas tentativas. O consumidor restaura esse carrier pelo SDK nativo Datadog; não criar framework de eventos ou dependência Datadog no Domain.
+
+As ações manuais podem gerar resultados ligados ao contexto da requisição HTTP atual; correlação funcional (correlationId), Saga e causationId permanecem independentes e preservados. A F4-11 utiliza Datadog nativo, sem adicionar OpenTelemetry. O cabeçalho HTTP `traceparent` validado pode ser preservado como metadado, e `Activity` já fornecida pelo runtime HTTP pode ser lida como carrier local quando o profiler não estiver presente; isso não representa exportação ou span Datadog validado.
+
+Produtores/consumidores estritos precisam aceitar o campo opcional antes do corte integrado. Gabriel adapta Execução; Geovanna adapta OS/cobrança em suas frentes. O merge deste contrato não comprova propagação entre os três serviços, profiler carregado, ingestão Datadog, métricas, painéis ou alertas. A prova exige a janela autorizada; AWS permanece bloqueada.
+
 ### Identidades dos serviços no snapshot
 
 Alinhamento explícito com Gabriel em 10/11/2026: preservar as duas identidades do modelo DDD. `servicoId` identifica a instância de `Servico` da OS; `servicoCatalogoId` identifica sua referência ao catálogo, mantido no serviço de OS. Ambos são UUIDs obrigatórios e não vazios. O Execução preserva esses IDs, descrição e valor do snapshot; não gera outro ID para a mesma instância nem consulta o banco/catálogo de OS. O resultado `ExecucaoPreparada.diagnostico.servicos` preserva os dois campos.
