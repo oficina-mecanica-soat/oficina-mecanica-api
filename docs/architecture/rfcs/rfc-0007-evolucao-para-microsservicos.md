@@ -33,7 +33,7 @@ Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServic
 
 | Origem → destino | Tipo e dados mínimos | Resultado para OS |
 | --- | --- | --- |
-| OS → Execução | PrepararExecucao: versao, filialId, veiculoId, mecanicoId, itens [{itemId, quantidade}], servicos [{servicoId, descricao, valor}] | ExecucaoPreparada: preparacaoId, versao, itens reservados e diagnóstico; ou PreparacaoRecusada: versao, codigoMotivo |
+| OS → Execução | PrepararExecucao: versao, filialId, veiculoId, mecanicoId, itens [{itemId, quantidade}], servicos [{servicoId, servicoCatalogoId, descricao, valor}] | ExecucaoPreparada: preparacaoId, versao, itens reservados e diagnóstico; ou PreparacaoRecusada: versao, codigoMotivo |
 | OS → Orçamento/Pagamento | GerarOrcamento: versao, clienteId, itens e serviços com quantidade e valor unitário congelados | OrcamentoGerado: orcamentoId, versao, valorTotal |
 | Orçamento/Pagamento → OS | OrcamentoDecidido: orcamentoId, versao, decisao (Aprovado/Recusado) | OS valida versão e estado antes de avançar |
 | OS → Execução | AutorizarExecucao: preparacaoId, versaoOrcamento | ExecucaoIniciada; depois ExecucaoFinalizada com finalizadoEm |
@@ -42,6 +42,16 @@ Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServic
 | OS → Orçamento/Pagamento | CancelarOrcamento: orcamentoId ou OS + versao, motivo | OrcamentoCancelado, preservando histórico |
 
 Publicações de resultado usam a fila de OS; comandos usam a fila do destinatário. Cada handler valida tipo/versão e dados; mensagem desconhecida vai para investigação via DLQ, sem processamento permissivo.
+
+### Identidades dos serviços no snapshot
+
+Alinhamento explícito com Gabriel em 10/11/2026: preservar as duas identidades do modelo DDD. `servicoId` identifica a instância de `Servico` da OS; `servicoCatalogoId` identifica sua referência ao catálogo, mantido no serviço de OS. Ambos são UUIDs obrigatórios e não vazios. O Execução preserva esses IDs, descrição e valor do snapshot; não gera outro ID para a mesma instância nem consulta o banco/catálogo de OS. O resultado `ExecucaoPreparada.diagnostico.servicos` preserva os dois campos.
+
+`servicoId` deve ser único dentro da preparação. Duas instâncias distintas podem referenciar o mesmo `servicoCatalogoId`; a identidade usada nas ações individuais do mecânico é `servicoId`, não a referência ao catálogo. Mudar o catálogo de uma instância altera o snapshot e conflita com a repetição da mesma preparação/versão; não remapear IDs silenciosamente.
+
+Este ajuste explicita um campo obrigatório no contrato v1 antes da integração real; produtor OS e consumidores precisam ser atualizados de forma coordenada na F4-06/F4-10. Não há compatibilidade permissiva para snapshots sem `servicoCatalogoId`, nem substituição por `servicoId`. Preparações antigas persistidas sem esse campo exigem reconciliação antes de autorizar, sem fabricar vínculo de catálogo; o ajuste não executa migração ou descarte de dados. O merge do documento não comprova implantação dos consumidores.
+
+Os resultados do ciclo físico usam `ExecucaoIniciada.dados = { preparacaoId, versaoOrcamento }` e `ExecucaoFinalizada.dados = { preparacaoId, versaoOrcamento, finalizadoEm }`, além do envelope v1 com OS/Saga/correlação. `finalizadoEm` é UTC. As ações manuais mantêm um identificador de operação estável nas repetições, usado como `causationId` do evento que produzirem; não são novos tipos de comando SQS. Contrato HTTP e autenticação dessas ações permanecem na integração correspondente.
 
 ### Versão de contrato e versão da preparação
 
