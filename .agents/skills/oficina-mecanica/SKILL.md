@@ -1,24 +1,45 @@
 ---
 name: oficina-mecanica
-description: Orienta alterações no projeto Oficina Mecânica que envolvam arquitetura, contratos, aplicação ou infraestrutura entre repositórios.
+description: Conduz implementação, revisão e preparação de PRs do projeto Oficina Mecânica FIAP, incluindo extração de código, contratos entre serviços e CI/CD. Use ao trabalhar nos repositórios oficina-mecanica-*; não se aplica a projetos sem esse contexto.
 ---
 
-# Oficina Mecânica
+# Fluxo de trabalho da Oficina Mecânica
 
-Use as instruções do repositório ativo e consulte os documentos canônicos da API em `docs/architecture/adrs`, `docs/architecture/rfcs` e `docs/projeto/backlog-tecnico.md`. Em outro clone, localize o repositório `oficina-mecanica-api` ao lado; se indisponível, informe a limitação e não invente contratos.
+Este é o procedimento canônico do projeto. As regras obrigatórias estão em `AGENTS.md`; READMEs, ADRs/RFCs e backlog mantêm as decisões e o estado atual. Esta skill não autoriza escopo adicional, deploy ou merge.
 
-Antes de implementar, identifique o comportamento existente, produtores e consumidores, regras de domínio, testes e referência equivalente. Respeite decisões aceitas; proponha ADR sucessora para mudança arquitetural e RFC quando contratos ou coordenação exigirem detalhamento. Registre dúvidas em vez de presumir decisões não aprovadas.
+## 1. Confirmar contexto e fontes
 
-Na evolução para serviços independentes, cada serviço é dono dos próprios dados; não acesse diretamente o banco de outro serviço. DynamoDB e SQS são escolhas acordadas; SNS somente quando houver necessidade. Defina contratos, idempotência, falhas e compensações antes de implementar a Saga. Confirme permissões do laboratório antes de depender de provisionamento real.
+- Identificar repositório, remoto, branch, alterações locais e item do backlog. Preservar trabalho existente e conferir o estado atual do PR antes de tratar aprovação como merge concluído.
+- Ler o `AGENTS.md` aplicável e o README do componente. Na API, consultar somente as ADRs/RFCs relevantes em `docs/architecture` e o plano em `docs/projeto/backlog-tecnico.md`. Em outro clone, localizar a API irmã; se ausente, consultar os arquivos atuais no GitHub. Se a fonte necessária não estiver acessível, explicitar a lacuna e perguntar, sem inventar contratos.
+- Para critérios de entrega ou extração de domínio, consultar também o acervo existente em `../contexto-projeto/README.md` e suas fontes textuais quando disponível. Não copiar o acervo para o repositório nem tratar snapshots do ZIP como estado atual; apontar a lacuna se o material necessário estiver ausente.
+- Se a sessão começou fora do repositório, ler essas instruções explicitamente: mudar o diretório de um comando não comprova descoberta automática. No primeiro levantamento, indicar brevemente as fontes e a referência equivalente usadas; não repetir documentos inteiros.
 
-Siga o padrão real de CI/CD da API, VPC e Kubernetes, comparando workflows, gates, Git Flow, promoções, environments, permissões e guardrails. Preserve os contratos SSM e o papel do Datadog. Não dispare deploy, apply ou destroy sem autorização específica.
+## 2. Delimitar a mudança antes de editar
 
-Use português brasileiro claro e acentuado em textos, mensagens, logs e PRs; conceitos do domínio em português e termos técnicos consolidados em inglês, seguindo identificadores existentes sem acentos. Aplique SOLID, Clean Code, KISS e DRY sem criar complexidade desnecessária. Verifique testes e evidências reais; preserve trabalho alheio e não exponha segredos.
+Relacionar comportamento solicitado, owner, produtores/consumidores e arquivos previstos. Identificar código, regras, testes e dados existentes a reaproveitar. Para extração, preservar linguagem de domínio e invariantes, sem compartilhar banco, Domain ou migrations entre serviços.
 
-## Estrutura obrigatória em todos os PRs
+Escolher a implementação de referência vigente e comparar sua estrutura com as instruções locais. A presença de uma pasta ou solução em outro repositório não autoriza reproduzi-la aqui. Aplicar as decisões já aprovadas; alinhar mudança de contrato/ownership ou estrutura auxiliar antes de implementá-la. Autorização de tarefa não transfere automaticamente trabalho entre Gabriel e Geovanna.
 
-- Não versionar pastas `scripts/`, `.github/scripts` ou equivalentes em outros níveis. Não mover os mesmos arquivos para outra pasta para contornar essa regra.
-- Manter a estrutura existente; não acrescentar diretórios de topo ou novas estruturas auxiliares sem alinhamento explícito. Novas funcionalidades devem seguir as camadas e convenções já aprovadas dentro de `src`, `tests`, `infra` e `docs`.
-- Validações operacionais e seus testes ficam nos próprios workflows; arquivos temporários gerados durante a execução ficam somente no diretório temporário do runner, fora do conteúdo versionado.
-- A existência de pastas de scripts em outro repositório não autoriza copiá-las. Preservar as proteções e os testes ao ajustar a organização.
-- Conferir o gate de estrutura antes de enviar qualquer PR, inclusive documental. Não enfraquecer esse gate para publicar pastas não alinhadas.
+## 3. Implementar dentro do padrão
+
+Manter as camadas e a organização por funcionalidade existentes, com Request/Response/Validator/UseCase quando aplicável. Adaptar somente as responsabilidades do componente. Em CI/CD, comparar workflows reais de API/VPC/Kubernetes, preservando Git Flow, checks obrigatórios, gates, plano salvo, state por conta/ambiente, contratos SSM e guardrails de destroy.
+
+Não criar pastas de scripts, estrutura auxiliar alternativa ou scaffold para contornar a proibição. Se uma ferramenta propuser esses arquivos, ajustar sua saída antes de publicar. Validações operacionais permanecem nos YAMLs; temporários ficam fora do conteúdo versionado. Não criar novo agente, instalar outra skill ou alterar configuração local como efeito indireto de uma implementação.
+
+## 4. Validar o comportamento e os limites
+
+Executar as verificações pertinentes do README e do CI; manter os gates existentes. Reaproveitar testes que protegem as regras extraídas e acrescentar cenários de falha relevantes. Diferenciar testes locais/mocks de prova real de IAM, FIFO/DLQ, rede e execução no workload.
+
+Aprovação/merge de PR não é autorização para subir AWS. Manter o bloqueio de deploy enquanto a janela não estiver autorizada; avisar Gabriel quando a validação exigir novo laboratório/environments. Nunca substituir falha de acesso por ausência de recurso ou compensação bem-sucedida.
+
+## 5. Revisar o diff antes de publicar
+
+Conferir `git status --short`, diff completo e `git diff --check`. Revisar também `git diff --cached --name-status` antes do commit e o diff da branch contra a base do PR antes do push.
+
+Para cada arquivo adicionado, verificar diretórios introduzidos, necessidade e aderência à estrutura aprovada; procurar pastas proibidas, saídas de geradores, temporários e segredos. Confirmar que não há renomes de componentes, alteração de contratos ou enfraquecimento de gates fora do escopo. Executar o gate de estrutura definido em `ci.yml`; uma revisão textual não o substitui. Se surgir nova decisão necessária, fazer o trabalho independente e perguntar antes da parte dependente.
+
+## 6. Entregar um PR concreto
+
+Com os ajustes autorizados prontos e verificáveis, abrir o PR sem pedir novamente uma autorização já concedida. Informar tarefa e comportamento entregue, código reaproveitado/origem, componentes/contratos afetados, recursos previstos no futuro apply, esteiras acionadas, dependências, testes/evidências e limites. Deixar claro se há apenas integração de código ou implantação real.
+
+Acompanhar o CI e corrigir falhas no escopo. Não declarar check aprovado sem observar seu resultado nem tarefa completa com validação pendente. Enviar link e resumo para Gabriel revisar e fazer o merge; não executar merge por ele. Não atualizar os arquivos de orientação para declarar uma decisão ainda não aprovada como regra do projeto.
