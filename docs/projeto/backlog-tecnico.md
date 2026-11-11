@@ -38,6 +38,8 @@ Gabriel prepara em PR separado a entrada FIFO/DLQ de resultados de OS e seus con
 
 ### Cortes e riscos
 
+Esclarecimento da F4-05 alinhado com Gabriel em 10/11/2026: preservar o início manual pelo mecânico. `AutorizarExecucao` somente libera o trabalho; `ExecucaoIniciada` corresponde ao primeiro serviço efetivamente iniciado. Finalização física explícita exige todos os serviços finalizados, baixa e outbox atômicas. A barreira de compensação é o início físico, não o recebimento da autorização. A seção correspondente da RFC-0007 detalha a disputa cancelamento/início; implementação e corte público permanecem pendentes nas frentes responsáveis.
+
 Não incluir SNS sem múltiplos consumidores, novos serviços de cadastro, framework compartilhado, migração de Git Flow, plataforma de templates ou hardening corporativo nesta entrega. Não cortar Saga real, integração Mercado Pago, isolamento de bancos, BDD, cobertura, CI/CD ou observabilidade exigidos.
 
 Permissões DynamoDB/SQS, acesso Mercado Pago, conta Sonar e limite do laboratório são riscos P0 e devem ser resolvidos até 11/11. Compensação não pode ser simulada como sucesso. Provisionamento de bancos isolados precisa ser provado; qualquer inviabilidade muda ADR-0025 por decisão explícita, sem acesso cruzado a banco.
