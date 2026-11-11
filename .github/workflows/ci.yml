@@ -485,7 +485,58 @@ jobs:
             for(const actions of [['no-op'],['delete'],['forget']]) verifyPlan({resource_changes:[{change:{actions}}]});
           });
           TESTE_INLINE_2
-          node --test "$RUNNER_TEMP/bootstrap-account-state.test.cjs" "$RUNNER_TEMP/mensageria-os.test.cjs" "$RUNNER_TEMP/prepare-destroy.test.cjs"
+          cat > "$RUNNER_TEMP/fluxo-apply-api.test.cjs" <<'TESTE_INLINE_3'
+          const { test } = require('node:test');
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const os = require('node:os');
+          const path = require('node:path');
+          const cp = require('node:child_process');
+          const workflow = fs.readFileSync('.github/workflows/aws-deploy.yml', 'utf8');
+          function executar({ habilitado = 'true', ref = 'refs/heads/develop', controle = 'TERRAFORM_ACTION=apply', dedicado = true } = {}) {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluxo-api-'));
+            try {
+              const git = (...args) => cp.execFileSync('git', args, { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+              git('init', '-q');
+              git('config', 'user.email', 'teste@example.invalid');
+              git('config', 'user.name', 'Teste');
+              fs.mkdirSync(path.join(dir, 'terraform'));
+              const arquivo = path.join(dir, 'terraform', 'terraform-action.env');
+              fs.writeFileSync(arquivo, 'TERRAFORM_ACTION=apply');
+              git('add', '.'); git('commit', '-qm', 'base');
+              const before = git('rev-parse', 'HEAD');
+              if (controle === null) fs.unlinkSync(arquivo);
+              else fs.writeFileSync(arquivo, controle);
+              git('add', '.'); git('commit', '--allow-empty', '-qm', 'acao');
+              const after = git('rev-parse', 'HEAD');
+              const blocos = [...workflow.split('  prepare_and_plan:')[0].matchAll(/        run: \|\r?\n([\s\S]*?)(?=\r?\n      - |$)/g)]
+                .map(match => match[1].split(/\r?\n/).map(linha => linha.slice(10)).join('\n'));
+              assert.equal(blocos.length, 2);
+              const resultado = cp.spawnSync('bash', ['-e', '-o', 'pipefail', '-c', blocos.join('\n')], {
+                cwd: dir, encoding: 'utf8', env: { ...process.env, DEPLOY_ENABLED: habilitado, GITHUB_REF: ref,
+                  TF_WORKING_DIRECTORY: 'terraform', GITHUB_OUTPUT: 'saida', GITHUB_BEFORE: dedicado ? before : after, GITHUB_AFTER: after }
+              });
+              if (resultado.error) throw resultado.error;
+              return { status: resultado.status, saida: fs.existsSync(path.join(dir, 'saida')) ? fs.readFileSync(path.join(dir, 'saida'), 'utf8') : '' };
+            } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+          }
+          test('API exige habilitação, develop e ação explícita antes de liberar apply', () => {
+            for (const opcoes of [{ habilitado: 'false' }, { habilitado: '' }, { ref: 'refs/heads/main' },
+              { controle: null }, { controle: '' }, { controle: 'TERRAFORM_ACTION=invalido' }]) {
+              const resultado = executar(opcoes);
+              assert.notEqual(resultado.status, 0);
+              assert.equal(resultado.saida, '');
+            }
+            const resultado = executar();
+            assert.equal(resultado.status, 0);
+            assert.equal(resultado.saida.trim(), 'terraform_action=apply');
+          });
+          test('API preserva destroy dedicado e bloqueia reutilização sem alterar controle', () => {
+            assert.equal(executar({ controle: 'TERRAFORM_ACTION=destroy' }).saida.trim(), 'terraform_action=destroy');
+            assert.notEqual(executar({ controle: 'TERRAFORM_ACTION=destroy', dedicado: false }).status, 0);
+          });
+          TESTE_INLINE_3
+          node --test "$RUNNER_TEMP/bootstrap-account-state.test.cjs" "$RUNNER_TEMP/mensageria-os.test.cjs" "$RUNNER_TEMP/prepare-destroy.test.cjs" "$RUNNER_TEMP/fluxo-apply-api.test.cjs"
 
       - run: terraform fmt -check -recursive infra/terraform
       - run: terraform -chdir=infra/terraform/environments/dev init -backend=false -input=false
