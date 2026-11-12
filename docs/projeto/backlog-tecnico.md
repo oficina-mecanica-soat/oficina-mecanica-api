@@ -21,6 +21,63 @@ Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece par
 | F4-13 | Geovanna | F4-12 | Atualizar C4/diagrama geral, README, OpenAPI/Postman, roteiro e PDF; Gabriel revisa execução seguindo os documentos. |
 | F4-14 | Ambos | F4-13 | Gravar vídeo ≤15 min com sucesso, compensação, CI/CD e traces; conferir acesso aos repositórios e links; enviar até 17/11 23h59. |
 
+### Triagem da auditoria — 12/11/2026
+
+**Decisão de escopo: continuar as implementações da entrega; não executar a auditoria inteira antes de 17/11.** Esta triagem é o ponto de acompanhamento, sem necessidade de consultar o relatório completo. Para os achados auditados, os horizontes abaixo substituem a priorização inicial da auditoria. Não reabre decisões aceitas nem autoriza operações AWS.
+
+A revisão local dos snapshots de `develop` confirmou 806 testes .NET aprovados, sem falhas ou ignorados: API 450, Auth Lambda 39 e Execução 317. Também passaram 63 testes operacionais, validação Terraform dos sete repositórios e 12 planos com providers simulados. Os 33 testes HTTP antes impedidos na nuvem passaram na suíte completa de 57. Isso permite aproveitar a base do Gabriel, mas não comprova Saga integrada, pagamento, cobertura atual ou implantação AWS. Foram identificados defeitos novos e legados; não atribuir tudo ao trabalho recente.
+
+#### Obrigatório até 17/11 — caminho crítico
+
+As tarefas existentes continuam sendo a fonte de responsabilidade e aceite; não criar uma segunda lista para as mesmas entregas.
+
+| Referência | Responsável | Próximo resultado necessário | Status em 12/11 |
+| --- | --- | --- | --- |
+| F4-06 | Geovanna | Saga persistida na OS, outbox e consumo de resultados; aprovação versionada antes de autorizar execução e pagamento confirmado antes de entregar. Compensação real, sem transação entre bancos. | A fazer; integração não comprovada |
+| F4-07 e F4-08 | Geovanna | Terceiro serviço Orçamento/Pagamento com banco próprio, CI/CD e Mercado Pago em teste. Antecipar prova de credenciais/checkout; callback manual não substitui integração com o provedor. | Não localizado no escopo da revisão; confirmar eventual trabalho fora dele antes de criar |
+| F4-05 e F4-09 | Gabriel / Geovanna, conforme divisão original | Preservar diagnóstico, reserva, início físico manual e baixa; fazer corte de rotas e autenticação sem banco alheio nem dois owners para a mesma mutação. | Execução isolada validada; corte integrado pendente |
+| F4-10 a F4-12 | Ambos, conforme divisão original | Fluxo dos três serviços, BDD completo, compensação, duplicata/reinício, cobertura por serviço e análise de qualidade; deploy pelas esteiras e observabilidade distribuída demonstrados. Preservar gate de 90% existente. | A fazer na integração; não confundir testes locais com aceite completo |
+| F4-13 e F4-14 | Ambos, conforme divisão original | Documentação e collection do fluxo real, diagrama, vídeo de até 15 minutos e PDF; conferir acesso e enviar até 17/11 às 23h59. | A fazer após prova integrada; preparar roteiro em paralelo |
+
+#### Controles antes da operação afetada — sem bloquear desenvolvimento local
+
+São correções focadas para conduzir as próximas operações com segurança. Não exigir reestruturação completa das esteiras ou da infraestrutura antes de programar os serviços.
+
+| ID | Prioridade / horizonte | Responsável | Item e critério de aceite | Status |
+| --- | --- | --- | --- | --- |
+| `AUD-001` | P0 / antes da próxima operação AWS pelos caminhos afetados | Gabriel | Uniformizar bloqueio `AWS_DEPLOY_ENABLED` em Auth Lambda, Gateway e entrada manual Datadog, incluindo caller/callee quando existentes. Ausente/false bloqueia mutação; true continua sujeito a ref, environment e janela autorizada. Testes negativos locais. | A fazer |
+| `AUD-002` | P0 / antes do próximo destroy RDS | Gabriel | Cumprir RFC-0005: bloquear destroy com consumidores API/Lambda ativos, conferindo antes do plano e da aplicação. Ausência deve ser comprovada; AccessDenied bloqueia; recuperação preserva state e plano destrutivo. | A fazer |
+| `AUD-003` | P0 / antes de promover conteúdo pendente | Gabriel | Corrigir promoção cumulativa: código sem deploy confirmado seguido de commit documental não pode liberar promoção. Testar essa sequência e a de código já implantado seguido de docs; manter PR e merge humano. Não duplicar o problema de ancestralidade de PIPE-005. | A fazer |
+| `AUD-004` | P0 / antes de executar código não confiável com acesso aos caches | Geovanna, com apoio Gabriel | Definir contenção do state sensível em cache Actions: mapear quem pode restaurar/executar código de PR, restringir a fronteira de confiança ou adotar armazenamento protegido viável. Não extrair valores como prova, não considerar aprovação de environment suficiente e não apagar o único state. Migração durável fica em AUD-011/OPS-011. Não houve incidente comprovado. | A fazer |
+| `AUD-005` | P1 / antes de rerun operacional que dependa desses artefatos | Gabriel | Alinhar plano/pacote/cache por `run_id` e `run_attempt`: VPC/Kubernetes no plano e cache; Lambda/Gateway nos artefatos restantes. Download usa a tentativa correta e falha parcial preserva state. | A fazer |
+
+#### Correções pequenas — encaixar na frente afetada antes da entrega
+
+P1 significa fazer se não ameaçar o caminho crítico. Se o problema impedir um cenário obrigatório, passa a bloquear aquela integração e deve ser corrigido antes de seu aceite. Não alterar contratos ou limites de negócio unilateralmente para contornar um teste.
+
+| ID | Prioridade / horizonte | Responsável | Item e critério de aceite | Status |
+| --- | --- | --- | --- | --- |
+| `AUD-006` | P1 / junto da F4-05 e integração | Gabriel | Corrigir decimal válido rejeitado em `ResultadosPreparacao.Normalizar`: `0.00001m` passa no validator e gera FormatException. Testar normalização e equivalência de hash; preservar a faixa monetária acordada. | A fazer; reproduzido localmente |
+| `AUD-007` | P1 / junto do produtor OS e consumidor Execução | Gabriel, contrato com Geovanna | Validar tamanho persistível do snapshot e classificar rejeição permanente. Entrada Unicode de 200.686 bytes foi aceita e gerou documento de reprodução de 600.428 bytes, acima dos 400 KiB por item DynamoDB. Testar serialização final e limites sem retry infinito ou saldo parcial. | A fazer; reproduzido localmente sem AWS |
+| `AUD-008` | P1 / antes da demonstração, sem atualização ampla de dependências | Geovanna | Corrigir pontualmente dependências sinalizadas na API: PKCS 9.0.4 e SSH.NET 2025.1.0; este último pertence à cadeia de testes. Usar atualização compatível, validar SQL/JWT/testcontainers e registrar avisos reais, sem suprimir NU1903. Política transversal de scan continua em CODE-008. | A fazer; avisos confirmados, exploração não comprovada |
+
+#### Pós-17/11 — não bloqueiam o início nem ampliam a entrega
+
+Continuar seguindo os padrões existentes nas implementações novas. Adiar uma refatoração não autoriza copiar o desvio, criar pastas proibidas ou enfraquecer checks. Reavaliar prioridade se aparecer falha no fluxo obrigatório ou necessidade de dados reais/produção.
+
+| ID | Prioridade / horizonte | Responsável inicial | Item e critério de aceite | Status |
+| --- | --- | --- | --- | --- |
+| `AUD-009` | P2 / pós-17/11 | Gabriel | Padronizar código existente do Execução: DTO público separado de `CicloExecucaoPersistido`, Result/erro tipado em vez de comparar Exception.Message, validators por campo, mensagens centralizadas e log sanitizado com causa útil. Preservar JSON/contratos e testes; PRs pequenos. | Não priorizado agora |
+| `AUD-010` | P2 / pós-17/11 | Gabriel / Geovanna nos respectivos componentes | Corrigir overflow herdado em ItemEstoque e dívidas da API: numeração MAX+1 concorrente, remoção de catálogo referenciado e exemplo 503 da Lambda. Testes de fronteira/SQL, sem alterar regras silenciosamente. Overflow foi reproduzido; corrida/FK continuam achados estáticos. | Não priorizado agora |
+| `AUD-011` | P2 / pós-17/11, antes de produção | Ambos | Evoluir lifecycle e recuperação: separar roots/states/permissões de dados, workload e registries; backend durável com locking, backup/PITR e restauração ensaiada; reduzir vínculo RDS ao SG efêmero do cluster. Complementa OPS-009/OPS-011/OPS-020; não cria repo por recurso nem executa migração de state por automatismo. | Não priorizado agora |
+| `AUD-012` | P2 / pós-17/11 | Gabriel | Evoluir mensageria conforme necessidade medida: isolamento da outbox global, lease/envio demorado, retenção e compatibilidade de documentos versus protocolo. Testar recuperação sem perder dedup/idempotência; não adicionar TTL indiscriminadamente. Outbox serial atual é concessão acadêmica explícita. | Não priorizado agora |
+| `AUD-013` | P2 / pós-17/11 | Gabriel | Convergir organização/gates dos cinco owners com `.github/scripts`, sem perder testes e proteções. Novas alterações já seguem a regra vigente; não criar pasta alternativa. | Não priorizado agora |
+| `AUD-014` | P2 / pós-17/11 | Geovanna | Refinar AGENTS/skill atuais com exemplos reais, invariantes e evidências; não instalar rascunhos nem importar a auditoria inteira. Reconciliar autorização/publicação e fontes acessíveis, preservando padrão e estrutura. | Não priorizado agora |
+
+A correção de egress HTTPS da Lambda e a prova de sua ingestão Datadog continuam em F3-008/F3-009/OPS-016, pós-entrega enquanto não impedirem F4-09 ou o fluxo de observabilidade exigido. A prova distribuída dos três serviços em F4-11/F4-12 permanece obrigatória até 17/11. Não adiar dashboards/métricas necessários à demonstração sob o rótulo genérico de hardening.
+
+**Ordem prática:** Geovanna prioriza F4-07/08 e F4-06; Gabriel fecha os controles da operação afetada e a preparação de integração F4-10/11. Não aguardar AUD-009 a AUD-014 para iniciar. Antecipar integração, reservar 16/11 para evidências/documentação/gravação e 17/11 para conferência/envio. Não marcar tarefas inteiras como concluídas pela existência de código, teste isolado ou workflow verde.
+
 ### Marcos e coordenação
 
 - 09/11: decisões e contratos revisáveis; ambiente atual; início dos dois scaffolds e código independente.
@@ -160,7 +217,7 @@ Este backlog guarda melhorias técnicas, itens de código e evoluções operacio
 | ID | Prioridade | Horizonte | Área | Item | Critério de aceite | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | `PIPE-001` | `P2` | Pós-entrega | CI/CD | Convergir a organização do RDS para o padrão `ci.yml` adotado por API, VPC e Kubernetes. | A decisão de unificar ou manter os três workflows do RDS é registrada e, se unificada, preserva os quality gates sem regressão. | Não priorizado agora |
-| `PIPE-002` | `P2` | Pós-entrega | CI/CD | Avaliar reutilização do mesmo `tfplan` no apply do RDS. | A esteira do RDS reutiliza o plano aprovado ou documenta tecnicamente por que precisa regenerá-lo. | Não priorizado agora |
+| `PIPE-002` | `P2` | Pós-entrega | CI/CD | Avaliar reutilização do mesmo `tfplan` no apply do RDS. | Revalidado em 12/11: `aws-deploy.yml` do RDS publica/recupera o plano salvo e o aplica, sem regenerá-lo. Isto não encerra o guardrail de consumidores registrado em AUD-002 nem comprova uma execução AWS nesta revisão. | Concluído |
 | `PIPE-003` | `P2` | Pós-entrega | Documentação | Corrigir a referência de `infra-action.env` onde o padrão real é `terraform-action.env`. | RFCs, planos e READMEs citam o nome real, ou a alteração de nome é aprovada e aplicada de forma coordenada. | Não priorizado agora |
 | `PIPE-004` | `P2` | Pós-entrega | Qualidade | Normalizar finais de linha no RDS, caso a alteração ainda exista após nova verificação. | O diff não contém alteração apenas de line ending e `.gitattributes` ou padrão equivalente evita recorrência. | Não priorizado agora |
 | `PIPE-005` | `P2` | Pós-entrega / executar hoje somente se todos os P0 estiverem concluídos e houver folga | CI/CD / Git Flow | Corrigir definitivamente a política de promoção `develop -> release -> main` nos seis repositórios da Fase 3, preservando ancestralidade Git. | A configuração vulnerável identificada em `oficina-mecanica-api`, `oficina-mecanica-infra-vpc`, `oficina-mecanica-infra-kubernetes`, `oficina-mecanica-infra-rds`, `oficina-mecanica-auth-lambda` e `oficina-mecanica-infra-api-gateway` é corrigida conforme o diagnóstico detalhado da issue #268. `feature/* -> develop` pode continuar permitindo squash; `develop -> release` e `release -> main` devem usar merge commit real. Squash e rebase não devem ser usados em promoções entre branches de estágio enquanto os workflows dependerem de ancestralidade ou `git rev-list`. Preferir a branch fixa `release` neste projeto e remover `release/*` dos rulesets e workflows se releases versionadas não forem usadas; se `release/*` for mantido, corrigir o deadlock atual de required status checks aplicados na criação da branch. Não reconciliar nem regravar o histórico dos demais repositórios quando o grafo já estiver saudável. Validar ao final com `git merge-base --is-ancestor` e compare. | Não priorizado agora |
