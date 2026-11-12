@@ -18,7 +18,7 @@ Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece par
 | F4-10 | Gabriel | F4-05, F4-06, F4-07 | Integrar fluxo assíncrono, BDD e testes de duplicata, reinício, recusa e compensação; saldo e estados consistentes. Geovanna revisa o contrato e resultados. |
 | F4-11 | Gabriel | F4-04, F4-05 | Instrumentar serviço Execução e fluxos distribuídos no Datadog; painéis, logs seguros e falhas da Saga/DLQ observáveis. Geovanna instrumenta OS e cobrança nas respectivas tarefas. |
 | F4-12 | Ambos | F4-08 a F4-11 | Rodar deploy completo por esteiras; cobertura ≥80% por serviço, Sonar/equivalente e checks verdes; registrar links reais. |
-| F4-13 | Geovanna | F4-12 | Atualizar C4/diagrama geral, README, OpenAPI/Postman, roteiro e PDF; Gabriel revisa execução seguindo os documentos. |
+| F4-13 | Geovanna | F4-12 | Atualizar o diagrama geral da arquitetura final, README e Swagger ou Postman de cada serviço, roteiro e PDF; Gabriel revisa execução seguindo os documentos. Revisão completa dos desenhos DDD/C4 fica em AUD-015. |
 | F4-14 | Ambos | F4-13 | Gravar vídeo ≤15 min com sucesso, compensação, CI/CD e traces; conferir acesso aos repositórios e links; enviar até 17/11 23h59. |
 
 ### Triagem da auditoria — 12/11/2026
@@ -73,10 +73,13 @@ Continuar seguindo os padrões existentes nas implementações novas. Adiar uma 
 | `AUD-012` | P2 / pós-17/11 | Gabriel | Evoluir mensageria conforme necessidade medida: isolamento da outbox global, lease/envio demorado, retenção e compatibilidade de documentos versus protocolo. Testar recuperação sem perder dedup/idempotência; não adicionar TTL indiscriminadamente. Outbox serial atual é concessão acadêmica explícita. | Não priorizado agora |
 | `AUD-013` | P2 / pós-17/11 | Gabriel | Convergir organização/gates dos cinco owners com `.github/scripts`, sem perder testes e proteções. Novas alterações já seguem a regra vigente; não criar pasta alternativa. | Não priorizado agora |
 | `AUD-014` | P2 / pós-17/11 | Geovanna | Refinar AGENTS/skill atuais com exemplos reais, invariantes e evidências; não instalar rascunhos nem importar a auditoria inteira. Reconciliar autorização/publicação e fontes acessíveis, preservando padrão e estrutura. | Não priorizado agora |
+| `AUD-015` | P2 / pós-17/11 | Geovanna, revisão conjunta | Atualizar integralmente mapa de contextos, design estratégico/tático, Domain Storytelling, C4 detalhado e explicações didáticas para refletir os microsserviços. Preservar a modelagem histórica e indicar sua fase; reconciliar responsabilidades, agregados e termos com o implementado. Não substitui a documentação mínima de F4-13/F4-14. | Não priorizado agora |
+
+**Escopo documental acordado em 12/11:** priorizar implementação e requisitos da Fase 4. Até 17/11, manter diagrama geral final com serviços/bancos/comunicação, justificativa da divisão e da Saga, documentação de execução e APIs por serviço, evidências, vídeo e PDF. Atualizar ADR/RFC somente quando a implementação mudar decisão ou contrato relevante; confirmar regras, responsabilidades e contratos antes da parte dependente. Novos nomes/controles técnicos precisam de explicação curta no PR, sem reescrever toda a modelagem. Identificar os desenhos antigos como históricos quando usados como referência da entrega, sem apresentá-los como arquitetura final. A revisão completa em AUD-015 não bloqueia o desenvolvimento; testes verdes não substituem a conferência de aderência ao domínio. A direção das ADRs-0024/25/26 permanece, sujeita às provas de integração, isolamento, compensação e pagamento.
 
 A correção de egress HTTPS da Lambda e a prova de sua ingestão Datadog continuam em F3-008/F3-009/OPS-016, pós-entrega enquanto não impedirem F4-09 ou o fluxo de observabilidade exigido. A prova distribuída dos três serviços em F4-11/F4-12 permanece obrigatória até 17/11. Não adiar dashboards/métricas necessários à demonstração sob o rótulo genérico de hardening.
 
-**Ordem prática:** Geovanna prioriza F4-07/08 e F4-06; Gabriel fecha os controles da operação afetada e a preparação de integração F4-10/11. Não aguardar AUD-009 a AUD-014 para iniciar. Antecipar integração, reservar 16/11 para evidências/documentação/gravação e 17/11 para conferência/envio. Não marcar tarefas inteiras como concluídas pela existência de código, teste isolado ou workflow verde.
+**Ordem prática:** Geovanna prioriza F4-07/08 e F4-06; Gabriel fecha os controles da operação afetada e a preparação de integração F4-10/11. Não aguardar AUD-009 a AUD-015 para iniciar. Antecipar integração, reservar 16/11 para evidências/documentação/gravação e 17/11 para conferência/envio. Não marcar tarefas inteiras como concluídas pela existência de código, teste isolado ou workflow verde.
 
 ### Marcos e coordenação
 
