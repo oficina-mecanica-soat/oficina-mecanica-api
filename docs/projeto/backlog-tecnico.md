@@ -11,7 +11,7 @@ Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece par
 | F4-03 | Gabriel | F4-01, F4-02 | Criar repositório Execução com AGENTS, Clean Architecture, testes, Dockerfile, CI/CD e governança derivados das referências; CI verde e execução local. |
 | F4-04 | Gabriel | F4-03 | Provisionar DynamoDB, fila de entrada e DLQ pela esteira; validar leitura/escrita/consumo pelo workload e publicar contratos SSM. Sem SNS inicialmente. |
 | F4-05 | Gabriel | F4-03, F4-02 | Extrair diagnóstico, estoque, reserva/liberação e execução preservando regras e testes. Garantir reserva atômica, idempotência, outbox e compensação; consumir os contratos v1 do RFC. Pode usar doubles enquanto F4-04 ocorre. |
-| F4-06 | Geovanna | F4-02 | Adaptar OS existente, estados persistidos da Saga, outbox, consumidor de resultados e testes; remover transação entre bancos de serviços. |
+| F4-06 | Geovanna | F4-02 | Adaptar OS existente, estados persistidos da Saga, outbox, consumidor de resultados e testes; remover transação entre bancos de serviços. Primeiro incremento em 12/11: agregado e persistência SQL da Saga, sem ativação das rotas/consumidores. Outbox, handlers e corte continuam pendentes. |
 | F4-07 | Geovanna | F4-02 | Criar serviço Orçamento/Pagamento, CI/CD independente, banco SQL isolado e fila/DLQ pela esteira; snapshot de orçamento e decisão versionada. |
 | F4-08 | Geovanna | F4-07 | Validar produto de checkout Mercado Pago com credenciais de teste; implementar cobrança, notificação verificada, consulta ao provedor e idempotência. Bloqueio de credenciais é P0 imediato. |
 | F4-09 | Geovanna | F4-06, F4-07 | Adequar Lambda ao contrato privado de clientes, JWT nos três serviços e roteamento Gateway; testes 401/403 e acesso por cliente. |
@@ -92,6 +92,18 @@ Cada tarefa deve ter PR com ID, critérios de aceite, validações reais e refer
 ### Alinhamento da infraestrutura da fila de OS — 10/11/2026
 
 Gabriel prepara em PR separado a entrada FIFO/DLQ de resultados de OS e seus contratos SSM no repositório API, conforme alinhamento explícito do responsável pelo projeto. Saga, outbox SQL, consumidor de resultados e transições de OS continuam com Geovanna na F4-06; a preparação da fila não conclui essa tarefa. O contrato proposto e os limites de ativação estão em [Mensageria de OS](../deploy/mensageria-os.md). Recursos reais e IAM dependem da janela de laboratório autorizada.
+
+### Sequência por dependências — frente Geovanna, 12/11/2026
+
+| Ordem | Trabalho | Dependência e limite de ativação |
+| --- | --- | --- |
+| 1 | F4-06: modelo de domínio e persistência da Saga na OS | ADR-0026/RFC-0007; pode ser testado com SQL local sem depender do deploy de Gabriel. Versões de preparação e orçamento são independentes. Não ativa SQS nem altera o fluxo público legado. |
+| 2 | F4-07/08: Orçamento/Pagamento e prova Mercado Pago | Detalhar payloads de cobrança/decisão antes dos handlers; preservar o envelope aceito. Banco/credencial próprios pelo owner RDS e registry pelo owner Kubernetes são pré-requisitos de deploy, não dos testes locais. Credenciais de teste do provedor precisam de prova antecipada. |
+| 3 | F4-06: outbox, deduplicação e handlers; F4-10: ligação dos serviços | Estado + deduplicação + comandos na mesma transação SQL. Confirmar contratos e consumidores de Execução/cobrança antes de ativar produtores. Infraestrutura `ready` não comprova processamento ou conclusão da Saga. |
+| 4 | F4-09: autenticação/Gateway e corte dos owners antigos | Depende de Saga e serviços integrados; validar diagnóstico, aprovação, reserva, início físico, pagamento e compensação. Sem dual write ou acesso a banco alheio. Não transferir trabalho do Gabriel sem coordenação. |
+| 5 | F4-10 a F4-14: prova completa, implantação e entrega | BDD com sucesso/compensação, qualidade/cobertura, traces e documentação do implantado. Reservar 16/11 para materiais e 17/11 para conferência/envio. Recursos reais exclusivamente pelas esteiras e janela autorizada. |
+
+A base persistente não encerra F4-06: ainda serão necessários coordenação transacional com outbox/deduplicação, resultados antigos/divergentes, avanço de novas versões e reconciliação. Cancelamento só termina após as confirmações de ambos os serviços. Se o início físico vencer antes de seu evento chegar à OS, a Saga registra recuperação pendente, sem confirmar estorno fictício. Não usar esse modelo isolado como prova da Saga distribuída.
 
 ### Cortes e riscos
 

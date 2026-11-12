@@ -90,7 +90,7 @@ public sealed class OficinaMecanicaApiFixture : IAsyncLifetime
             });
     }
 
-    private OficinaMecanicaDbContext CriarDbContext()
+    public OficinaMecanicaDbContext CriarDbContext()
     {
         var options = new DbContextOptionsBuilder<OficinaMecanicaDbContext>()
             .UseSqlServer(_connectionString)

@@ -220,6 +220,64 @@ namespace OficinaMecanica.Infrastructure.Migrations
                     b.ToTable("OrdensServico", "GestaoOrdemServico");
                 });
 
+            modelBuilder.Entity("OficinaMecanica.Domain.GestaoOrdemServico.Aggregates.SagaOrdemServico", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("Decisao")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("FinalizadoEm")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("InicioFisicoConfirmado")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("OrcamentoCancelado")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("OrcamentoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrdemServicoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PagamentoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("PreparacaoCancelada")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("PreparacaoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal?>("ValorOrcamento")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("VersaoOrcamento")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VersaoPreparacao")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrdemServicoId")
+                        .IsUnique();
+
+                    b.ToTable("SagasOrdemServico", "GestaoOrdemServico");
+                });
+
             modelBuilder.Entity("OficinaMecanica.Domain.GestaoOrdemServico.Entities.PecaInsumo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -462,6 +520,15 @@ namespace OficinaMecanica.Infrastructure.Migrations
                     b.HasOne("OficinaMecanica.Domain.Atendimento.Aggregates.Veiculo", null)
                         .WithMany()
                         .HasForeignKey("VeiculoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("OficinaMecanica.Domain.GestaoOrdemServico.Aggregates.SagaOrdemServico", b =>
+                {
+                    b.HasOne("OficinaMecanica.Domain.GestaoOrdemServico.Aggregates.OrdemServico", null)
+                        .WithMany()
+                        .HasForeignKey("OrdemServicoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
