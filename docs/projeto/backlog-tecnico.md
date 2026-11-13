@@ -4,22 +4,26 @@
 
 Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece para o escopo atual; itens históricos abaixo não viram trabalho automático. Responsável indica quem conduz a tarefa com seu Codex. Contratos são compartilhados; alterações incompatíveis devem ser alinhadas antes de implementação.
 
-| ID | Responsável | Dependências | Entrega e aceite |
-| --- | --- | --- | --- |
-| F4-01 | Gabriel | — | Validar ambiente atual via esteiras e Postman; registrar impedimentos e evidências, sem provisionamento direto. |
-| F4-02 | Geovanna | — | Revisar ADR-0024/25/26 e RFC-0007, conferir enunciado e fechar contratos usados pelas duas frentes. |
-| F4-03 | Gabriel | F4-01, F4-02 | Criar repositório Execução com AGENTS, Clean Architecture, testes, Dockerfile, CI/CD e governança derivados das referências; CI verde e execução local. |
-| F4-04 | Gabriel | F4-03 | Provisionar DynamoDB, fila de entrada e DLQ pela esteira; validar leitura/escrita/consumo pelo workload e publicar contratos SSM. Sem SNS inicialmente. |
-| F4-05 | Gabriel | F4-03, F4-02 | Extrair diagnóstico, estoque, reserva/liberação e execução preservando regras e testes. Garantir reserva atômica, idempotência, outbox e compensação; consumir os contratos v1 do RFC. Pode usar doubles enquanto F4-04 ocorre. |
-| F4-06 | Geovanna | F4-02 | Adaptar OS existente, estados persistidos da Saga, outbox, consumidor de resultados e testes; remover transação entre bancos de serviços. |
-| F4-07 | Geovanna | F4-02 | Criar serviço Orçamento/Pagamento, CI/CD independente, banco SQL isolado e fila/DLQ pela esteira; snapshot de orçamento e decisão versionada. |
-| F4-08 | Geovanna | F4-07 | Validar produto de checkout Mercado Pago com credenciais de teste; implementar cobrança, notificação verificada, consulta ao provedor e idempotência. Bloqueio de credenciais é P0 imediato. |
-| F4-09 | Geovanna | F4-06, F4-07 | Adequar Lambda ao contrato privado de clientes, JWT nos três serviços e roteamento Gateway; testes 401/403 e acesso por cliente. |
-| F4-10 | Gabriel | F4-05, F4-06, F4-07 | Integrar fluxo assíncrono, BDD e testes de duplicata, reinício, recusa e compensação; saldo e estados consistentes. Geovanna revisa o contrato e resultados. |
-| F4-11 | Gabriel | F4-04, F4-05 | Instrumentar serviço Execução e fluxos distribuídos no Datadog; painéis, logs seguros e falhas da Saga/DLQ observáveis. Geovanna instrumenta OS e cobrança nas respectivas tarefas. |
-| F4-12 | Ambos | F4-08 a F4-11 | Rodar deploy completo por esteiras; cobertura ≥80% por serviço, Sonar/equivalente e checks verdes; registrar links reais. |
-| F4-13 | Geovanna | F4-12 | Atualizar C4/diagrama geral, README, OpenAPI/Postman, roteiro e PDF; Gabriel revisa execução seguindo os documentos. |
-| F4-14 | Ambos | F4-13 | Gravar vídeo ≤15 min com sucesso, compensação, CI/CD e traces; conferir acesso aos repositórios e links; enviar até 17/11 23h59. |
+| ID | Responsável | Dependências | Entrega e aceite | Acompanhamento em 13/11/2026 |
+| --- | --- | --- | --- | --- |
+| F4-01 | Gabriel | — | Validar ambiente atual via esteiras e Postman; registrar impedimentos e evidências, sem provisionamento direto. | Validações AWS anteriores registradas no README do Execução; endpoints/fluxos isolados não equivalem a aceite completo dos três serviços. Laboratório offline. |
+| F4-02 | Geovanna | — | Revisar ADR-0024/25/26 e RFC-0007, conferir enunciado e fechar contratos usados pelas duas frentes. | Decisões-base ADR-0024/25/26 e contratos RFC-0007 aprovados; novos produtores/consumidores devem ser conferidos na integração. |
+| F4-03 | Gabriel | F4-01, F4-02 | Criar repositório Execução com AGENTS, Clean Architecture, testes, Dockerfile, CI/CD e governança derivados das referências; CI verde e execução local. | Implementado: repositório, camadas, testes, Dockerfile, manifests, CI/CD e gates. Terraform alinhado à organização da API no Execução #59; nova organização ainda sem deploy. |
+| F4-04 | Gabriel | F4-03 | Provisionar DynamoDB, fila de entrada e DLQ pela esteira; validar leitura/escrita/consumo pelo workload e publicar contratos SSM. Sem SNS inicialmente. | Infraestrutura e consumo/publicação pelo workload validados nas janelas anteriores; DLQ e retomada de outbox têm provas com limites registrados. Recuperação de payload corrigido e demais provas remotas pendentes. |
+| F4-05 | Gabriel | F4-03, F4-02 | Extrair diagnóstico, estoque, reserva/liberação e execução preservando regras e testes. Garantir reserva atômica, idempotência, outbox e compensação; consumir os contratos v1 do RFC. Pode usar doubles enquanto F4-04 ocorre. | Estoque/reserva/liberação, autorização, início manual, finalização/baixa, HTTP/JWT e outbox implementados. Ciclo com estoque e cancelamento validados isoladamente na AWS; corte integrado ainda pendente. |
+| F4-06 | Geovanna | F4-02 | Adaptar OS existente, estados persistidos da Saga, outbox, consumidor de resultados e testes; remover transação entre bancos de serviços. | PR API #369 conhecido com domínio/persistência da Saga; Gabriel informou trabalho adicional local da Geovanna, a publicar. Transporte/rotas e integração ainda não conferidos. |
+| F4-07 | Geovanna | F4-02 | Criar serviço Orçamento/Pagamento, CI/CD independente, banco SQL isolado e fila/DLQ pela esteira; snapshot de orçamento e decisão versionada. | Gabriel informou que o terceiro serviço existe localmente com Geovanna; aguarda publicação e conferência. Sem aceite de implantação/banco/fila por esta informação. |
+| F4-08 | Geovanna | F4-07 | Validar produto de checkout Mercado Pago com credenciais de teste; implementar cobrança, notificação verificada, consulta ao provedor e idempotência. Bloqueio de credenciais é P0 imediato. | Integração real com Mercado Pago ainda sem evidência nesta frente; confirmar implementação e credenciais de teste após publicação da Geovanna. |
+| F4-09 | Geovanna | F4-06, F4-07 | Adequar Lambda ao contrato privado de clientes, JWT nos três serviços e roteamento Gateway; testes 401/403 e acesso por cliente. | HTTP/JWT próprios do Execução preparados; emissores, consulta privada da Lambda, Gateway e corte coordenado aguardam publicação/conferência da frente responsável. |
+| F4-10 | Gabriel | F4-05, F4-06, F4-07 | Integrar fluxo assíncrono, BDD e testes de duplicata, reinício, recusa e compensação; saldo e estados consistentes. Geovanna revisa o contrato e resultados. | Cenários combinados locais do Execução preparados; prova com OS e Orçamento/Pagamento reais aguarda publicação da Geovanna. Não concluída. |
+| F4-11 | Gabriel | F4-04, F4-05 | Instrumentar serviço Execução e fluxos distribuídos no Datadog; painéis, logs seguros e falhas da Saga/DLQ observáveis. Geovanna instrumenta OS e cobrança nas respectivas tarefas. | Logs/APM, correlação e contexto persistido na outbox preparados no Execução. Ingestão, traces dos três serviços, painel Saga/DLQ/health e recuperação observável ainda pendentes. |
+| F4-12 | Ambos | F4-08 a F4-11 | Rodar deploy completo por esteiras; cobertura ≥80% por serviço, Sonar/equivalente e checks verdes; registrar links reais. | CI/deploy independente do Execução e controles operacionais entregues; deploy e aceite integrado dos três serviços ainda pendentes. Promoções retidas em develop. |
+| F4-13 | Geovanna | F4-12 | Atualizar C4/diagrama geral, README, OpenAPI/Postman, roteiro e PDF; Gabriel revisa execução seguindo os documentos. | Plano e README do Execução atualizados (#61); backlog reconciliado (#377 e atualização atual). Diagrama final, collection integrada, PDF e revisão conjunta ainda pendentes. |
+| F4-14 | Ambos | F4-13 | Gravar vídeo ≤15 min com sucesso, compensação, CI/CD e traces; conferir acesso aos repositórios e links; enviar até 17/11 23h59. | Gravação, conferência de links e envio até 17/11 23h59 permanecem pendentes; dependem da prova integrada. |
+
+O acompanhamento acima incorpora os PRs integrados até 13/11: controles AUD-001/002/003/005 e correções AUD-006/007 estão detalhados nas tabelas seguintes. Em 13/11, Gabriel confirmou que a parte da Geovanna estava local e seria publicada para integração; isso substitui a interpretação de serviço inexistente, sem presumir código, testes ou implantação ainda não acessíveis. A sequência detalhada continua no [plano do Execução](https://github.com/oficina-mecanica-soat/oficina-mecanica-execucao/blob/develop/docs/plano-execucao-gabriel.md).
+
+**Manutenção do backlog:** em cada entrega, atualizar esta fonte com progresso, evidência/PR, dependências e aceite restante. PR aberto não equivale a merge, CI aprovado não equivale a deploy, e prova isolada não conclui a integração. Os READMEs e o plano do Execução referenciam esta fonte, sem uma lista paralela de tarefas.
 
 ### Triagem da auditoria — 12/11/2026
 
@@ -31,10 +35,10 @@ A revisão local dos snapshots de `develop` confirmou 806 testes .NET aprovados,
 
 As tarefas existentes continuam sendo a fonte de responsabilidade e aceite; não criar uma segunda lista para as mesmas entregas.
 
-| Referência | Responsável | Próximo resultado necessário | Status em 12/11 |
+| Referência | Responsável | Próximo resultado necessário | Status atualizado em 13/11 |
 | --- | --- | --- | --- |
-| F4-06 | Geovanna | Saga persistida na OS, outbox e consumo de resultados; aprovação versionada antes de autorizar execução e pagamento confirmado antes de entregar. Compensação real, sem transação entre bancos. | A fazer; integração não comprovada |
-| F4-07 e F4-08 | Geovanna | Terceiro serviço Orçamento/Pagamento com banco próprio, CI/CD e Mercado Pago em teste. Antecipar prova de credenciais/checkout; callback manual não substitui integração com o provedor. | Não localizado no escopo da revisão; confirmar eventual trabalho fora dele antes de criar |
+| F4-06 | Geovanna | Saga persistida na OS, outbox e consumo de resultados; aprovação versionada antes de autorizar execução e pagamento confirmado antes de entregar. Compensação real, sem transação entre bancos. | Trabalho local da Geovanna informado por Gabriel; aguarda publicação/conferência e prova integrada |
+| F4-07 e F4-08 | Geovanna | Terceiro serviço Orçamento/Pagamento com banco próprio, CI/CD e Mercado Pago em teste. Antecipar prova de credenciais/checkout; callback manual não substitui integração com o provedor. | Terceiro serviço local informado por Gabriel; aguarda publicação/conferência. Mercado Pago e implantação ainda sem aceite nesta frente |
 | F4-05 e F4-09 | Gabriel / Geovanna, conforme divisão original | Preservar diagnóstico, reserva, início físico manual e baixa; fazer corte de rotas e autenticação sem banco alheio nem dois owners para a mesma mutação. | Execução isolada validada; corte integrado pendente |
 | F4-10 a F4-12 | Ambos, conforme divisão original | Fluxo dos três serviços, BDD completo, compensação, duplicata/reinício, cobertura por serviço e análise de qualidade; deploy pelas esteiras e observabilidade distribuída demonstrados. Preservar gate de 90% existente. | A fazer na integração; não confundir testes locais com aceite completo |
 | F4-13 e F4-14 | Ambos, conforme divisão original | Documentação e collection do fluxo real, diagrama, vídeo de até 15 minutos e PDF; conferir acesso e enviar até 17/11 às 23h59. | A fazer após prova integrada; preparar roteiro em paralelo |
