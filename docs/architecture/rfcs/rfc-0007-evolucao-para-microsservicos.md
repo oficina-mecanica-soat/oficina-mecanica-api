@@ -77,6 +77,20 @@ Este ajuste explicita um campo obrigatório no contrato v1 antes da integração
 
 Os resultados do ciclo físico usam `ExecucaoIniciada.dados = { preparacaoId, versaoOrcamento }` e `ExecucaoFinalizada.dados = { preparacaoId, versaoOrcamento, finalizadoEm }`, além do envelope v1 com OS/Saga/correlação. `finalizadoEm` é UTC. As ações manuais mantêm um identificador de operação estável nas repetições, usado como `causationId` do evento que produzirem; não são novos tipos de comando SQS. Contrato HTTP e autenticação dessas ações permanecem na integração correspondente.
 
+### Proposta AUD-007 — snapshot persistível e rejeição técnica
+
+Proposta para revisão de Gabriel e Geovanna, anterior à implementação. O tamanho do envelope recebido não comprova que o snapshot cabe na persistência: a serialização JSON dos documentos pode expandir caracteres Unicode e repetir dados nos registros de preparação, resultado e outbox. O [limite físico do DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html) é 400 KiB por item, incluindo nomes e valores de atributos; não apenas o campo de conteúdo.
+
+O Execução deve validar a representação final dos itens antes de submeter qualquer escrita da transação, usando a mesma serialização da persistência e contabilizando chaves, revisão e conteúdo. Também deve verificar os documentos derivados do snapshot na preparação e sua utilização no ciclo, evitando aceitar uma preparação cujo crescimento previsível impeça autorização/finalização. A guarda no ponto de commit permanece para todas as transições. O detalhamento deve reutilizar os documentos/casos de uso existentes, sem nova biblioteca compartilhada ou consulta a banco alheio.
+
+Não truncar descrições, remover serviços/itens, arredondar valores ou modificar o hash para fazer um documento caber. Esta proposta não escolhe um novo máximo arbitrário de caracteres, serviços ou bytes do envelope; qualquer restrição adicional de entrada precisa ser alinhada com o produtor OS antes do corte. Preservar limites transacionais já existentes. A OS continua dona da construção/correção do snapshot; o Execução, dos documentos e da verificação de persistibilidade.
+
+Documento não persistível deve ser classificado como rejeição técnica permanente, distinta de indisponibilidade/concorrência. Proposta de código interno: `SNAPSHOT_NAO_PERSISTIVEL`, sem novo campo/tipo de evento no envelope v1. Não tratar como estoque insuficiente, não emitir `PreparacaoRecusada` ou compensação fictícia e não gravar reserva, recebimento ou outbox parcial. Não repetir a mesma transação em loop interno para esse erro. Falhas transitórias continuam com o tratamento existente.
+
+Sem commit, o consumidor não confirma nem apaga a mensagem. Mantém a política FIFO/redrive existente, com tentativas limitadas pelo `maxReceiveCount` e encaminhamento à DLQ; não altera a fila nem cria repetição ilimitada. A ocorrência deve ser identificável por código/IDs, sem registrar o corpo. Corrigir o conteúdo é responsabilidade do produtor, respeitando nova identidade quando o payload mudar e as regras de versão/idempotência. O procedimento de reenvio da DLQ não corrige mensagens e continua exigindo contrato válido e commit compatível antes da remoção. Não confundir o código interno com um contrato de erro público HTTP já aprovado.
+
+Aceite da implementação: reproduzir o caso Unicode do AUD-007; testar itens finais imediatamente abaixo/acima do limite e crescimento dos documentos do ciclo; demonstrar rejeição antes de qualquer escrita/alteração de saldo, ausência de ACK e classificação permanente; preservar mensagens pequenas, hashes, estoque e repetição transitória. Testes locais não comprovam IAM/SQS reais. O PR deste texto não implementa a guarda, altera API/Execução ou encerra AUD-007; implementação e integração permanecem em PRs próprios, somente para `develop` nesta rodada, com promoções pendentes de confirmação de Gabriel.
+
 ### Versão de contrato e versão da preparação
 
 - `envelope.versao` identifica o formato da mensagem e permanece `1` neste contrato. Não é contador de tentativas, versão de orçamento ou versão de preparação.
