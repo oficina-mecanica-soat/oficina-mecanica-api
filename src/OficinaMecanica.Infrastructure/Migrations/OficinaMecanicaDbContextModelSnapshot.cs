@@ -260,6 +260,9 @@ namespace OficinaMecanica.Infrastructure.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("rowversion");
 
+                    b.Property<string>("SnapshotOrcamento")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<decimal?>("ValorOrcamento")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");

@@ -4,6 +4,7 @@ using FluentValidation;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoSaga;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoDaOrdemServico;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarPreparacaoOrdemServico;
 
 namespace OficinaMecanica.Application.GestaoOrdemServico;
 
@@ -14,6 +15,9 @@ public static class DependencyInjection
         services.AddOrdemServicoUseCases();
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<ProcessadorResultadoOrcamento>();
+        services.AddScoped<ProcessadorResultadoPreparacao>();
+        services.AddScoped<SolicitarPreparacaoOrdemServicoUseCase>();
+        services.AddScoped<IValidator<SolicitarPreparacaoOrdemServicoRequest>, SolicitarPreparacaoOrdemServicoValidator>();
         services.AddScoped<SolicitarOrcamentoSagaUseCase>();
         services.AddScoped<IValidator<SolicitarOrcamentoSagaRequest>, SolicitarOrcamentoSagaValidator>();
         services.AddScoped<SolicitarOrcamentoDaOrdemServicoUseCase>();

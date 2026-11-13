@@ -2,6 +2,9 @@ namespace OficinaMecanica.Application.GestaoOrdemServico.ValidationMessages;
 
 public static class SagaIntegracaoValidationMessages
 {
+    public const string FilialObrigatoria = "Filial é obrigatória.";
+    public const string OrdemNaoEncontrada = "Ordem de serviço não encontrada.";
+    public const string OrdemIncompativel = "A preparação exige uma ordem de serviço recebida.";
     public const string SagaObrigatoria = "Identificador da Saga é obrigatório.";
     public const string OrdemObrigatoria = "Ordem de serviço é obrigatória.";
     public const string OperacaoObrigatoria = "Identificador da operação é obrigatório.";
