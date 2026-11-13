@@ -43,6 +43,19 @@ Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServic
 
 Publicações de resultado usam a fila de OS; comandos usam a fila do destinatário. Cada handler valida tipo/versão e dados; mensagem desconhecida vai para investigação via DLQ, sem processamento permissivo.
 
+### Snapshot e compensação de orçamento
+
+Detalhamento dos dados mínimos para os produtores e consumidores de OS e Orçamento/Pagamento:
+
+- `GerarOrcamento.dados = { versao, clienteId, servicos: [{ servicoId, servicoCatalogoId, descricao, valor }], itens: [{ itemId, descricao, quantidade, valorUnitario }] }`. `itemId` é a referência ao catálogo de peças/insumos; o consumidor a mapeia para `PecaInsumoCatalogoId`. Cada serviço representa uma instância da OS, com quantidade implícita de um. Preservar os preços congelados, sem consultar ou recalcular preços no catálogo de outro serviço.
+- A OS permite lançamentos distintos da mesma peça, inclusive com preços diferentes. O snapshot de orçamento preserva essas linhas e seus valores, sem média, agrupamento ou nova consulta de preço. O consumidor não usa `itemId` como chave única das linhas do orçamento. A identidade técnica de persistência dessas linhas não altera os identificadores do catálogo ou o contrato de transporte.
+- `CancelarOrcamento.dados` contém `motivo` e `orcamentoId`, ou `versao` quando endereçado por OS do envelope. Pode conter ambos; nesse caso devem identificar o mesmo orçamento/versão e a mesma OS/Saga.
+- `OrcamentoCancelado.dados = { orcamentoId, versao }`. O identificador é nulo se o cancelamento precedeu a geração. O consumidor confirma a proibição de gerar essa OS/versão, sem inventar orçamento ou excluir histórico. Geração tardia compatível é recebida sem reabrir a versão cancelada.
+- Repetir operação + OS + versão exige o mesmo conteúdo de negócio e Saga. Reutilizar `mensagemId` com outra operação/conteúdo é conflito; outro ID de transporte não permite alterar a operação. Contexto de trace e tentativa de entrega não geram novo efeito.
+- O resultado de geração preserva a causação do comando original; OS também confere o total contra o snapshot que solicitou. Recebimento, transição e novas mensagens são confirmados em uma transação local. Falha antes do commit não confirma processamento.
+
+O transporte por arquivos utilizado nas provas locais não emula FIFO, DLQ, IAM ou visibilidade do SQS. Publicação/consumo em AWS, ativação nas rotas de OS e corte do ownership continuam sujeitos à integração e à janela autorizada; estes testes não concluem o fluxo distribuído implantado.
+
 ### Contexto técnico de rastreamento — F4-11
 
 Alinhamento explícito com Gabriel em 10/11/2026: o envelope v1 pode incluir `traceContext` opcional, fora de `dados`. Neste incremento, sua única chave permitida é `traceparent`, no formato W3C versão `00`, com trace-id hexadecimal minúsculo de 32 caracteres, parent-id de 16, flags de 2 e IDs não nulos. Exemplo: `{ "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" }`. Campo ausente/nulo mantém o contrato anterior. Não incluir baggage, tracestate, JWT, documento, credenciais ou cabeçalhos livres.
