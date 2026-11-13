@@ -44,6 +44,8 @@ Para cada arquivo adicionado, verificar diretórios introduzidos, necessidade e 
 
 ## 6. Entregar um PR concreto
 
+Seguir a seção **Convenção Git Flow** do README principal da API para branches, commits e PRs. Criar branches a partir de `develop`, usando os prefixos documentados conforme a atividade (`feature/*`, `bugfix/*`, `docs/*`, `test/*`, `ci/*`, `chore/*`). Commits e títulos de PR usam `<type>(scope): <description>`, com descrição concreta e legível em português. Explicar a mudança por extenso; códigos do backlog são referências secundárias no corpo, nunca a explicação principal do nome. Conferir essa convenção antes do commit e da publicação.
+
 Com os ajustes autorizados prontos e verificáveis, abrir o PR sem pedir novamente uma autorização já concedida. Informar tarefa e comportamento entregue, código reaproveitado/origem, componentes/contratos afetados, recursos previstos no futuro apply, esteiras acionadas, dependências, testes/evidências e limites. Deixar claro se há apenas integração de código ou implantação real.
 
 Acompanhar o CI e corrigir falhas no escopo. Não declarar check aprovado sem observar seu resultado nem tarefa completa com validação pendente. Enviar link e resumo para Gabriel revisar e fazer o merge; não executar merge por ele. Não atualizar os arquivos de orientação para declarar uma decisão ainda não aprovada como regra do projeto.
