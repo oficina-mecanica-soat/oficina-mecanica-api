@@ -34,6 +34,8 @@ Aprovação/merge de PR não é autorização para subir AWS. Manter o bloqueio 
 
 ## 5. Revisar o diff antes de publicar
 
+Atualizar `docs/projeto/backlog-tecnico.md` da API em cada entrega que altere progresso, dependência ou critério de aceite. Registrar o que foi implementado, o nível de validação realmente observado, os PRs/evidências e o que permanece pendente. Distinguir PR aberto de merge concluído, código integrado de implantação e testes isolados de aceite distribuído. Quando a implementação ocorrer em outro repositório, incluir a atualização do backlog canônico em PR documental associado, sem manter listas concorrentes. Após o merge informado por Gabriel, confirmar o estado e reconciliar o registro na próxima entrega. Não marcar trabalho local de outra frente como concluído sem publicação e verificação.
+
 Conferir `git status --short`, diff completo e `git diff --check`. Revisar também `git diff --cached --name-status` antes do commit e o diff da branch contra a base do PR antes do push.
 
 Para cada arquivo adicionado, verificar diretórios introduzidos, necessidade e aderência à estrutura aprovada; procurar pastas proibidas, saídas de geradores, temporários e segredos. Confirmar que não há renomes de componentes, alteração de contratos ou enfraquecimento de gates fora do escopo. Executar o gate de estrutura definido em `ci.yml`; uma revisão textual não o substitui. Se surgir nova decisão necessária, fazer o trabalho independente e perguntar antes da parte dependente.
