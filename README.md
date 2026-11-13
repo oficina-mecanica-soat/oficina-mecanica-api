@@ -637,6 +637,14 @@ O job obrigatório de Git Flow verifica essa estrutura em todos os PRs, inclusiv
 
 ## Orientações para trabalho com Codex
 
+### Integração local entre OS e Orçamento
+
+A Saga já possui processamento local de resultados de orçamento, recebimentos idempotentes e comandos na outbox SQL. Após uma preparação registrada, `SolicitarOrcamentoSagaUseCase` recebe o snapshot congelado e persiste `GerarOrcamento`; `ProcessadorResultadoOrcamento` confere geração/decisão/cancelamento e grava os próximos comandos atomicamente. Aprovação autoriza o Execução sem iniciar o reparo físico; recusa aguarda confirmações de cancelamento do orçamento e da preparação.
+
+Os contratos e limites estão no [RFC de microsserviços](docs/architecture/rfcs/rfc-0007-evolucao-para-microsservicos.md). O publicador aceita um transporte explícito; o substituto por arquivos foi usado com bancos SQL separados para validar o conteúdo real das mensagens. Não existe worker novo ativo no host, adaptador SQS ou chamada desses casos de uso pelas rotas antigas neste incremento. A construção do snapshot a partir da OS, o recebimento de preparação, o corte das rotas e a implantação continuam na integração seguinte.
+
+As suítes `MensagensSagaTests`, `PublicacaoOutboxTests` e `ContratoMensagemTests` verificam persistência, reentrega, validação estrita e retomada. Uma tentativa que falha deve descartar seu escopo de DI antes da reentrega; testes locais não comprovam FIFO/DLQ, acesso AWS ou execução física de estoque.
+
 O `AGENTS.md` mantém as regras obrigatórias e aponta para o procedimento canônico em `oficina-mecanica-api/.agents/skills/oficina-mecanica/SKILL.md`. A skill do Execução é somente um encaminhamento, evitando duas versões do mesmo fluxo. READMEs e documentos de arquitetura continuam sendo as fontes de decisões e comportamento do projeto.
 
 Ao abrir um novo chat, prefira a raiz do repositório correto. Se o chat foi aberto fora do Git, peça a leitura explícita do `AGENTS.md` e da skill antes de implementar; entrar na pasta por um comando não garante descoberta automática. A verificação deste ajuste confirma os arquivos e os caminhos, sem instalar skill pessoal ou mudar a configuração do Codex. O gate do CI continua sendo o bloqueio verificável de estrutura, complementando as instruções.
