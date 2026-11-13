@@ -21,7 +21,7 @@ public sealed class SolicitarOrcamentoSagaUseCase
     {
         var validacao = await _validator.ValidateAsync(request, cancellationToken);
         if (!validacao.IsValid) { return Result<Guid>.Falha(validacao.ObterMensagensErro(), TipoErro.Validacao); }
-        var dados = request.Dados with { Servicos = request.Dados.Servicos.OrderBy(s => s.ServicoId).ToArray(), Itens = request.Dados.Itens.OrderBy(i => i.ItemId).ToArray() };
+        var dados = request.Dados with { Servicos = request.Dados.Servicos.OrderBy(s => s.ServicoId).ToArray(), Itens = request.Dados.Itens.OrderBy(i => i.ItemId).ThenBy(i => i.Descricao, StringComparer.Ordinal).ThenBy(i => i.ValorUnitario).ThenBy(i => i.Quantidade).ToArray() };
         var mensagem = new MensagemIntegracao(Guid.CreateVersion7(), "GerarOrcamento", 1, request.SagaId, request.OrdemServicoId, request.CorrelationId,
             request.OperacaoId, _relogio.GetUtcNow(), JsonSerializer.SerializeToElement(dados, JsonContrato.Options));
         var chave = $"GerarOrcamento:{request.OrdemServicoId:D}:{dados.Versao}";

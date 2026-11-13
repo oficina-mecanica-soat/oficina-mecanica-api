@@ -8,6 +8,7 @@ using OficinaMecanica.API.IntegrationTests.GestaoOrdemServico.Factories;
 using OficinaMecanica.Application;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoSaga;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoDaOrdemServico;
 using OficinaMecanica.Domain.GestaoOrdemServico.Enums;
 using OficinaMecanica.Infrastructure;
 using OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
@@ -16,6 +17,90 @@ namespace OficinaMecanica.API.IntegrationTests.GestaoOrdemServico.Scenarios;
 [Collection(OficinaMecanicaApiCollection.Nome)]
 public sealed class MensagensSagaTests(OficinaMecanicaApiFixture fixture) : IAsyncLifetime
 {
+    [RequiresDockerFact]
+    public async Task Dado_LinhasDaMesmaPecaComPrecosDistintos_Quando_ProduzirSnapshot_Entao_NaoDeveAgruparOuReprecificar()
+    {
+        // Arrange
+        await using var contexto = fixture.CriarDbContext();
+        var request = await SagaIntegracaoTestDataFactory.CriarAsync(contexto);
+        var catalogo = Domain.Administrativo.Aggregates.PecaInsumoCatalogo.Criar("Óleo", Domain.Administrativo.Enums.TipoPecaInsumo.INSUMO, 999m);
+        contexto.PecasInsumosCatalogo.Add(catalogo);
+        var ordem = await contexto.OrdensServico.Include(o => o.PecasInsumos).SingleAsync();
+        ordem.ReservarPecaInsumo(catalogo.Id, 2, 45m);
+        ordem.ReservarPecaInsumo(catalogo.Id, 1, 50m);
+        await contexto.SaveChangesAsync();
+        // Act
+        await using var servicos = CriarServicos();
+        await using var scope = servicos.CreateAsyncScope();
+        var resultado = await scope.ServiceProvider.GetRequiredService<SolicitarOrcamentoDaOrdemServicoUseCase>()
+            .ExecuteAsync(new(request.SagaId, request.OrdemServicoId, request.OperacaoId, request.CorrelationId));
+        // Assert
+        resultado.Sucesso.Should().BeTrue();
+        await using var verificacao = fixture.CriarDbContext();
+        var snapshot = JsonContrato.Ler<GerarOrcamentoDados>(JsonContrato.LerEnvelope((await verificacao.Set<RegistroOutboxSaga>().SingleAsync()).Corpo).Dados.GetRawText());
+        snapshot.Itens.Should().HaveCount(2);
+        snapshot.Itens.Select(i => i.ValorUnitario).Should().BeEquivalentTo([45m, 50m]);
+        snapshot.Itens.Sum(i => i.Quantidade * i.ValorUnitario).Should().Be(140m);
+    }
+    [RequiresDockerFact]
+    public async Task Dado_OrdemComValoresCongelados_Quando_SolicitarOrcamento_Entao_DeveUsarClienteEValoresDaOrdem()
+    {
+        // Arrange
+        await using var origem = fixture.CriarDbContext();
+        var request = await SagaIntegracaoTestDataFactory.CriarAsync(origem);
+        var catalogo = await origem.ServicosCatalogo.SingleAsync();
+        catalogo.Atualizar("Descrição atualizada", 999m);
+        await origem.SaveChangesAsync();
+
+        // Act
+        await using (var servicos = CriarServicos())
+        await using (var scope = servicos.CreateAsyncScope())
+        {
+            var resultado = await scope.ServiceProvider.GetRequiredService<SolicitarOrcamentoDaOrdemServicoUseCase>()
+                .ExecuteAsync(new(request.SagaId, request.OrdemServicoId, request.OperacaoId, request.CorrelationId));
+            resultado.Sucesso.Should().BeTrue();
+        }
+
+        // Assert
+        await using var verificacao = fixture.CriarDbContext();
+        var comando = await verificacao.Set<RegistroOutboxSaga>().SingleAsync();
+        var snapshot = JsonContrato.Ler<GerarOrcamentoDados>(JsonContrato.LerEnvelope(comando.Corpo).Dados.GetRawText());
+        snapshot.ClienteId.Should().Be(request.Dados.ClienteId);
+        snapshot.Servicos.Should().ContainSingle().Which.Valor.Should().Be(150m);
+        snapshot.Servicos.Single().Descricao.Should().Be("Descrição atualizada");
+        snapshot.Servicos.Single().ServicoId.Should().Be(request.Dados.Servicos.Single().ServicoId);
+        snapshot.Servicos.Single().ServicoCatalogoId.Should().Be(catalogo.Id);
+
+        // Arrange: a alteração posterior do catálogo não pode reescrever o snapshot enviado.
+        catalogo.Atualizar("Outra descrição", 777m);
+        await origem.SaveChangesAsync();
+        await using (var servicos = CriarServicos())
+        await using (var scope = servicos.CreateAsyncScope())
+        {
+            var repeticao = await scope.ServiceProvider.GetRequiredService<SolicitarOrcamentoDaOrdemServicoUseCase>()
+                .ExecuteAsync(new(request.SagaId, request.OrdemServicoId, Guid.NewGuid(), request.CorrelationId));
+            repeticao.Valor.Should().Be(comando.Id);
+        }
+        await using var final = fixture.CriarDbContext();
+        (await final.Set<RegistroOutboxSaga>().SingleAsync()).Corpo.Should().Be(comando.Corpo);
+    }
+
+    [RequiresDockerFact]
+    public async Task Dado_SagaAusenteOuEntradaInvalida_Quando_ConstruirSnapshot_Entao_NaoDeveGerarComando()
+    {
+        // Arrange
+        await using var servicos = CriarServicos();
+        await using var scope = servicos.CreateAsyncScope();
+        var caso = scope.ServiceProvider.GetRequiredService<SolicitarOrcamentoDaOrdemServicoUseCase>();
+        // Act
+        var invalida = await caso.ExecuteAsync(new(Guid.Empty, Guid.Empty, Guid.Empty, ""));
+        var ausente = await caso.ExecuteAsync(new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "consulta"));
+        // Assert
+        invalida.Erro!.Tipo.Should().Be(Application.Common.TipoErro.Validacao);
+        ausente.Erro!.Tipo.Should().Be(Application.Common.TipoErro.NaoEncontrado);
+        await using var verificacao = fixture.CriarDbContext();
+        (await verificacao.Set<RegistroOutboxSaga>().CountAsync()).Should().Be(0);
+    }
     [RequiresDockerFact]
     public async Task Dado_TotalDiferenteDoSnapshotSolicitado_Quando_ReceberOrcamento_Entao_NaoDeveAvancarSaga()
     {

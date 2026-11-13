@@ -3,6 +3,7 @@ using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases;
 using FluentValidation;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoSaga;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoDaOrdemServico;
 
 namespace OficinaMecanica.Application.GestaoOrdemServico;
 
@@ -15,6 +16,8 @@ public static class DependencyInjection
         services.AddScoped<ProcessadorResultadoOrcamento>();
         services.AddScoped<SolicitarOrcamentoSagaUseCase>();
         services.AddScoped<IValidator<SolicitarOrcamentoSagaRequest>, SolicitarOrcamentoSagaValidator>();
+        services.AddScoped<SolicitarOrcamentoDaOrdemServicoUseCase>();
+        services.AddScoped<IValidator<SolicitarOrcamentoDaOrdemServicoRequest>, SolicitarOrcamentoDaOrdemServicoValidator>();
 
         return services;
     }

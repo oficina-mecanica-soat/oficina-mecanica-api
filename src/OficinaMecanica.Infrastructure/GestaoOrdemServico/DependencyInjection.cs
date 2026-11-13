@@ -13,6 +13,7 @@ public static class DependencyInjection
         services.AddScoped<IOrdemServicoRepository, OrdemServicoRepository>();
         services.AddScoped<ISagaIntegracaoRepository, SagaIntegracaoRepository>();
         services.AddScoped<IRecebimentoMensagemRepository, RecebimentoMensagemRepository>();
+        services.AddScoped<ISnapshotOrcamentoRepository, SnapshotOrcamentoRepository>();
 
         return services;
     }

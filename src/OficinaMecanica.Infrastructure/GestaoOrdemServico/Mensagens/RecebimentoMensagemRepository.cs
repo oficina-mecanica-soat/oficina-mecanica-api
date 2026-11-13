@@ -10,6 +10,11 @@ public sealed class RecebimentoMensagemRepository : IRecebimentoMensagemReposito
     public RecebimentoMensagemRepository(OficinaMecanicaDbContext dbContext) { _dbContext = dbContext; }
     public async Task ExecutarEmTransacaoAsync(Func<CancellationToken, Task> operacao, CancellationToken cancellationToken)
     {
+        if (_dbContext.Database.CurrentTransaction is not null)
+        {
+            await operacao(cancellationToken);
+            return;
+        }
         await using var transacao = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         await operacao(cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);

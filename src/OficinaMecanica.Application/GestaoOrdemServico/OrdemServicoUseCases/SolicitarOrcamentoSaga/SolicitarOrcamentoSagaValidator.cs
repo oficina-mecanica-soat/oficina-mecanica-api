@@ -25,8 +25,6 @@ public sealed class SolicitarOrcamentoSagaValidator : AbstractValidator<Solicita
             RuleForEach(r => r.Dados.Itens).Where(i => i is not null).SetValidator(new ItemSnapshotSagaValidator());
             RuleFor(r => r.Dados.Servicos).Must(servicos => servicos is null || servicos.Where(s => s is not null).Select(s => s.ServicoId).Distinct().Count() == servicos.Length)
                 .WithMessage(SagaIntegracaoValidationMessages.ServicosInvalidos);
-            RuleFor(r => r.Dados.Itens).Must(itens => itens is null || itens.Where(i => i is not null).Select(i => i.ItemId).Distinct().Count() == itens.Length)
-                .WithMessage(SagaIntegracaoValidationMessages.ItensInvalidos);
         });
     }
     private static bool TotalValido(GerarOrcamentoDados dados)
