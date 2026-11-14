@@ -131,6 +131,8 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
+          CLIENTES_API_ENABLED: ${{ vars.CLIENTES_API_ENABLED || 'false' }}
+          CLIENTES_INTERNOS_TOKEN: ${{ secrets.CLIENTES_INTERNOS_TOKEN }}
         run: |
           if [ "$TERRAFORM_ACTION" = "destroy" ]; then
             echo "Skipping application secret validation because this run will destroy the environment."
@@ -189,6 +191,8 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
+          CLIENTES_API_ENABLED: ${{ vars.CLIENTES_API_ENABLED || 'false' }}
+          CLIENTES_INTERNOS_TOKEN: ${{ secrets.CLIENTES_INTERNOS_TOKEN }}
         run: |
           python - <<'PY'
           import json
@@ -206,6 +210,20 @@ jobs:
               return result.stdout.strip()
 
           terraform_action = os.environ["TERRAFORM_ACTION"]
+          clientes_internos_habilitado = False
+          clientes_internos_token = ""
+          if terraform_action != "destroy":
+              valor_habilitado = os.environ.get("CLIENTES_API_ENABLED", "false")
+              if valor_habilitado not in ("true", "false"):
+                  raise ValueError("CLIENTES_API_ENABLED deve ser true ou false.")
+              clientes_internos_habilitado = valor_habilitado == "true"
+              if clientes_internos_habilitado:
+                  clientes_internos_token = os.environ.get("CLIENTES_INTERNOS_TOKEN", "")
+                  if not 32 <= len(clientes_internos_token) <= 256 or any(not "!" <= c <= "~" for c in clientes_internos_token):
+                      raise ValueError("Configure uma credencial técnica válida para a consulta privada de clientes.")
+                  if clientes_internos_token in (os.environ.get("JWT_SECRET"), os.environ.get("WEBHOOK_TOKEN")):
+                      raise ValueError("A credencial técnica deve ser segregada do JWT e do orçamento.")
+                  print(f"::add-mask::{clientes_internos_token}")
 
           if terraform_action == "destroy":
               db_connection_string = "destroy-only-placeholder"
@@ -236,6 +254,8 @@ jobs:
               "aws_region": os.environ["AWS_REGION"],
               "ssm_environment_name": os.environ["SSM_ENVIRONMENT_NAME"],
               "db_connection_string": db_connection_string,
+              "clientes_internos_habilitado": clientes_internos_habilitado,
+              "clientes_internos_token": clientes_internos_token,
               "api_deploy_enabled": True,
               "api_image_uri": os.environ["ECR_IMAGE_URI"],
               "jwt_secret": jwt_secret,

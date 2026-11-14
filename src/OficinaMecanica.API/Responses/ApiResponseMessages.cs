@@ -2,6 +2,7 @@ namespace OficinaMecanica.API.Responses;
 
 public static class ApiResponseMessages
 {
+    public const string ServicoTemporariamenteIndisponivel = "Serviço temporariamente indisponível.";
     public const string OperacaoExecutadaComSucesso = "Operação executada com sucesso.";
     public const string RecursoCriadoComSucesso = "Recurso criado com sucesso.";
     public const string RecursoRemovidoComSucesso = "Recurso removido com sucesso.";
