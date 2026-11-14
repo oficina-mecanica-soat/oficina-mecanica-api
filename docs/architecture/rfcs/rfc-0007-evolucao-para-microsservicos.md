@@ -102,6 +102,10 @@ Detalhamento dos dados mínimos para os produtores e consumidores de OS e Orçam
 
 O transporte por arquivos utilizado nas provas locais não emula FIFO, DLQ, IAM ou visibilidade do SQS. Publicação/consumo em AWS, ativação nas rotas de OS e corte do ownership continuam sujeitos à integração e à janela autorizada; estes testes não concluem o fluxo distribuído implantado.
 
+### Registry próprio de Orçamento/Pagamento
+
+O registry permanece sob ownership da infraestrutura Kubernetes, conforme a ADR-0023. Orçamento/Pagamento consome `orcamento_pagamento_ecr_repository_name` e `orcamento_pagamento_ecr_repository_url` sob `/oficina-mecanica/development/kubernetes`. O nome padrão é `oficina-mecanica-orcamento-pagamento`; tags imutáveis e varredura seguem o módulo existente. Plataforma gerencia criação/remoção e valida contratos; a esteira da aplicação é responsável pela imagem e pelo workload. A disponibilidade da plataforma não comprova aplicação implantada.
+
 ### Banco isolado e disponibilidade de Orçamento/Pagamento
 
 Conforme a ADR-0025, a instância RDS permanece compartilhada, com banco lógico `OficinaMecanicaOrcamentoPagamento` e login `oficina_orcamento_pagamento` exclusivos. O repositório RDS prepara o banco e a credencial pela própria esteira; o serviço conserva o ownership do schema e das migrations. A aplicação não utiliza a credencial master. A opção `ORCAMENTO_PAGAMENTO_DB_ENABLED` inicia desabilitada e não autoriza deploy.
