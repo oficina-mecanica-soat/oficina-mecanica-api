@@ -210,7 +210,25 @@ Gabriel prepara as entradas do Execução, testes e seus contratos OpenAPI/Postm
 
 Decisão de orçamento exige identidade autorizada e versão atual. Consulta de cliente para a Lambda é privada, autenticada por identidade técnica segregada, e não pode ficar acessível por rota pública do Gateway. Mantém o contrato público do RFC-0001.
 
-Mercado Pago será integrado em ambiente de teste com credenciais próprias. Criar cobrança vinculada à OS e versão, persistir referência do provedor e chave idempotente antes da chamada; em resposta incerta consultar o provedor antes de repetir. Notificação não é prova de pagamento: validar autenticidade conforme API escolhida, consultar o pagamento no provedor e conferir referência, valor, moeda e estado. Duplicatas não confirmam duas vezes. Escolher e validar o produto de checkout no primeiro spike de integração, mantendo o contrato interno acima. Nenhuma cobrança real faz parte do teste.
+Mercado Pago será integrado em ambiente de teste com credenciais próprias. Criar cobrança vinculada à OS e versão, persistir intenção, referência local e chave idempotente antes da chamada; o identificador retornado pelo provedor só é vinculado após validar a resposta. Em resposta incerta consultar o provedor antes de repetir. Notificação não é prova de pagamento: validar autenticidade conforme API escolhida, consultar o pagamento no provedor e conferir referência, valor, moeda e estado. Duplicatas não confirmam duas vezes. Escolher e validar o produto de checkout no primeiro spike de integração, mantendo o contrato interno acima. Nenhuma cobrança real faz parte do teste.
+
+### Adaptador Mercado Pago — spike de Checkout Pro
+
+O spike de 14/11 usa Checkout Pro pela API de Preferências; aceite do produto exige prova posterior com contas/credenciais de teste. O adaptador fica na Infrastructure/Pagamentos, atrás de `IProvedorPagamento` na Application. Os DTOs do provedor e seus nomes JSON permanecem na Infrastructure; respostas da porta usam contratos próprios. `Pagamentos` agrupa essa funcionalidade dentro do serviço Orçamento/Pagamento e não declara outro bounded context. A composição fica desabilitada por padrão.
+
+| Operação do adaptador | API externa e limite |
+| --- | --- |
+| Criar checkout | `POST /checkout/preferences`, com referência local UUID em `external_reference`, valor BRL e `notification_url` HTTPS. Retornar somente endereço sandbox. Não assumir suporte a `X-Idempotency-Key` nesse endpoint: a garantia documentada para Payments não se transfere automaticamente a Preferências. |
+| Reconciliar criação | `GET /checkout/preferences/search` pela referência e consulta do detalhe por ID. Ausência não dispara novo POST; múltiplos resultados são ambiguidade, sem escolha arbitrária. A política de recuperação pertence ao caso de uso que possui a intenção persistida. |
+| Consultar pagamento | `GET /v1/payments/{id}`. Exigir o ID solicitado, recebedor configurado, referência UUID, valor válido, BRL e `live_mode=false`. A resposta não confirma o estado local: o caso de uso ainda precisa confrontá-la com o valor e a versão da cobrança persistida. Autorizado, pendente e estados desconhecidos não equivalem a aprovado. |
+
+O transporte usa destino HTTPS fixo, timeout finito e não segue redirecionamentos ou repete automaticamente a criação. Falha de rede, timeout ou resposta inválida de criação permanecem resultados incertos; não representam recusa financeira. Cancelamento do chamador também não prova ausência de criação remota. Não colocar a chamada HTTP dentro de uma transação SQL aberta.
+
+O validador de notificações usa `HMAC-SHA256` com a chave de Webhooks e o manifesto `id:{data.id};request-id:{x-request-id};ts:{ts};`, comparando os hashes em tempo constante. Exige os campos necessários ao evento de pagamento. A API futura deverá conferir consistência entre os IDs de query/body e tipo de evento antes de consultar o recurso; não confiar em valor/status enviados no webhook. Autenticidade e idempotência são verificações distintas: o validador não registra recebimento, não altera cobrança e não emite `PagamentoConfirmado`. Timestamp integra o manifesto; não foi adotada janela de expiração neste adaptador.
+
+O spike não expõe rotas de pagamento/notificação, não cria persistência de cobrança nem liga os comandos financeiros à Saga. Essas partes precisam ser implementadas com Domain, repository de agregado no Domain, casos de uso e Inbox/Outbox conforme a organização definida acima. Testes HTTP com handler local e vetor HMAC não substituem o sandbox ou o aceite integrado. Progresso e credenciais pendentes ficam no backlog canônico.
+
+Referências: [criação de preferências](https://www.mercadopago.com.br/developers/en/reference/online-payments/checkout-pro-preferences/create-preference/post), [pesquisa de preferências](https://www.mercadopago.com.br/developers/en/reference/online-payments/checkout-pro-preferences/search-preferences/get), [referência Checkout Pro](https://www.mercadopago.com.br/developers/pt/reference/online-payments/checkout-pro-preferences/overview) e [assinatura das notificações](https://www.mercadopago.com.br/developers/en/docs/checkout-pro-preferences/additional-settings/optional-notifications).
 
 ## Infraestrutura, execução local e CI/CD
 
