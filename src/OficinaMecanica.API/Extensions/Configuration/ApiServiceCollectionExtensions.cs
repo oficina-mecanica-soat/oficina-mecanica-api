@@ -22,6 +22,10 @@ public static class ApiServiceCollectionExtensions
         services.AddSwaggerGen(options => options.AddJwtSwagger());
         services.AddJwtAuthentication(configuration);
         services.AddWebhookTokenAuthentication(configuration);
+        services.AddOptions<ClientesInternosOptions>()
+            .Bind(configuration.GetSection(ClientesInternosOptions.SectionName))
+            .Validate(options => !options.Habilitado || options.PossuiTokenValido(), "Configure uma credencial técnica válida para a consulta privada de clientes.")
+            .ValidateOnStart();
 
         services.Configure<ApiBehaviorOptions>(options =>
         {

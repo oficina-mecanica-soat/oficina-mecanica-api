@@ -77,6 +77,19 @@ resource "kubernetes_deployment_v1" "oficina_mecanica_api" {
             }
           }
 
+          dynamic "env" {
+            for_each = var.clientes_internos_habilitado ? [true] : []
+            content {
+              name = "Integracoes__ClientesInternos__Token"
+              value_from {
+                secret_key_ref {
+                  name = kubernetes_secret_v1.oficina_mecanica_api[0].metadata[0].name
+                  key  = "Integracoes__ClientesInternos__Token"
+                }
+              }
+            }
+          }
+
           env {
             name = "ConnectionStrings__DefaultConnection"
 

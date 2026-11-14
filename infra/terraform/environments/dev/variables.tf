@@ -38,6 +38,23 @@ variable "jwt_secret" {
   default     = ""
 }
 
+variable "clientes_internos_habilitado" {
+  description = "Ativa a consulta privada de clientes somente na janela coordenada com a Auth Lambda."
+  type        = bool
+  default     = false
+}
+
+variable "clientes_internos_token" {
+  description = "Credencial técnica exclusiva da consulta privada; não reutilizar JWT ou token de orçamento."
+  type        = string
+  sensitive   = true
+  default     = ""
+  validation {
+    condition     = !var.clientes_internos_habilitado || can(regex("^[!-~]{32,256}$", var.clientes_internos_token))
+    error_message = "Configure uma credencial técnica ASCII de 32 a 256 caracteres para habilitar a consulta privada."
+  }
+}
+
 variable "webhook_token" {
   description = "Token do webhook de orcamento."
   type        = string

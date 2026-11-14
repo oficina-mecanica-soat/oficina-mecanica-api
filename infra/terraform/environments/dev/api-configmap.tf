@@ -7,13 +7,14 @@ resource "kubernetes_config_map_v1" "oficina_mecanica_api" {
   }
 
   data = {
-    ASPNETCORE_ENVIRONMENT             = "Staging"
-    ASPNETCORE_URLS                    = "http://+:8080"
-    Database__ApplyMigrationsOnStartup = "true"
-    Database__SeedDemoData             = "true"
-    DD_ENV                             = "development"
-    DD_LOGS_INJECTION                  = "true"
-    DD_SERVICE                         = "oficina-mecanica-api"
-    DD_VERSION                         = local.api_version
+    ASPNETCORE_ENVIRONMENT                    = "Staging"
+    ASPNETCORE_URLS                           = "http://+:8080"
+    Database__ApplyMigrationsOnStartup        = "true"
+    Database__SeedDemoData                    = "true"
+    Integracoes__ClientesInternos__Habilitado = tostring(var.clientes_internos_habilitado)
+    DD_ENV                                    = "development"
+    DD_LOGS_INJECTION                         = "true"
+    DD_SERVICE                                = "oficina-mecanica-api"
+    DD_VERSION                                = local.api_version
   }
 }

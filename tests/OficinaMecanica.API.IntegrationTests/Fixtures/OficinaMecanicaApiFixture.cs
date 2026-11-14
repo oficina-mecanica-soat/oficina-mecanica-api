@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using OficinaMecanica.Infrastructure.Persistence;
@@ -20,6 +21,12 @@ public sealed class OficinaMecanicaApiFixture : IAsyncLifetime
     public HttpClient CreateClient()
     {
         return Factory.CreateClient();
+    }
+
+    public HttpClient CreateClient(IReadOnlyDictionary<string, string?> configuracao)
+    {
+        return Factory.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(configuracao))).CreateClient();
     }
 
     public async Task InitializeAsync()
