@@ -25,6 +25,48 @@ variable "api_deploy_enabled" {
   default     = false
 }
 
+variable "fluxo_distribuido_habilitado" {
+  description = "Ativa o corte público somente com workers e consulta privada de clientes preparados."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.fluxo_distribuido_habilitado || (var.processamento_remoto_habilitado && var.clientes_internos_habilitado)
+    error_message = "O corte exige workers ativos e consulta privada de clientes habilitada."
+  }
+}
+
+variable "processamento_remoto_habilitado" {
+  description = "Ativação explícita dos workers SQS na janela autorizada."
+  type        = bool
+  default     = false
+  validation {
+    condition = !var.processamento_remoto_habilitado || (
+      can(regex("^[0-9]{12}$", var.conta_aws)) &&
+      var.execucao_entrada_queue_url == "https://sqs.${var.aws_region}.amazonaws.com/${var.conta_aws}/oficina-mecanica-execucao-${var.ssm_environment_name}.fifo" &&
+      var.orcamento_pagamento_entrada_queue_url == "https://sqs.${var.aws_region}.amazonaws.com/${var.conta_aws}/oficina-mecanica-orcamento-pagamento-${var.ssm_environment_name}.fifo"
+    )
+    error_message = "Workers exigem filas exclusivas dos serviços na mesma conta, região e ambiente."
+  }
+}
+
+variable "conta_aws" {
+  description = "Conta conferida pela esteira para os adaptadores SQS."
+  type        = string
+  default     = ""
+}
+
+variable "execucao_entrada_queue_url" {
+  description = "Contrato publicado pelo serviço de Execução."
+  type        = string
+  default     = ""
+}
+
+variable "orcamento_pagamento_entrada_queue_url" {
+  description = "Contrato publicado pelo serviço de Orçamento/Pagamento."
+  type        = string
+  default     = ""
+}
+
 variable "api_image_uri" {
   description = "Imagem Docker completa da API publicada no ECR."
   type        = string

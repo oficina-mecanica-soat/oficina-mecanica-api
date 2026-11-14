@@ -22,6 +22,7 @@ resource "kubernetes_deployment_v1" "oficina_mecanica_api" {
         })
 
         annotations = {
+          "checksum/config"                            = sha256(jsonencode(kubernetes_config_map_v1.oficina_mecanica_api[0].data))
           "ad.datadoghq.com/oficina-mecanica-api.logs" = jsonencode([{ source = "csharp", service = "oficina-mecanica-api" }])
           "admission.datadoghq.com/dotnet-lib.version" = "3.50.0"
         }
