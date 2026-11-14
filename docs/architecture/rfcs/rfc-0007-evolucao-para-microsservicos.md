@@ -73,6 +73,18 @@ Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServic
 
 Publicações de resultado usam a fila de OS; comandos usam a fila do destinatário. Cada handler valida tipo/versão e dados; mensagem desconhecida vai para investigação via DLQ, sem processamento permissivo.
 
+### Cobrança e confirmação financeira
+
+`CriarCobranca.dados = { orcamentoId, versao }` é emitido pela OS somente após processar `ExecucaoFinalizada`. Não é uma operação HTTP pública. O serviço Orçamento/Pagamento obtém cliente e valor do orçamento aprovado em seu próprio banco; não aceita esses valores no comando.
+
+Os resultados `CobrancaCriada`, `PagamentoConfirmado` e `PagamentoRecusado` usam `dados = { pagamentoId, orcamentoId, versao, valor }`. `pagamentoId` é o UUID do agregado local, diferente do identificador numérico do provedor. O valor é decimal em BRL, congelado na cobrança. OS verifica o comando original, Saga, correlação, orçamento, versão e valor. `CobrancaCriada` preserva a causação do comando; os resultados financeiros usam a operação de conferência como causação. A criação do checkout não confirma pagamento, e uma recusa não compensa o trabalho físico nem impede uma aprovação posterior.
+
+Antes de criar a preferência externa, Orçamento/Pagamento confirma a intenção local e o estado `CriacaoEmAndamento`. A chamada HTTP acontece fora da transação SQL. A preferência utiliza o UUID local como `external_reference`; repetições pesquisam essa referência. Como a API de preferências não oferece neste contrato uma garantia documentada de idempotência por header, uma criação incerta não autoriza outro POST automático. Consulta sem resultado, resultado ambíguo ou falha após a intenção exigem conciliação; não se inventa confirmação nem se libera uma segunda cobrança. Uma falha anterior à tentativa, como configuração ausente na consulta inicial, mantém a intenção `Solicitado`, permitindo retomada após corrigir a configuração.
+
+A notificação HTTP exige assinatura HMAC e coerência do identificador entre query e corpo. Ela não é prova de pagamento: o caso de uso consulta o recurso no provedor e confere identidade, referência, moeda e valor. Somente o estado aprovado confirma o agregado; autorização, pendência e cancelamento não significam pagamento. Confirmação, deduplicação e Outbox são atômicas. Recusas e pendências tardias não regridem um pagamento confirmado; estorno, contestação e estado desconhecido exigem conciliação manual, sem rollback automático da execução física.
+
+`GET /api/v1/pagamentos/{pagamentoId}` consulta somente o banco próprio e aplica JWT e restrição ao cliente proprietário. `POST /api/v1/pagamentos/notificacoes/mercado-pago` dispensa JWT, mas exige a assinatura do provedor; responde 200 somente após a conferência e o commit locais. Indisponibilidade externa responde 503 para permitir reentrega. Segue a [documentação de notificações do Checkout Pro](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/payment-notifications). Testes locais usam um provedor substituto e não comprovam recebimento real de Webhooks, credenciais ou implantação.
+
 ### Snapshot e compensação de orçamento
 
 Detalhamento dos dados mínimos para os produtores e consumidores de OS e Orçamento/Pagamento:

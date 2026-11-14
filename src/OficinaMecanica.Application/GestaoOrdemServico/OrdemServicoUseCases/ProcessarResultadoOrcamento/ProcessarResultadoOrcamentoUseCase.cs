@@ -106,11 +106,7 @@ public sealed class ProcessarResultadoOrcamentoUseCase
                     if (saga.Estado == EstadoSagaOrdemServico.ExecucaoAutorizada)
                     {
                         await AdicionarComandoAsync(mensagem, "AutorizarExecucao", saga.VersaoOrcamento, "Execucao",
-                            new
-                            {
-                                PreparacaoId = saga.PreparacaoId!.Value,
-                                VersaoOrcamento = saga.VersaoOrcamento
-                            }, cancellationTokenTransacao);
+                            new AutorizarExecucaoDados(saga.PreparacaoId!.Value, saga.VersaoOrcamento), cancellationTokenTransacao);
                     }
                     else
                     {
