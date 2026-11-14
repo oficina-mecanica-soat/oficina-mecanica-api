@@ -183,7 +183,7 @@ Este esclarecimento não cria outro comando SQS, não muda o envelope v1 e não 
 2. Execução realiza diagnóstico e reserva atômica; sem saldo, retorna recusa sem reserva parcial.
 3. OS solicita orçamento; ao recebê-lo, aguarda decisão. Recusa aciona CancelarPreparacao e CancelarOrcamento. Só registra Saga Compensada após ambas as confirmações.
 4. Aprovação da versão atual libera execução. Conclusão registra Finalizada e solicita cobrança.
-5. Pagamento confirmado pelo provedor libera Entregar OS; consulta de pagamento é local ao serviço de cobrança, nunca ao banco dele por OS.
+5. Pagamento confirmado pelo provedor libera Entregar OS; consulta de pagamento é local ao serviço de cobrança, nunca ao banco dele por OS. A entrega consulta a Saga no banco próprio de OS e exige PagamentoConfirmado antes de alterar o agregado; conhecer pagamentoId não basta. Falha de persistência não equivale a ausência de Saga. Ordens históricas sem Saga preservam a transição legada, até o corte coordenado.
 6. Falha permanente anterior à execução física aciona compensação. Falha de compensação permanece CompensacaoPendente, com repetição e alerta; não anunciar rollback concluído sem confirmação.
 
 Estado da Saga e versão são persistidos separadamente do enum legado. Aplicar comparação de versão na transição; mensagens antigas/duplicadas não regridem estado. Resultado recebido após cancelamento não reabre execução e deve ser reconciliado.

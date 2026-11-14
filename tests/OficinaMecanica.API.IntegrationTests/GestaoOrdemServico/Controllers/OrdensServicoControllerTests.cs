@@ -11,7 +11,9 @@ using OficinaMecanica.API.IntegrationTests.Atendimento.Builders;
 using OficinaMecanica.API.IntegrationTests.Fixtures;
 using OficinaMecanica.API.IntegrationTests.GestaoEstoque.Builders;
 using OficinaMecanica.API.IntegrationTests.GestaoOrdemServico.Builders;
+using OficinaMecanica.Domain.GestaoOrdemServico.Aggregates;
 using OficinaMecanica.Domain.GestaoOrdemServico.Enums;
+using OficinaMecanica.Domain.GestaoOrdemServico.Messages;
 
 namespace OficinaMecanica.API.IntegrationTests.GestaoOrdemServico.Controllers;
 
@@ -280,6 +282,47 @@ public sealed class OrdensServicoControllerTests : ApiIntegrationTestBase
         var response = await Client.GetAsync("/api/v1/clientes/me/ordens-servico");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dado_OrdemFinalizadaComSaga_Quando_EntregarViaHttp_Entao_ExigirPagamentoConfirmado(bool confirmado)
+    {
+        // Arrange
+        var clienteId = await CadastrarClienteAsync();
+        var mecanicoId = await CadastrarMecanicoAsync();
+        var servicoCatalogoId = await CadastrarServicoCatalogoAsync();
+        var ordemId = await CriarOrdemServicoFinalizadaAsync(servicoCatalogoId, clienteId, mecanicoId, "ENT-3001");
+        var saga = SagaOrdemServico.Iniciar(ordemId, 1, 1);
+        saga.RegistrarPreparacao(Guid.NewGuid(), 1);
+        saga.RegistrarOrcamento(Guid.NewGuid(), 1, 150m);
+        saga.RegistrarDecisao(saga.OrcamentoId!.Value, 1, DecisaoOrcamento.Aprovado);
+        saga.RegistrarInicioFisico(saga.PreparacaoId!.Value, 1);
+        saga.RegistrarFinalizacao(saga.PreparacaoId.Value, 1, DateTimeOffset.UtcNow);
+        saga.RegistrarCobranca(saga.OrcamentoId.Value, 1, Guid.NewGuid(), 150m);
+        if (confirmado)
+        {
+            saga.RegistrarPagamento(saga.OrcamentoId.Value, 1, saga.PagamentoId!.Value, 150m);
+        }
+        await using (var dbContext = Fixture.CriarDbContext())
+        {
+            dbContext.SagasOrdemServico.Add(saga);
+            await dbContext.SaveChangesAsync();
+        }
+
+        // Act
+        using var resposta = await Client.PostAsync($"/api/v1/gestao-ordem-servico/ordens-servico/{ordemId}/entregar", null);
+        var status = await GetJsonAsync($"/api/v1/gestao-ordem-servico/ordens-servico/{ordemId}/consultar-status");
+
+        // Assert
+        resposta.StatusCode.Should().Be(confirmado ? HttpStatusCode.OK : HttpStatusCode.UnprocessableEntity);
+        ObterString(status, "status").Should().Be(confirmado ? "Entregue" : "Finalizada");
+        if (!confirmado)
+        {
+            using var corpo = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
+            corpo.RootElement.GetProperty("mensagem").GetString().Should().Be(SagaOrdemServicoErrorMessages.PagamentoNaoConfirmadoParaEntrega);
+        }
     }
 
     private async Task<Guid> CadastrarClienteAsync(

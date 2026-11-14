@@ -11,13 +11,20 @@ namespace OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.En
 public sealed class EntregarOrdemServicoUseCase
 {
     private readonly IOrdemServicoRepository _ordemServicoRepository;
+    private readonly ISagaOrdemServicoRepository _sagaOrdemServicoRepository;
     private readonly IValidator<EntregarOrdemServicoRequest> _validator;
     private readonly IMapper _mapper;
     private readonly ILogger<EntregarOrdemServicoUseCase> _logger;
 
-    public EntregarOrdemServicoUseCase(IOrdemServicoRepository ordemServicoRepository, IValidator<EntregarOrdemServicoRequest> validator, IMapper mapper, ILogger<EntregarOrdemServicoUseCase> logger)
+    public EntregarOrdemServicoUseCase(
+        IOrdemServicoRepository ordemServicoRepository,
+        ISagaOrdemServicoRepository sagaOrdemServicoRepository,
+        IValidator<EntregarOrdemServicoRequest> validator,
+        IMapper mapper,
+        ILogger<EntregarOrdemServicoUseCase> logger)
     {
         _ordemServicoRepository = ordemServicoRepository;
+        _sagaOrdemServicoRepository = sagaOrdemServicoRepository;
         _validator = validator;
         _mapper = mapper;
         _logger = logger;
@@ -38,6 +45,9 @@ public sealed class EntregarOrdemServicoUseCase
         {
             return Result<OrdemServicoResponse>.Falha(OrdemServicoErrorMessages.OrdemServicoNaoEncontrada, TipoErro.NaoEncontrado);
         }
+
+        var saga = await _sagaOrdemServicoRepository.ObterPorOrdemAsync(ordemServico.Id, cancellationToken);
+        saga?.ValidarEntrega();
 
         ordemServico.Entregar();
 
