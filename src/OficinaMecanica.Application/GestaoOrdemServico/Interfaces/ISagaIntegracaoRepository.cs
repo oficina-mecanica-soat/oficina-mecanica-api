@@ -1,5 +1,8 @@
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
 using OficinaMecanica.Domain.GestaoOrdemServico.Aggregates;
-namespace OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
+
+namespace OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 
 public interface ISagaIntegracaoRepository
 {

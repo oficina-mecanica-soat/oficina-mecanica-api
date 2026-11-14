@@ -1,6 +1,8 @@
 using FluentValidation;
 using OficinaMecanica.Application.Common;
+using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoSaga;
 using OficinaMecanica.Application.GestaoOrdemServico.ValidationMessages;
 
@@ -8,20 +10,20 @@ namespace OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.So
 
 public sealed class SolicitarOrcamentoDaOrdemServicoUseCase
 {
-    private readonly ISagaIntegracaoRepository _sagas;
-    private readonly ISnapshotOrcamentoRepository _snapshots;
-    private readonly IRecebimentoMensagemRepository _recebimentos;
-    private readonly SolicitarOrcamentoSagaUseCase _solicitar;
+    private readonly ISagaIntegracaoRepository _sagaIntegracaoRepository;
+    private readonly ISnapshotOrcamentoRepository _snapshotOrcamentoRepository;
+    private readonly IRecebimentoMensagemRepository _recebimentoMensagemRepository;
+    private readonly SolicitarOrcamentoSagaUseCase _solicitarOrcamentoSagaUseCase;
     private readonly IValidator<SolicitarOrcamentoDaOrdemServicoRequest> _validator;
 
     public SolicitarOrcamentoDaOrdemServicoUseCase(ISagaIntegracaoRepository sagas, ISnapshotOrcamentoRepository snapshots,
         IRecebimentoMensagemRepository recebimentos, SolicitarOrcamentoSagaUseCase solicitar,
         IValidator<SolicitarOrcamentoDaOrdemServicoRequest> validator)
     {
-        _sagas = sagas;
-        _snapshots = snapshots;
-        _recebimentos = recebimentos;
-        _solicitar = solicitar;
+        _sagaIntegracaoRepository = sagas;
+        _snapshotOrcamentoRepository = snapshots;
+        _recebimentoMensagemRepository = recebimentos;
+        _solicitarOrcamentoSagaUseCase = solicitar;
         _validator = validator;
     }
 
@@ -34,24 +36,24 @@ public sealed class SolicitarOrcamentoDaOrdemServicoUseCase
         }
 
         var resultado = Result<Guid>.Falha(SagaIntegracaoValidationMessages.SagaNaoEncontrada, TipoErro.NaoEncontrado);
-        await _recebimentos.ExecutarEmTransacaoAsync(async ct =>
+        await _recebimentoMensagemRepository.ExecutarEmTransacaoAsync(async cancellationTokenTransacao =>
         {
-            var saga = await _sagas.ObterAsync(request.SagaId, request.OrdemServicoId, ct);
+            var saga = await _sagaIntegracaoRepository.ObterAsync(request.SagaId, request.OrdemServicoId, cancellationTokenTransacao);
             if (saga is null)
             {
                 return;
             }
-            var anterior = await _sagas.ObterComandoAsync("GerarOrcamento", request.OrdemServicoId, saga.VersaoOrcamento, ct);
+            var anterior = await _sagaIntegracaoRepository.ObterComandoAsync("GerarOrcamento", request.OrdemServicoId, saga.VersaoOrcamento, cancellationTokenTransacao);
             // Reentrega retoma o snapshot persistido, sem reler preços/descrições modificados.
             var snapshot = anterior is null
-                ? await _snapshots.ObterAsync(request.OrdemServicoId, saga.VersaoOrcamento, ct)
+                ? await _snapshotOrcamentoRepository.ObterAsync(request.OrdemServicoId, saga.VersaoOrcamento, cancellationTokenTransacao)
                 : JsonContrato.Ler<GerarOrcamentoDados>(anterior.Dados.GetRawText());
             if (snapshot is null)
             {
                 return;
             }
-            resultado = await _solicitar.ExecuteAsync(new(request.SagaId, request.OrdemServicoId, request.OperacaoId,
-                request.CorrelationId, snapshot), ct);
+            resultado = await _solicitarOrcamentoSagaUseCase.ExecuteAsync(new(request.SagaId, request.OrdemServicoId, request.OperacaoId,
+                request.CorrelationId, snapshot), cancellationTokenTransacao);
         }, cancellationToken);
         return resultado;
     }

@@ -1,3 +1,4 @@
+using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using OficinaMecanica.Domain.GestaoOrdemServico.Interfaces;
 using OficinaMecanica.Infrastructure.GestaoOrdemServico.Repositories;

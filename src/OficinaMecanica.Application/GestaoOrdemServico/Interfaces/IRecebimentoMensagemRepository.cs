@@ -1,4 +1,4 @@
-namespace OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
+namespace OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 
 public interface IRecebimentoMensagemRepository
 {

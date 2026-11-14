@@ -1,3 +1,5 @@
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoPreparacao;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -38,8 +40,14 @@ public sealed class PreparacaoSagaTests(OficinaMecanicaApiFixture fixture) : IAs
             dados.Itens, new(dados.VeiculoId, dados.MecanicoId, dados.Servicos)));
         // Act
         await ProcessarAsync(mensagem);
-        await ProcessarAsync(mensagem with { MensagemId = Guid.NewGuid() });
-        var repeticao = await SolicitarAsync(request with { OperacaoId = Guid.NewGuid() });
+        await ProcessarAsync(mensagem with
+        {
+            MensagemId = Guid.NewGuid()
+        });
+        var repeticao = await SolicitarAsync(request with
+        {
+            OperacaoId = Guid.NewGuid()
+        });
         // Assert
         repeticao.Valor.Should().Be(sagaId);
         await using var verificacao = fixture.CriarDbContext();
@@ -62,7 +70,10 @@ public sealed class PreparacaoSagaTests(OficinaMecanicaApiFixture fixture) : IAs
         var mensagem = Resultado(comando, "PreparacaoRecusada", new PreparacaoRecusadaDados(1, "ESTOQUE_INSUFICIENTE"));
         // Act
         await ProcessarAsync(mensagem);
-        await ProcessarAsync(mensagem with { MensagemId = Guid.NewGuid() });
+        await ProcessarAsync(mensagem with
+        {
+            MensagemId = Guid.NewGuid()
+        });
         // Assert
         await using var contexto = fixture.CriarDbContext();
         var saga = await contexto.SagasOrdemServico.SingleAsync();
@@ -227,8 +238,18 @@ public sealed class PreparacaoSagaTests(OficinaMecanicaApiFixture fixture) : IAs
         var mensagem = Resultado(comando, "ExecucaoPreparada", resultado);
         await ProcessarAsync(mensagem);
         // Act
-        var equivalente = resultado with { Diagnostico = resultado.Diagnostico with { Servicos = [dados.Servicos[0] with { Valor = 150.00m }] } };
-        await ProcessarAsync(mensagem with { MensagemId = Guid.NewGuid(), Dados = JsonSerializer.SerializeToElement(equivalente, JsonContrato.Options) });
+        var equivalente = resultado with
+        {
+            Diagnostico = resultado.Diagnostico with
+            {
+                Servicos = [dados.Servicos[0] with { Valor = 150.00m }]
+            }
+        };
+        await ProcessarAsync(mensagem with
+        {
+            MensagemId = Guid.NewGuid(),
+            Dados = JsonSerializer.SerializeToElement(equivalente, JsonContrato.Options)
+        });
         // Assert
         await FluentActions.Awaiting(() => ProcessarAsync(mensagem with { MensagemId = Guid.NewGuid(), CausationId = Guid.NewGuid() }))
             .Should().ThrowAsync<ContratoMensagemException>();
@@ -264,7 +285,7 @@ public sealed class PreparacaoSagaTests(OficinaMecanicaApiFixture fixture) : IAs
     {
         await using var servicos = CriarServicos();
         await using var scope = servicos.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<ProcessadorResultadoPreparacao>().ProcessarAsync(JsonContrato.Serializar(mensagem));
+        await scope.ServiceProvider.GetRequiredService<ProcessarResultadoPreparacaoUseCase>().ExecuteAsync(JsonContrato.Serializar(mensagem));
     }
 
     private async Task<MensagemIntegracao> ObterComandoAsync(string tipo)

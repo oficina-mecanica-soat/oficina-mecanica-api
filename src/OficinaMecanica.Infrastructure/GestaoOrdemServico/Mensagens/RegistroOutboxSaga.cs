@@ -1,22 +1,41 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
+
 namespace OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
 
 public sealed class RegistroOutboxSaga
 {
-    public Guid Id { get; init; }
-    public Guid OrdemServicoId { get; init; }
-    public int VersaoNegocio { get; init; }
+    public Guid Id
+    { get; init; }
+
+    public Guid OrdemServicoId
+    { get; init; }
+
+    public int VersaoNegocio
+    { get; init; }
+
     public string Tipo { get; init; } = string.Empty;
     public string Destino { get; init; } = string.Empty;
     public string Corpo { get; init; } = string.Empty;
-    public DateTimeOffset CriadoEm { get; init; }
-    public DateTimeOffset? PublicadoEm { get; set; }
-    public Guid? Responsavel { get; set; }
-    public DateTimeOffset? LeaseAte { get; set; }
-    public int Tentativas { get; set; }
-    public DateTimeOffset? ProximaTentativaEm { get; set; }
+    public DateTimeOffset CriadoEm
+    { get; init; }
+
+    public DateTimeOffset? PublicadoEm
+    { get; set; }
+
+    public Guid? Responsavel
+    { get; set; }
+
+    public DateTimeOffset? LeaseAte
+    { get; set; }
+
+    public int Tentativas
+    { get; set; }
+
+    public DateTimeOffset? ProximaTentativaEm
+    { get; set; }
+
     public static RegistroOutboxSaga Criar(MensagemIntegracao mensagem, int versao, string destino) => new()
     {
         Id = mensagem.MensagemId,
@@ -27,18 +46,4 @@ public sealed class RegistroOutboxSaga
         Corpo = JsonContrato.Serializar(mensagem),
         CriadoEm = mensagem.OcorridoEm
     };
-}
-public sealed class RegistroOutboxSagaConfiguration : IEntityTypeConfiguration<RegistroOutboxSaga>
-{
-    public void Configure(EntityTypeBuilder<RegistroOutboxSaga> builder)
-    {
-        builder.ToTable("OutboxSaga", "GestaoOrdemServico");
-        builder.HasKey(r => r.Id);
-        builder.Property(r => r.Id).ValueGeneratedNever();
-        builder.Property(r => r.Tipo).HasMaxLength(64).IsRequired();
-        builder.Property(r => r.Destino).HasMaxLength(32).IsRequired();
-        builder.Property(r => r.Corpo).IsRequired();
-        builder.HasIndex(r => new { r.Tipo, r.OrdemServicoId, r.VersaoNegocio }).IsUnique();
-        builder.HasIndex(r => r.PublicadoEm);
-    }
 }

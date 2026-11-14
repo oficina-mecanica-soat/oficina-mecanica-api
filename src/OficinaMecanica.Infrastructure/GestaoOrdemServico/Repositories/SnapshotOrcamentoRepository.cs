@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
+using OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Infrastructure.Persistence;
 
-namespace OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
+namespace OficinaMecanica.Infrastructure.GestaoOrdemServico.Repositories;
 
 public sealed class SnapshotOrcamentoRepository : ISnapshotOrcamentoRepository
 {
