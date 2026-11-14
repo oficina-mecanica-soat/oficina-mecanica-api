@@ -61,9 +61,9 @@ public sealed class ProcessarResultadoPagamentoUseCase
                 {
                     saga.RegistrarPagamento(dados.OrcamentoId, dados.Versao, dados.PagamentoId, dados.Valor);
                 }
-                else if (saga.PagamentoId.HasValue && saga.PagamentoId != dados.PagamentoId)
+                else
                 {
-                    throw new ContratoMensagemException("PAGAMENTO_DIVERGENTE");
+                    saga.RegistrarCobranca(dados.OrcamentoId, dados.Versao, dados.PagamentoId, dados.Valor);
                 }
             }
             await _inbox.RegistrarAsync(mensagem.MensagemId, chave, hash, ct);

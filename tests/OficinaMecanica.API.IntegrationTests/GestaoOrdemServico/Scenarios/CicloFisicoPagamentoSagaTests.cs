@@ -264,4 +264,55 @@ public sealed class CicloFisicoPagamentoSagaTests : IAsyncLifetime
         await using var dbContext = _fixture.CriarDbContext();
         (await dbContext.Set<SagaOrdemServico>().SingleAsync()).PagamentoId.Should().BeNull();
     }
+
+    [RequiresDockerFact]
+    public async Task Dado_CobrancaCriada_Quando_ConfirmacaoChegarDepois_Entao_DevePersistirIdentidadeEAvancarSomenteNaConfirmacao()
+    {
+        // Arrange
+        var saga = await PrepararAsync();
+        var comandoId = await FinalizarAsync(saga);
+        var dados = new ResultadoPagamentoDados(Guid.NewGuid(), saga.OrcamentoId!.Value, 3, 150m);
+
+        // Act
+        await ProcessarPagamentoAsync(Mensagem(saga, "CobrancaCriada", dados, comandoId));
+        await using (var intermediario = _fixture.CriarDbContext())
+        {
+            var aguardando = await intermediario.SagasOrdemServico.SingleAsync();
+            aguardando.PagamentoId.Should().Be(dados.PagamentoId);
+            aguardando.Estado.Should().Be(EstadoSagaOrdemServico.AguardandoPagamento);
+        }
+        await ProcessarPagamentoAsync(Mensagem(saga, "PagamentoConfirmado", dados));
+
+        // Assert
+        await using var verificacao = _fixture.CriarDbContext();
+        var confirmada = await verificacao.SagasOrdemServico.SingleAsync();
+        confirmada.PagamentoId.Should().Be(dados.PagamentoId);
+        confirmada.Estado.Should().Be(EstadoSagaOrdemServico.PagamentoConfirmado);
+    }
+
+    [RequiresDockerFact]
+    public async Task Dado_CobrancaConhecida_Quando_OutraIdentidadeForConfirmada_Entao_DeveRejeitarSemConfirmarRecibo()
+    {
+        // Arrange
+        var saga = await PrepararAsync();
+        var comandoId = await FinalizarAsync(saga);
+        var dados = new ResultadoPagamentoDados(Guid.NewGuid(), saga.OrcamentoId!.Value, 3, 150m);
+        await ProcessarPagamentoAsync(Mensagem(saga, "CobrancaCriada", dados, comandoId));
+        int recibos;
+        await using (var inicial = _fixture.CriarDbContext())
+        {
+            recibos = await inicial.Set<RecebimentoMensagem>().CountAsync();
+        }
+
+        // Act
+        var tentativa = () => ProcessarPagamentoAsync(Mensagem(saga, "PagamentoConfirmado", dados with { PagamentoId = Guid.NewGuid() }));
+
+        // Assert
+        await tentativa.Should().ThrowAsync<DomainException>();
+        await using var verificacao = _fixture.CriarDbContext();
+        var aguardando = await verificacao.SagasOrdemServico.SingleAsync();
+        aguardando.Estado.Should().Be(EstadoSagaOrdemServico.AguardandoPagamento);
+        aguardando.PagamentoId.Should().Be(dados.PagamentoId);
+        (await verificacao.Set<RecebimentoMensagem>().CountAsync()).Should().Be(recibos);
+    }
 }

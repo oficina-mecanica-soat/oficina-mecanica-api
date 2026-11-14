@@ -2,6 +2,7 @@ namespace OficinaMecanica.Domain.GestaoOrdemServico.Messages;
 
 public static class SagaOrdemServicoErrorMessages
 {
+    public const string AndamentoNaoEncontrado = "Andamento da ordem de serviço não encontrado.";
     public const string IdentificadorObrigatorio = "Identificador da Saga ou do resultado é obrigatório.";
     public const string VersaoInvalida = "Versão de negócio da Saga inválida.";
     public const string TransicaoInvalida = "Transição da Saga inválida para o estado atual.";
