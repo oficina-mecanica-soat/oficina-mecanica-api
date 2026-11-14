@@ -104,6 +104,9 @@ O transporte por arquivos utilizado nas provas locais não emula FIFO, DLQ, IAM 
 
 ### Composição dos workers SQS
 
+A infraestrutura própria de Orçamento/Pagamento publica `entrada_queue_url`, `entrada_queue_arn`, `dlq_url` e `dlq_arn` sob `/oficina-mecanica/{ambiente}/orcamento-pagamento`. O parâmetro `/oficina-mecanica/{ambiente}/status/orcamento-pagamento=ready` atesta somente a mensageria. Não equivale a banco disponível, workload implantado, consumidor ativo ou pagamento. A política da DLQ autoriza somente a entrada própria; o CD dessa infraestrutura não promove código da aplicação. Na destruição, a guarda exige ausência do contrato do produtor OS e nenhuma mensagem observada na entrada/DLQ, repetindo a conferência antes do plano salvo ser aplicado; não verifica nem drena Outbox SQL.
+
+
 OS e Orçamento/Pagamento mantêm `ProcessamentoRemoto:Habilitado=false` por padrão. O host somente cria clientes e workers quando a implantação oficial habilita o modo remoto. A conta (`ContaEsperada`), a `Regiao` e as URLs FIFO são injetadas pela esteira, a partir dos contratos publicados pelos owners da infraestrutura. OS recebe `FilaEntradaUrl`, `FilaExecucaoUrl` e `FilaOrcamentoPagamentoUrl`; Orçamento/Pagamento recebe `FilaEntradaUrl` e `FilaResultadosOsUrl`. As filas de cada composição são distintas, da mesma conta e região. A fonte de credenciais e a verificação STS da `LabRole` seguem a implementação acadêmica do Execução, sem fallback para credenciais locais.
 
 `IProcessadorMensagem` é uma porta técnica da Application. O caso de uso de entrada valida o envelope e encaminha somente os tipos conhecidos aos casos de uso existentes; não decide transições, valores ou compensações. O consumidor SQS fica na Infrastructure, confere `MessageGroupId=ordemServicoId` e `MessageDeduplicationId=mensagemId`, e exclui a entrada somente após a conclusão do processamento. Processamento pendente de conciliação não confirma a entrada.
