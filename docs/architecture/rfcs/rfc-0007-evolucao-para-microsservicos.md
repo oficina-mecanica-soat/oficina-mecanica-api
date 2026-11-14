@@ -102,6 +102,25 @@ Detalhamento dos dados mínimos para os produtores e consumidores de OS e Orçam
 
 O transporte por arquivos utilizado nas provas locais não emula FIFO, DLQ, IAM ou visibilidade do SQS. Publicação/consumo em AWS, ativação nas rotas de OS e corte do ownership continuam sujeitos à integração e à janela autorizada; estes testes não concluem o fluxo distribuído implantado.
 
+### Implantação e ingresso privado dos serviços
+
+A API principal é a referência de código, organização e estilo. Infraestrutura e CI/CD seguem as esteiras maduras das fases anteriores. O Execução é consultado como produtor/consumidor de contratos, sem substituir essas referências de implementação.
+
+Orçamento/Pagamento implanta namespace, ConfigMap, Secret, Deployment, Service NodePort e HPA próprios pelo CD, usando a mesma imagem validada pela CI e o plano salvo da tentativa. Migrations permanecem no startup conforme a API, usando somente o login do banco próprio. Probes e admissão do Datadog seguem a API. Workers SQS e Mercado Pago iniciam desligados; ativação exige configuração explícita.
+
+A infraestrutura Kubernetes estende o NLB privado existente com listeners/target groups independentes, sem outro balanceador nem renomear o ingresso da API. Contratos String sob o prefixo Kubernetes:
+
+| Serviço | NodePort | Listener TCP | Contratos SSM novos |
+| --- | --- | --- | --- |
+| Execução | 30081 | 8081 | execucao_internal_node_port; execucao_internal_nlb_listener_arn |
+| Orçamento/Pagamento | 30082 | 8082 | orcamento_pagamento_internal_node_port; orcamento_pagamento_internal_nlb_listener_arn |
+
+O Gateway encaminha as famílias /api/v1/execucoes, /api/v1/orcamentos e /api/v1/pagamentos aos listeners dos owners, preservando caminho, Authorization e os headers assinados do Mercado Pago. A consulta privada de clientes permanece fora das rotas públicas. Regras de rede restringem ingresso ao security group do VPC Link, como na API; nenhum NodePort é liberado à internet. O corte coordenado é explícito e inicia desligado, sem duas implementações ativas da mesma mutação de negócio.
+
+O status /oficina-mecanica/development/status/orcamento-pagamento-aplicacao fica implantacao-pendente antes do apply e só recebe ready após rollout da imagem esperada, conferência de Service e health privado. Status de fila, banco e plataforma não substituem essa prova nem comprovam consumo, pagamento ou traces.
+
+Plano e state da aplicação contêm Secret Kubernetes e são publicados somente cifrados/autenticados, com chave exclusiva no Environment development restrito a develop. A restauração confere repositório, conta, ambiente e, no plano, execução/tentativa/commit. Não trocar a chave sem migração e cópia de recuperação. Caches antigos não são adotados ou descartados automaticamente; a evolução do backend e a contenção dos outros repositórios continuam no backlog.
+
 ### Registry próprio de Orçamento/Pagamento
 
 O registry permanece sob ownership da infraestrutura Kubernetes, conforme a ADR-0023. Orçamento/Pagamento consome `orcamento_pagamento_ecr_repository_name` e `orcamento_pagamento_ecr_repository_url` sob `/oficina-mecanica/development/kubernetes`. O nome padrão é `oficina-mecanica-orcamento-pagamento`; tags imutáveis e varredura seguem o módulo existente. Plataforma gerencia criação/remoção e valida contratos; a esteira da aplicação é responsável pela imagem e pelo workload. A disponibilidade da plataforma não comprova aplicação implantada.
