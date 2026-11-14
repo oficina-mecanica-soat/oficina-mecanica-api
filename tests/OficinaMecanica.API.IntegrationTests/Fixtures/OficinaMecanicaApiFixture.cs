@@ -123,6 +123,7 @@ public sealed class OficinaMecanicaApiFixture : IAsyncLifetime
             ["ConnectionStrings__DefaultConnection"] = connectionString,
             ["Database__ApplyMigrationsOnStartup"] = "false",
             ["Database__SeedDemoData"] = "false",
+            ["ProcessamentoRemoto__Habilitado"] = "false",
             ["Jwt__Issuer"] = "oficina-mecanica-auth",
             ["Jwt__Audience"] = "oficina-mecanica-api",
             ["Jwt__Secret"] = "oficina-mecanica-api-chave-academica-jwt-2026",

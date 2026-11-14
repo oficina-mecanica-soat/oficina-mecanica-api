@@ -8,8 +8,6 @@ using OficinaMecanica.API.IntegrationTests.GestaoOrdemServico.Factories;
 using OficinaMecanica.Application;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
-using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoExecucao;
-using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoPagamento;
 using OficinaMecanica.Domain.GestaoOrdemServico.Aggregates;
 using OficinaMecanica.Domain.GestaoOrdemServico.Enums;
 using OficinaMecanica.Domain.Shared.Exceptions;
@@ -68,14 +66,14 @@ public sealed class CicloFisicoPagamentoSagaTests : IAsyncLifetime
     {
         await using var services = CriarServicos();
         await using var scope = services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<ProcessarResultadoExecucaoUseCase>().ExecuteAsync(JsonContrato.Serializar(mensagem));
+        await scope.ServiceProvider.GetRequiredService<OficinaMecanica.Application.GestaoOrdemServico.Interfaces.IProcessadorMensagem>().ProcessarAsync(JsonContrato.Serializar(mensagem));
     }
 
     private async Task ProcessarPagamentoAsync(MensagemIntegracao mensagem)
     {
         await using var services = CriarServicos();
         await using var scope = services.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<ProcessarResultadoPagamentoUseCase>().ExecuteAsync(JsonContrato.Serializar(mensagem));
+        await scope.ServiceProvider.GetRequiredService<OficinaMecanica.Application.GestaoOrdemServico.Interfaces.IProcessadorMensagem>().ProcessarAsync(JsonContrato.Serializar(mensagem));
     }
 
     private async Task<Guid> FinalizarAsync(SagaOrdemServico saga)

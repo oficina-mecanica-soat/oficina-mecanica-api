@@ -5,6 +5,8 @@ using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.Proces
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoOrcamento;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoExecucao;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoPagamento;
+using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarMensagemSaga;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.AbrirOrdemServico;
@@ -72,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<ProcessarResultadoOrcamentoUseCase>();
         services.AddScoped<ProcessarResultadoExecucaoUseCase>();
         services.AddScoped<ProcessarResultadoPagamentoUseCase>();
+        services.AddScoped<IProcessadorMensagem, ProcessarMensagemSagaUseCase>();
         services.AddScoped<ProcessarResultadoPreparacaoUseCase>();
         services.AddScoped<SolicitarPreparacaoOrdemServicoUseCase>();
         services.AddScoped<IValidator<SolicitarPreparacaoOrdemServicoRequest>, SolicitarPreparacaoOrdemServicoValidator>();
