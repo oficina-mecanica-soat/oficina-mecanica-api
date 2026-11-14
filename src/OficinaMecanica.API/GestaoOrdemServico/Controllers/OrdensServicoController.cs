@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using OficinaMecanica.API.Extensions.Responses;
 using OficinaMecanica.API.Extensions.Security;
@@ -7,6 +8,8 @@ using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.AbrirO
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.AguardarAprovacaoOrcamento;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.CancelarOrdemServico;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ConsultarStatusOrdemServico;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ConsultarAndamentoOrdemServico;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.Responses;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ConsultarTempoMedioExecucaoServico;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.DefinirServicos;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.DetalharOrdemServico;
@@ -44,6 +47,23 @@ public sealed class OrdensServicoController : ControllerBase
         var result = await useCase.ExecuteAsync(new DetalharOrdemServicoRequest(ordemServicoId), cancellationToken);
 
         return this.ToActionResult(result);
+    }
+
+    [HttpGet("ordens-servico/{ordemServicoId:guid}/consultar-andamento")]
+    [Authorize(Roles = PerfisAcesso.AdministradorAtendenteMecanicoCliente)]
+    [ProducesResponseType(typeof(AndamentoOrdemServicoResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ConsultarAndamento([FromServices] ConsultarAndamentoOrdemServicoUseCase useCase, Guid ordemServicoId, CancellationToken cancellationToken)
+    {
+        Guid? clienteId = null;
+        if (User.IsInRole(PerfisAcesso.Cliente))
+        {
+            if (!Guid.TryParse(User.FindFirstValue("cliente_id"), out var identificador) || identificador == Guid.Empty)
+            {
+                return Forbid();
+            }
+            clienteId = identificador;
+        }
+        return this.ToActionResult(await useCase.ExecuteAsync(new(ordemServicoId, clienteId), cancellationToken));
     }
 
     [HttpGet("ordens-servico/{ordemServicoId:guid}/consultar-status")]

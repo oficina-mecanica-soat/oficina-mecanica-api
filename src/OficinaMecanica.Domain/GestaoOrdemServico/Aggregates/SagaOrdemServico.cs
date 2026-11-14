@@ -165,7 +165,7 @@ public sealed class SagaOrdemServico
         Estado = EstadoSagaOrdemServico.AguardandoPagamento;
     }
 
-    public void RegistrarPagamento(Guid orcamentoId, int versaoOrcamento, Guid pagamentoId, decimal valor)
+    public void RegistrarCobranca(Guid orcamentoId, int versaoOrcamento, Guid pagamentoId, decimal valor)
     {
         ExigirOrcamento(orcamentoId, versaoOrcamento);
         ValidarIdentificador(pagamentoId);
@@ -174,6 +174,10 @@ public sealed class SagaOrdemServico
             throw new DomainException(SagaOrdemServicoErrorMessages.ValorInvalido);
         }
 
+        if (PagamentoId.HasValue && PagamentoId != pagamentoId)
+        {
+            throw new DomainException(SagaOrdemServicoErrorMessages.ResultadoDivergente);
+        }
         if (PagamentoId == pagamentoId)
         {
             return;
@@ -181,6 +185,16 @@ public sealed class SagaOrdemServico
 
         ExigirEstado(EstadoSagaOrdemServico.AguardandoPagamento);
         PagamentoId = pagamentoId;
+    }
+
+    public void RegistrarPagamento(Guid orcamentoId, int versaoOrcamento, Guid pagamentoId, decimal valor)
+    {
+        RegistrarCobranca(orcamentoId, versaoOrcamento, pagamentoId, valor);
+        if (Estado == EstadoSagaOrdemServico.PagamentoConfirmado)
+        {
+            return;
+        }
+        ExigirEstado(EstadoSagaOrdemServico.AguardandoPagamento);
         Estado = EstadoSagaOrdemServico.PagamentoConfirmado;
     }
 
