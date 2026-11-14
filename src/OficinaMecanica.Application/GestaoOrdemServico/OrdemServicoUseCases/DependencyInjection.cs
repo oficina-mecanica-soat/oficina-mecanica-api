@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<FinalizarServicoUseCase>();
         services.AddScoped<FinalizarOrdemServicoUseCase>();
         services.AddScoped<CancelarOrdemServicoUseCase>();
+        services.AddScoped<SolicitarCancelamentoOrdemServicoUseCase>();
         services.AddScoped<EntregarOrdemServicoUseCase>();
         services.AddScoped<DetalharOrdemServicoUseCase>();
         services.AddScoped<ListarOrdensServicoUseCase>();

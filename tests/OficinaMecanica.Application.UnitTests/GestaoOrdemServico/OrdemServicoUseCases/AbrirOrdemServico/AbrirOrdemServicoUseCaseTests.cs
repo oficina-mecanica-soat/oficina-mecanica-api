@@ -2,6 +2,9 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using OficinaMecanica.Application.Common;
+using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarPreparacaoOrdemServico;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoSaga;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.AbrirOrdemServico;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ReservarPecaInsumo;
 using OficinaMecanica.Application.UnitTests.Atendimento.Factories;
@@ -419,6 +422,17 @@ public class AbrirOrdemServicoUseCaseTests
             (unitOfWork ?? CriarUnitOfWork()).Object,
             new AbrirOrdemServicoValidator(),
             MapperFactory.Criar(),
+            new SolicitarPreparacaoOrdemServicoUseCase(
+                Mock.Of<ISagaOrdemServicoRepository>(),
+                Mock.Of<IOutbox>(),
+                Mock.Of<ISnapshotOrcamentoStore>(),
+                Mock.Of<IConsultaSnapshotOrcamento>(),
+                ordemServicoRepository.Object,
+                Mock.Of<IInbox>(),
+                new SolicitarPreparacaoOrdemServicoValidator(),
+                new SolicitarOrcamentoSagaValidator(),
+                TimeProvider.System,
+                NullLogger<SolicitarPreparacaoOrdemServicoUseCase>.Instance),
             NullLogger<AbrirOrdemServicoUseCase>.Instance);
     }
 }

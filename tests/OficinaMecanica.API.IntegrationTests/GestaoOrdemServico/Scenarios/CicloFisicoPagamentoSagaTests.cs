@@ -8,6 +8,7 @@ using OficinaMecanica.API.IntegrationTests.GestaoOrdemServico.Factories;
 using OficinaMecanica.Application;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.EntregarOrdemServico;
 using OficinaMecanica.Domain.GestaoOrdemServico.Aggregates;
 using OficinaMecanica.Domain.GestaoOrdemServico.Enums;
 using OficinaMecanica.Domain.Shared.Exceptions;
@@ -82,6 +83,34 @@ public sealed class CicloFisicoPagamentoSagaTests : IAsyncLifetime
         await ProcessarExecucaoAsync(Mensagem(saga, "ExecucaoFinalizada", new ExecucaoFinalizadaDados(saga.PreparacaoId.Value, 3, DateTimeOffset.UtcNow)));
         await using var dbContext = _fixture.CriarDbContext();
         return (await dbContext.Set<RegistroOutboxSaga>().SingleAsync(o => o.Tipo == "CriarCobranca")).Id;
+    }
+
+    [RequiresDockerFact]
+    public async Task Dado_ExecucaoFinalizada_Quando_Entregar_Entao_DeveExigirPagamentoEUsarEstadoProjetadoDaOrdem()
+    {
+        // Arrange
+        var saga = await PrepararAsync();
+        var comandoId = await FinalizarAsync(saga);
+        var dados = new ResultadoPagamentoDados(Guid.NewGuid(), saga.OrcamentoId!.Value, 3, 150m);
+        await using var servicos = CriarServicos();
+        await using (var escopo = servicos.CreateAsyncScope())
+        {
+            var entregar = escopo.ServiceProvider.GetRequiredService<EntregarOrdemServicoUseCase>();
+            var tentativa = () => entregar.ExecuteAsync(new(saga.OrdemServicoId));
+            await tentativa.Should().ThrowAsync<DomainException>();
+        }
+        await ProcessarPagamentoAsync(Mensagem(saga, "CobrancaCriada", dados, comandoId));
+        await ProcessarPagamentoAsync(Mensagem(saga, "PagamentoConfirmado", dados));
+
+        // Act
+        await using var escopoEntrega = servicos.CreateAsyncScope();
+        var resultado = await escopoEntrega.ServiceProvider.GetRequiredService<EntregarOrdemServicoUseCase>()
+            .ExecuteAsync(new(saga.OrdemServicoId));
+
+        // Assert
+        resultado.Sucesso.Should().BeTrue();
+        await using var contexto = _fixture.CriarDbContext();
+        (await contexto.OrdensServico.SingleAsync()).Status.Should().Be(StatusOrdemServico.Entregue);
     }
 
     [Theory]

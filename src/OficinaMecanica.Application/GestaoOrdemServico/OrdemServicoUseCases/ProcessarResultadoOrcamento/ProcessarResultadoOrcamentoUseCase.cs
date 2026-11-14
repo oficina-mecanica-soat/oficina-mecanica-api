@@ -13,16 +13,19 @@ public sealed class ProcessarResultadoOrcamentoUseCase
     private readonly ISagaOrdemServicoRepository _sagaOrdemServicoRepository;
     private readonly IOutbox _outbox;
     private readonly TimeProvider _relogio;
+    private readonly IOrdemServicoRepository _ordemServicoRepository;
 
     public ProcessarResultadoOrcamentoUseCase(
         IInbox inbox,
         ISagaOrdemServicoRepository sagaOrdemServicoRepository,
         IOutbox outbox,
+        IOrdemServicoRepository ordemServicoRepository,
         TimeProvider relogio)
     {
         _inbox = inbox;
         _sagaOrdemServicoRepository = sagaOrdemServicoRepository;
         _outbox = outbox;
+        _ordemServicoRepository = ordemServicoRepository;
         _relogio = relogio;
     }
 
@@ -99,6 +102,12 @@ public sealed class ProcessarResultadoOrcamentoUseCase
                         throw new ContratoMensagemException("SNAPSHOT_DIVERGENTE");
                     }
                     saga.RegistrarOrcamento(gerado.OrcamentoId, versao, gerado.ValorTotal);
+                    if (saga.Estado == EstadoSagaOrdemServico.AguardandoAprovacao)
+                    {
+                        var ordem = await _ordemServicoRepository.ObterPorIdAsync(saga.OrdemServicoId, cancellationTokenTransacao)
+                            ?? throw new ContratoMensagemException("ORDEM_NAO_ENCONTRADA");
+                        ordem.RegistrarOrcamentoExterno();
+                    }
                 }
                 else if (dados is OrcamentoDecididoDados decidido)
                 {
@@ -131,6 +140,22 @@ public sealed class ProcessarResultadoOrcamentoUseCase
                 else if (dados is PreparacaoCanceladaDados preparacao)
                 {
                     saga.ConfirmarCancelamentoPreparacao(preparacao.PreparacaoId, versao);
+                }
+                if (saga.Estado == EstadoSagaOrdemServico.Compensada)
+                {
+                    var cancelamento = await _outbox.ObterComandoAsync("CancelarPreparacao", saga.OrdemServicoId, saga.VersaoPreparacao, cancellationTokenTransacao);
+                    if (cancelamento is not null)
+                    {
+                        var motivo = cancelamento.Dados.GetProperty("motivo").GetString() switch
+                        {
+                            "Orçamento recusado" => MotivoCancelamentoOrdemServico.ReprovacaoOrcamento,
+                            "Estoque insuficiente" => MotivoCancelamentoOrdemServico.EstoqueInsuficiente,
+                            _ => throw new ContratoMensagemException("MOTIVO_INVALIDO")
+                        };
+                        var ordem = await _ordemServicoRepository.ObterPorIdAsync(saga.OrdemServicoId, cancellationTokenTransacao)
+                            ?? throw new ContratoMensagemException("ORDEM_NAO_ENCONTRADA");
+                        ordem.Cancelar(motivo);
+                    }
                 }
             }
             await _inbox.RegistrarAsync(mensagem.MensagemId, chave, hash, cancellationTokenTransacao);

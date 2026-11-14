@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -33,8 +34,16 @@ public sealed class OrdensServicoController : ControllerBase
 {
     [HttpPost("ordens-servico/cadastrar")]
     [Authorize(Roles = PerfisAcesso.AdministradorAtendente)]
-    public async Task<IActionResult> Abrir([FromServices] AbrirOrdemServicoUseCase useCase, [FromBody] AbrirOrdemServicoRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Abrir([FromServices] AbrirOrdemServicoUseCase useCase, [FromBody] AbrirOrdemServicoRequest request, [FromServices] IOptions<FluxoDistribuidoOptions> fluxo, CancellationToken cancellationToken)
     {
+        if (fluxo.Value.Habilitado)
+        {
+            var distribuido = await useCase.ExecuteDistribuidoAsync(request, cancellationToken);
+            return distribuido.Sucesso
+                ? AcceptedAtAction(nameof(ConsultarAndamento), new { ordemServicoId = distribuido.Valor!.Id }, distribuido.Valor)
+                : this.ToActionResult(distribuido);
+        }
+
         var result = await useCase.ExecuteAsync(request, cancellationToken);
 
         return this.ToCreatedAtActionResult(result, nameof(Detalhar), ordemServico => new { ordemServicoId = ordemServico.Id });
@@ -93,6 +102,7 @@ public sealed class OrdensServicoController : ControllerBase
         return this.ToActionResult(result);
     }
 
+    [ExigirFluxoLegado]
     [HttpPost("ordens-servico/{ordemServicoId:guid}/iniciar-diagnostico")]
     [Authorize(Roles = PerfisAcesso.AdministradorMecanico)]
     public async Task<IActionResult> IniciarDiagnostico([FromServices] IniciarDiagnosticoOrdemServicoUseCase useCase, Guid ordemServicoId, CancellationToken cancellationToken)
@@ -102,6 +112,7 @@ public sealed class OrdensServicoController : ControllerBase
         return this.ToActionResult(result);
     }
 
+    [ExigirFluxoLegado]
     [HttpPut("ordens-servico/{ordemServicoId:guid}/definir-servicos")]
     [Authorize(Roles = PerfisAcesso.AdministradorMecanico)]
     public async Task<IActionResult> DefinirServicos([FromServices] DefinirServicosUseCase useCase, Guid ordemServicoId, [FromBody] DefinirServicosRequest request, CancellationToken cancellationToken)
@@ -111,6 +122,7 @@ public sealed class OrdensServicoController : ControllerBase
         return this.ToActionResult(result);
     }
 
+    [ExigirFluxoLegado]
     [HttpPost("ordens-servico/{ordemServicoId:guid}/reservar-pecas-insumos")]
     [Authorize(Roles = PerfisAcesso.AdministradorMecanico)]
     public async Task<IActionResult> ReservarPecasInsumos([FromServices] ReservarPecaInsumoUseCase useCase, Guid ordemServicoId, [FromBody] ReservarPecaInsumoRequest request, CancellationToken cancellationToken)
@@ -120,6 +132,7 @@ public sealed class OrdensServicoController : ControllerBase
         return this.ToActionResult(result);
     }
 
+    [ExigirFluxoLegado]
     [HttpPost("ordens-servico/{ordemServicoId:guid}/aguardar-aprovacao")]
     [Authorize(Roles = PerfisAcesso.AdministradorAtendente)]
     public async Task<IActionResult> AguardarAprovacaoOrcamento([FromServices] AguardarAprovacaoOrcamentoUseCase useCase, Guid ordemServicoId, CancellationToken cancellationToken)
@@ -129,6 +142,7 @@ public sealed class OrdensServicoController : ControllerBase
         return this.ToActionResult(result);
     }
 
+    [ExigirFluxoLegado]
     [HttpPost("ordens-servico/{ordemServicoId:guid}/orcamento/notificacoes")]
     [AllowAnonymous]
     [WebhookTokenAuthorize]
@@ -139,6 +153,7 @@ public sealed class OrdensServicoController : ControllerBase
         return this.ToActionResult(result);
     }
 
+    [ExigirFluxoLegado]
     [HttpPost("ordens-servico/{ordemServicoId:guid}/iniciar-execucao")]
     [Authorize(Roles = PerfisAcesso.AdministradorAtendente)]
     public async Task<IActionResult> IniciarExecucao([FromServices] IniciarExecucaoOrdemServicoUseCase useCase, Guid ordemServicoId, CancellationToken cancellationToken)
@@ -148,6 +163,7 @@ public sealed class OrdensServicoController : ControllerBase
         return this.ToActionResult(result);
     }
 
+    [ExigirFluxoLegado]
     [HttpPost("ordens-servico/{ordemServicoId:guid}/servicos/{servicoId:guid}/iniciar-execucao")]
     [Authorize(Roles = PerfisAcesso.AdministradorMecanico)]
     public async Task<IActionResult> IniciarExecucaoServico([FromServices] IniciarExecucaoServicoUseCase useCase, Guid ordemServicoId, Guid servicoId, CancellationToken cancellationToken)
@@ -157,6 +173,7 @@ public sealed class OrdensServicoController : ControllerBase
         return this.ToActionResult(result);
     }
 
+    [ExigirFluxoLegado]
     [HttpPost("ordens-servico/{ordemServicoId:guid}/servicos/{servicoId:guid}/finalizar")]
     [Authorize(Roles = PerfisAcesso.AdministradorMecanico)]
     public async Task<IActionResult> FinalizarServico([FromServices] FinalizarServicoUseCase useCase, Guid ordemServicoId, Guid servicoId, CancellationToken cancellationToken)
@@ -166,6 +183,7 @@ public sealed class OrdensServicoController : ControllerBase
         return this.ToActionResult(result);
     }
 
+    [ExigirFluxoLegado]
     [HttpPost("ordens-servico/{ordemServicoId:guid}/finalizar")]
     [Authorize(Roles = PerfisAcesso.AdministradorMecanico)]
     public async Task<IActionResult> Finalizar([FromServices] FinalizarOrdemServicoUseCase useCase, Guid ordemServicoId, CancellationToken cancellationToken)
@@ -186,8 +204,16 @@ public sealed class OrdensServicoController : ControllerBase
 
     [HttpPost("ordens-servico/{ordemServicoId:guid}/cancelar")]
     [Authorize(Roles = PerfisAcesso.AdministradorAtendenteMecanico)]
-    public async Task<IActionResult> Cancelar([FromServices] CancelarOrdemServicoUseCase useCase, Guid ordemServicoId, [FromBody] CancelarOrdemServicoRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Cancelar([FromServices] CancelarOrdemServicoUseCase useCase, Guid ordemServicoId, [FromBody] CancelarOrdemServicoRequest request, [FromServices] SolicitarCancelamentoOrdemServicoUseCase solicitarCancelamento, [FromServices] IOptions<FluxoDistribuidoOptions> fluxo, CancellationToken cancellationToken)
     {
+        if (fluxo.Value.Habilitado)
+        {
+            var distribuido = await solicitarCancelamento.ExecuteAsync(request with { OrdemServicoId = ordemServicoId }, cancellationToken);
+            return distribuido.Sucesso
+                ? AcceptedAtAction(nameof(ConsultarAndamento), new { ordemServicoId }, new { SagaId = distribuido.Valor })
+                : this.ToActionResult(distribuido);
+        }
+
         var result = await useCase.ExecuteAsync(request with { OrdemServicoId = ordemServicoId }, cancellationToken);
 
         return this.ToActionResult(result);

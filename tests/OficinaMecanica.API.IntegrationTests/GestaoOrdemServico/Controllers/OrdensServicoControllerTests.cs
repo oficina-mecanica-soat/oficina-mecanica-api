@@ -1,11 +1,16 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
+using OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.API.IntegrationTests.Administrativo.Builders;
 using OficinaMecanica.API.IntegrationTests.Atendimento.Builders;
 using OficinaMecanica.API.IntegrationTests.Fixtures;
@@ -21,6 +26,146 @@ namespace OficinaMecanica.API.IntegrationTests.GestaoOrdemServico.Controllers;
 public sealed class OrdensServicoControllerTests : ApiIntegrationTestBase
 {
     private static readonly string[] StatusHistoricoEsperados = ["Finalizada", "Entregue", "Cancelada"];
+
+    [RequiresDockerFact]
+    public async Task Dado_FluxoDistribuido_Quando_AbrirComPecas_Entao_DevePersistirSagaEOutboxSemReservarEstoqueLegado()
+    {
+        // Arrange
+        var clienteId = await CadastrarClienteAsync();
+        var veiculoId = await CadastrarVeiculoAsync(clienteId, "DST-1001");
+        var mecanicoId = await CadastrarMecanicoAsync();
+        var servicoId = await CadastrarServicoCatalogoAsync();
+        var pecaId = await CadastrarPecaInsumoCatalogoAsync();
+        await RegistrarEntradaEstoqueAsync(pecaId);
+        var request = OrdemServicoRequestBuilder.Novo().ComClienteId(clienteId).ComVeiculoId(veiculoId)
+            .ComMecanicoId(mecanicoId).ComServicoCatalogoId(servicoId).ComPecaInsumo(pecaId, 1)
+            .BuildAbertura() with
+        { FilialId = Guid.NewGuid() };
+        await using var antes = Fixture.CriarDbContext();
+        var quantidadeDisponivel = (await antes.Estoques.Include(e => e.ItensEstoque).SingleAsync()).ItensEstoque.Single().QuantidadeDisponivel;
+        using var client = CriarClienteDistribuido();
+
+        // Act
+        var resposta = await client.PostAsJsonAsync("/api/v1/gestao-ordem-servico/ordens-servico/cadastrar", request);
+
+        // Assert
+        resposta.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        resposta.Headers.Location.Should().NotBeNull();
+        await using var contexto = Fixture.CriarDbContext();
+        var ordem = await contexto.OrdensServico.SingleAsync();
+        var saga = await contexto.SagasOrdemServico.SingleAsync();
+        saga.OrdemServicoId.Should().Be(ordem.Id);
+        saga.Estado.Should().Be(EstadoSagaOrdemServico.Preparando);
+        var registro = await contexto.Set<RegistroOutboxSaga>().SingleAsync();
+        registro.Tipo.Should().Be("PrepararExecucao");
+        registro.Destino.Should().Be("Execucao");
+        var mensagem = JsonContrato.LerEnvelope(registro.Corpo);
+        var dados = JsonContrato.Ler<PrepararExecucaoDados>(mensagem.Dados.GetRawText());
+        dados.FilialId.Should().Be(request.FilialId.Value);
+        dados.Itens.Single().ItemId.Should().Be(pecaId);
+        var snapshot = contexto.Entry(saga).Property<string?>("SnapshotOrcamento").CurrentValue;
+        snapshot.Should().NotBeNullOrEmpty();
+        var estoque = (await contexto.Estoques.Include(e => e.ItensEstoque).SingleAsync()).ItensEstoque.Single();
+        estoque.QuantidadeReservada.Should().Be(0);
+        estoque.QuantidadeDisponivel.Should().Be(quantidadeDisponivel);
+    }
+
+    [RequiresDockerFact]
+    public async Task Dado_SnapshotInvalido_Quando_AbrirNoFluxoDistribuido_Entao_DeveDesfazerPersistenciaDaOrdem()
+    {
+        // Arrange
+        var clienteId = await CadastrarClienteAsync();
+        var veiculoId = await CadastrarVeiculoAsync(clienteId, "DST-1002");
+        var mecanicoId = await CadastrarMecanicoAsync();
+        var request = OrdemServicoRequestBuilder.Novo().ComClienteId(clienteId).ComVeiculoId(veiculoId)
+            .ComMecanicoId(mecanicoId).BuildAbertura() with
+        { FilialId = Guid.NewGuid() };
+        using var client = CriarClienteDistribuido();
+
+        // Act
+        var resposta = await client.PostAsJsonAsync("/api/v1/gestao-ordem-servico/ordens-servico/cadastrar", request);
+
+        // Assert
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await using var contexto = Fixture.CriarDbContext();
+        (await contexto.OrdensServico.CountAsync()).Should().Be(0);
+        (await contexto.SagasOrdemServico.CountAsync()).Should().Be(0);
+        (await contexto.Set<RegistroOutboxSaga>().CountAsync()).Should().Be(0);
+    }
+
+    [RequiresDockerFact]
+    public async Task Dado_FilialAusente_Quando_AbrirNoFluxoDistribuido_Entao_DeveRecusarSemPersistirOrdem()
+    {
+        // Arrange
+        var request = OrdemServicoRequestBuilder.Novo().ComClienteId(Guid.NewGuid()).BuildAbertura();
+        using var client = CriarClienteDistribuido();
+
+        // Act
+        var resposta = await client.PostAsJsonAsync("/api/v1/gestao-ordem-servico/ordens-servico/cadastrar", request);
+
+        // Assert
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await using var contexto = Fixture.CriarDbContext();
+        (await contexto.OrdensServico.CountAsync()).Should().Be(0);
+    }
+
+    [RequiresDockerFact]
+    public async Task Dado_FluxoDistribuido_Quando_ChamarMutacaoFisicaLegada_Entao_DeveRecusarSemExecutarCasoDeUso()
+    {
+        // Arrange
+        using var client = CriarClienteDistribuido();
+
+        // Act
+        var resposta = await client.PostAsync($"/api/v1/gestao-ordem-servico/ordens-servico/{Guid.NewGuid()}/iniciar-execucao", null);
+
+        // Assert
+        resposta.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    private HttpClient CriarClienteDistribuido()
+    {
+        var client = Fixture.CreateClient(new Dictionary<string, string?>
+        {
+            ["Integracoes:FluxoDistribuido:Habilitado"] = "true"
+        });
+        client.DefaultRequestHeaders.Authorization = Client.DefaultRequestHeaders.Authorization;
+        return client;
+    }
+
+    [RequiresDockerFact]
+    public async Task Dado_OrdemDistribuidaPreparada_Quando_CancelarPelaRotaPublica_Entao_DeveResponderAceitoComCompensacaoPendente()
+    {
+        // Arrange
+        var clienteId = await CadastrarClienteAsync();
+        var veiculoId = await CadastrarVeiculoAsync(clienteId, "DST-1003");
+        var mecanicoId = await CadastrarMecanicoAsync();
+        var servicoId = await CadastrarServicoCatalogoAsync();
+        var request = OrdemServicoRequestBuilder.Novo().ComClienteId(clienteId).ComVeiculoId(veiculoId)
+            .ComMecanicoId(mecanicoId).ComServicoCatalogoId(servicoId).BuildAbertura() with
+        { FilialId = Guid.NewGuid() };
+        using var client = CriarClienteDistribuido();
+        var abertura = await client.PostAsJsonAsync("/api/v1/gestao-ordem-servico/ordens-servico/cadastrar", request);
+        abertura.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        Guid ordemId;
+        await using (var contexto = Fixture.CriarDbContext())
+        {
+            var saga = await contexto.SagasOrdemServico.SingleAsync();
+            saga.RegistrarPreparacao(Guid.NewGuid(), 1);
+            ordemId = saga.OrdemServicoId;
+            await contexto.SaveChangesAsync();
+        }
+        var cancelamento = OrdemServicoRequestBuilder.Novo().BuildCancelamento(ordemId);
+
+        // Act
+        var resposta = await client.PostAsJsonAsync($"/api/v1/gestao-ordem-servico/ordens-servico/{ordemId}/cancelar", cancelamento);
+
+        // Assert
+        resposta.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        await using var verificacao = Fixture.CriarDbContext();
+        (await verificacao.SagasOrdemServico.SingleAsync()).Estado.Should().Be(EstadoSagaOrdemServico.CompensacaoPendente);
+        (await verificacao.Set<RegistroOutboxSaga>().CountAsync()).Should().Be(3);
+        (await verificacao.OrdensServico.SingleAsync()).Status.Should().Be(StatusOrdemServico.Recebida);
+    }
 
     public OrdensServicoControllerTests(OficinaMecanicaApiFixture fixture)
         : base(fixture)
