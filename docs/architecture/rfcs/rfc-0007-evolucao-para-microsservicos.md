@@ -102,6 +102,14 @@ Detalhamento dos dados mínimos para os produtores e consumidores de OS e Orçam
 
 O transporte por arquivos utilizado nas provas locais não emula FIFO, DLQ, IAM ou visibilidade do SQS. Publicação/consumo em AWS, ativação nas rotas de OS e corte do ownership continuam sujeitos à integração e à janela autorizada; estes testes não concluem o fluxo distribuído implantado.
 
+### Banco isolado e disponibilidade de Orçamento/Pagamento
+
+Conforme a ADR-0025, a instância RDS permanece compartilhada, com banco lógico `OficinaMecanicaOrcamentoPagamento` e login `oficina_orcamento_pagamento` exclusivos. O repositório RDS prepara o banco e a credencial pela própria esteira; o serviço conserva o ownership do schema e das migrations. A aplicação não utiliza a credencial master. A opção `ORCAMENTO_PAGAMENTO_DB_ENABLED` inicia desabilitada e não autoriza deploy.
+
+O Terraform publica `database_name` e `secret_arn` sob `/oficina-mecanica/development/rds/orcamento-pagamento`, sem material sensível no state. A versão da credencial é gerada/persistida pela esteira e reutilizada sem rotação implícita. O bootstrap autentica esse login antes de conceder db_owner exclusivamente no banco próprio, verifica escrita/leitura com rollback e ausência de acesso ao banco de OS. Banco desconhecido, SID ou senha divergentes e privilégio de servidor bloqueiam a operação.
+
+`/oficina-mecanica/development/status/rds-orcamento-pagamento` fica `bootstrap-pendente` antes de um apply que afete o preparo existente; só recebe `ready` após confirmação SQL e remoção do Job/Secret temporários. O endpoint físico continua no contrato RDS existente. O status geral da instância e o status das filas não substituem essa prova. O consumidor deve exigir os contratos próprios, sem fallback para banco ou credencial da API. Administradores da instância permanecem fora da barreira de isolamento. Testes SQL locais não comprovam execução ou permissões no laboratório.
+
 ### Composição dos workers SQS
 
 A infraestrutura própria de Orçamento/Pagamento publica `entrada_queue_url`, `entrada_queue_arn`, `dlq_url` e `dlq_arn` sob `/oficina-mecanica/{ambiente}/orcamento-pagamento`. O parâmetro `/oficina-mecanica/{ambiente}/status/orcamento-pagamento=ready` atesta somente a mensageria. Não equivale a banco disponível, workload implantado, consumidor ativo ou pagamento. A política da DLQ autoriza somente a entrada própria; o CD dessa infraestrutura não promove código da aplicação. Na destruição, a guarda exige ausência do contrato do produtor OS e nenhuma mensagem observada na entrada/DLQ, repetindo a conferência antes do plano salvo ser aplicado; não verifica nem drena Outbox SQL.
