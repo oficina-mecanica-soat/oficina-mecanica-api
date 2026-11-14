@@ -1,7 +1,9 @@
 using Amazon.SQS;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 using OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
+using OficinaMecanica.Infrastructure.Observabilidade;
 
 namespace OficinaMecanica.Infrastructure.Hosting;
 
@@ -17,9 +19,10 @@ public static class DependencyInjection
             throw new InvalidOperationException("O processamento remoto já foi configurado.");
         }
         services.AddSingleton(sqs);
+        services.TryAddScoped<ObservabilidadeMensagens>();
         services.AddScoped<ITransporteMensagem>(_ => new TransporteSqs(sqs, options.FilaExecucaoUrl, options.FilaOrcamentoPagamentoUrl));
         services.AddScoped(provider => new ConsumidorSqs(sqs, provider.GetRequiredService<IProcessadorMensagem>(),
-            options.FilaEntradaUrl, provider.GetRequiredService<TimeProvider>()));
+            options.FilaEntradaUrl, provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<ObservabilidadeMensagens>()));
         services.AddScoped<PublicadorOutbox>();
         services.AddHostedService<ProcessamentoRemotoWorker>();
         return services;
