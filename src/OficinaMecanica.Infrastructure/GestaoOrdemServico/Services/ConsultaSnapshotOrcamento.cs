@@ -1,14 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
+using OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Infrastructure.Persistence;
 
-namespace OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
+namespace OficinaMecanica.Infrastructure.GestaoOrdemServico.Services;
 
-public sealed class SnapshotOrcamentoRepository : ISnapshotOrcamentoRepository
+public sealed class ConsultaSnapshotOrcamento : IConsultaSnapshotOrcamento
 {
     private readonly OficinaMecanicaDbContext _dbContext;
 
-    public SnapshotOrcamentoRepository(OficinaMecanicaDbContext dbContext)
+    public ConsultaSnapshotOrcamento(OficinaMecanicaDbContext dbContext)
     {
         _dbContext = dbContext;
     }

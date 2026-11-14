@@ -1,3 +1,5 @@
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoOrcamento;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -143,7 +145,7 @@ public sealed class MensagensSagaTests(OficinaMecanicaApiFixture fixture) : IAsy
     {
         await using var servicos = CriarServicos();
         await using var scope = servicos.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<ProcessadorResultadoOrcamento>().ProcessarAsync(JsonContrato.Serializar(mensagem));
+        await scope.ServiceProvider.GetRequiredService<ProcessarResultadoOrcamentoUseCase>().ExecuteAsync(JsonContrato.Serializar(mensagem));
     }
     private static MensagemIntegracao Resultado(SolicitarOrcamentoSagaRequest request, string tipo, object dados, Guid causacao) =>
         new(Guid.NewGuid(), tipo, 1, request.SagaId, request.OrdemServicoId, request.CorrelationId, causacao, DateTimeOffset.UtcNow,
@@ -164,7 +166,10 @@ public sealed class MensagensSagaTests(OficinaMecanicaApiFixture fixture) : IAsy
         await using var inicial = fixture.CriarDbContext();
         var comando = await inicial.Set<RegistroOutboxSaga>().SingleAsync();
         // Act
-        var id = await SolicitarAsync(request with { OperacaoId = Guid.NewGuid() });
+        var id = await SolicitarAsync(request with
+        {
+            OperacaoId = Guid.NewGuid()
+        });
         // Assert
         id.Should().Be(comando.Id);
         await using var contexto = fixture.CriarDbContext();
@@ -182,8 +187,14 @@ public sealed class MensagensSagaTests(OficinaMecanicaApiFixture fixture) : IAsy
         // Act
         await ProcessarAsync(decisao);
         await ProcessarAsync(decisao);
-        await ProcessarAsync(decisao with { MensagemId = Guid.NewGuid() });
-        await ProcessarAsync(gerado with { MensagemId = Guid.NewGuid() });
+        await ProcessarAsync(decisao with
+        {
+            MensagemId = Guid.NewGuid()
+        });
+        await ProcessarAsync(gerado with
+        {
+            MensagemId = Guid.NewGuid()
+        });
         // Assert
         await using var contexto = fixture.CriarDbContext();
         var saga = await contexto.SagasOrdemServico.SingleAsync();
@@ -215,7 +226,9 @@ public sealed class MensagensSagaTests(OficinaMecanicaApiFixture fixture) : IAsy
         var cancelado = Resultado(request, "OrcamentoCancelado", new OrcamentoCanceladoDados(orcamento.OrcamentoId, 3), Guid.NewGuid());
         await ProcessarAsync(cancelado);
         await using (var parcial = fixture.CriarDbContext())
-        { (await parcial.SagasOrdemServico.SingleAsync()).Estado.Should().Be(EstadoSagaOrdemServico.CompensacaoPendente); }
+        {
+            (await parcial.SagasOrdemServico.SingleAsync()).Estado.Should().Be(EstadoSagaOrdemServico.CompensacaoPendente);
+        }
         await ProcessarAsync(Resultado(request, "PreparacaoCancelada", new PreparacaoCanceladaDados(saga.PreparacaoId!.Value, 2), Guid.NewGuid()));
         await ProcessarAsync(cancelado);
         // Assert
@@ -231,7 +244,10 @@ public sealed class MensagensSagaTests(OficinaMecanicaApiFixture fixture) : IAsy
         var orcamento = JsonContrato.Ler<OrcamentoGeradoDados>(gerado.Dados.GetRawText());
         var aprovado = Resultado(request, "OrcamentoDecidido", new OrcamentoDecididoDados(orcamento.OrcamentoId, 3, "Aprovado"), Guid.NewGuid());
         await ProcessarAsync(aprovado);
-        var recusado = aprovado with { Dados = JsonSerializer.SerializeToElement(new OrcamentoDecididoDados(orcamento.OrcamentoId, 3, "Recusado"), JsonContrato.Options) };
+        var recusado = aprovado with
+        {
+            Dados = JsonSerializer.SerializeToElement(new OrcamentoDecididoDados(orcamento.OrcamentoId, 3, "Recusado"), JsonContrato.Options)
+        };
         // Act / Assert
         await FluentActions.Awaiting(() => ProcessarAsync(recusado)).Should().ThrowAsync<ContratoMensagemException>();
         await using var contexto = fixture.CriarDbContext();
@@ -246,7 +262,10 @@ public sealed class MensagensSagaTests(OficinaMecanicaApiFixture fixture) : IAsy
         var resultado = Resultado(request, "OrcamentoGerado", new OrcamentoGeradoDados(Guid.NewGuid(), 2, 150m), Guid.NewGuid());
         // Act / Assert
         await FluentActions.Awaiting(() => ProcessarAsync(resultado)).Should().ThrowAsync<ContratoMensagemException>();
-        resultado = resultado with { Dados = JsonSerializer.SerializeToElement(new OrcamentoGeradoDados(Guid.NewGuid(), 3, 150m), JsonContrato.Options) };
+        resultado = resultado with
+        {
+            Dados = JsonSerializer.SerializeToElement(new OrcamentoGeradoDados(Guid.NewGuid(), 3, 150m), JsonContrato.Options)
+        };
         await FluentActions.Awaiting(() => ProcessarAsync(resultado)).Should().ThrowAsync<ContratoMensagemException>();
         await using var contexto = fixture.CriarDbContext();
         (await contexto.Set<RecebimentoMensagem>().CountAsync()).Should().Be(1);

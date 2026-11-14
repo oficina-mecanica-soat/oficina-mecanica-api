@@ -1,6 +1,8 @@
 using FluentValidation;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
+using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
 using OficinaMecanica.Application.GestaoOrdemServico.ValidationMessages;
+
 namespace OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoSaga;
 
 public sealed class ServicoSnapshotSagaValidator : AbstractValidator<ServicoOrcamentoDados>

@@ -27,6 +27,36 @@ O enunciado da Fase 4 exige ao menos três microsserviços independentes, reposi
 - Fronteiras, decisões, contratos e critérios de falha revisados e acordados; ADRs necessárias registradas sem apagar o histórico.
 - Backlog dividido por dependências e responsáveis; cada serviço com CI/CD independente, testes, cobertura, documentação e evidências exigidas pelo enunciado.
 
+## Organização da integração e padrões de mensageria
+
+Mensageria é um mecanismo de integração entre os contextos existentes. `Mensagens` não é outro bounded context, agregado ou entidade de negócio. A separação em serviços preserva a organização interna por Domain, Application, Infrastructure e API.
+
+Os padrões adotados são **Transactional Outbox** e **consumidor idempotente**. Neste projeto, **Inbox** nomeia a persistência dos recebimentos usada na idempotência; não é uma fila adicional nem um novo serviço. Essas referências definem responsabilidades e garantias, não uma estrutura universal de diretórios.
+
+| Componente | Responsabilidade e localização |
+| --- | --- |
+| Repository de agregado | Interface no **Domain/Interfaces** do contexto; implementação na **Infrastructure/Repositories** correspondente. `ISagaOrdemServicoRepository` persiste/consulta a Saga; não serializa mensagens nem publica eventos. `IOrcamentoRepository` permanece no Domain de Orçamento/Pagamento. |
+| Caso de uso | Em **Application/...UseCases**, conforme a organização existente. Coordena a operação, chama o domínio e registra os efeitos necessários; não acessa SQS, banco de outro serviço ou SDK de provedor. |
+| Inbox | Contrato técnico `IInbox` na Application e implementação SQL `SqlInbox` na Infrastructure/Mensagens. Confere mensagem/operação/hash, registra recebimentos e delimita a transação local de processamento. Não contém regra de aprovação, estoque ou estado da Saga. |
+| Outbox | Contrato técnico `IOutbox` na Application e implementação `SqlOutbox` na Infrastructure/Mensagens. Grava mensagens pendentes junto dos efeitos locais. A publicação é responsabilidade separada de `PublicadorOutbox`, por uma abstração de transporte. |
+| Contratos de mensagens | DTOs do envelope e dos comandos/eventos em **Application/Mensagens** — dentro do contexto na API — com payloads em **Mensagens/Contratos**. Representam o protocolo v1, sem virar entidades do Domain ou compartilhar assemblies entre serviços. Leitura JSON, hash e filtragem de trace são suporte técnico do contrato, sem regras de negócio. |
+| Snapshots e correlação | Consulta do snapshot da própria OS, armazenamento do snapshot congelado e armazenamento do contexto de integração são portas técnicas específicas da Application, com implementações na Infrastructure. Não são repositories de agregados e não compartilham a interface da Outbox. |
+| Mapeamentos EF | Em **Infrastructure/.../Configurations**, separados dos registros persistidos e dos repositories. Os registros SQL de Inbox/Outbox são metadados técnicos, sem classificação como novas entidades DDD. |
+
+### Fluxo e limite da transação
+
+1. Validar envelope, tipo, versão e dados pelo contrato v1. Contexto técnico não determina a regra de negócio.
+2. Na transação local, conferir a Inbox; uma repetição compatível não repete os efeitos, e uma divergência não sobrescreve o processamento anterior.
+3. Executar o caso de uso, consultar o repository do próprio agregado e aplicar suas regras de domínio.
+4. Persistir **estado local + recebimento na Inbox + mensagens na Outbox** no mesmo banco/transação. Falha reverte os três; recebimento não equivale a confirmação antecipada da mensagem na fila.
+5. Após o commit, o publicador envia a mensagem persistida pela abstração de transporte. Falha ou resposta incerta preserva a mensagem para repetição com o mesmo identificador e conteúdo.
+
+A Outbox não promete entrega exatamente uma vez: reentregas são previstas, por isso o destinatário também precisa de idempotência. No consumidor SQS, a exclusão/confirmação só pode ocorrer após o processamento confirmado. Snapshot congelado, causação, correlação e versões de negócio permanecem sujeitos às regras abaixo.
+
+Esta organização não comprova implantação ou funcionamento do transporte SQS. A implementação e o aceite distribuído são acompanhados no backlog; validação por arquivos locais não substitui essas provas.
+
+Referências: [AWS — Transactional outbox pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html), [Microsoft — Infrastructure persistence layer](https://learn.microsoft.com/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/infrastructure-persistence-layer-design) e [Microsoft — DDD-oriented microservice](https://learn.microsoft.com/dotnet/standard/microservices-architecture/microservice-ddd-cqrs-patterns/ddd-oriented-microservice).
+
 ## Contrato de mensagens v1
 
 Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServicoId`, `correlationId`, `causationId`, `ocorridoEm` (UTC ISO-8601) e `dados`. IDs de domínio são UUIDs; valores monetários usam decimal BRL, nunca float. Não transportar JWT, CPF/CNPJ ou credenciais. Propagar também o contexto de trace suportado pelo Datadog. A chave de idempotência de negócio é operação + OS + versão de negócio, além de `mensagemId`; a versão do envelope não compõe essa versão de negócio.
