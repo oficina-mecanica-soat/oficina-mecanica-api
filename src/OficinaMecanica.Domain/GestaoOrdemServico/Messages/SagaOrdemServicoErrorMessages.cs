@@ -11,4 +11,5 @@ public static class SagaOrdemServicoErrorMessages
     public const string DecisaoInvalida = "Decisão do orçamento inválida.";
     public const string CompensacaoAposInicioFisico = "Não é permitido compensar a preparação após o início físico da execução.";
     public const string DataFinalizacaoInvalida = "Data de finalização da execução deve ser informada em UTC.";
+    public const string PagamentoNaoConfirmadoParaEntrega = "A ordem de serviço só pode ser entregue após a confirmação do pagamento.";
 }

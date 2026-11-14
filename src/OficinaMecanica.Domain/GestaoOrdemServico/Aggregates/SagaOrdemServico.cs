@@ -198,6 +198,14 @@ public sealed class SagaOrdemServico
         Estado = EstadoSagaOrdemServico.PagamentoConfirmado;
     }
 
+    public void ValidarEntrega()
+    {
+        if (Estado != EstadoSagaOrdemServico.PagamentoConfirmado)
+        {
+            throw new DomainException(SagaOrdemServicoErrorMessages.PagamentoNaoConfirmadoParaEntrega);
+        }
+    }
+
     public void IniciarCompensacao()
     {
         if (InicioFisicoConfirmado)
