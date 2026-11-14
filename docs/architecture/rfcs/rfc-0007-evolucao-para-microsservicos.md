@@ -112,6 +112,9 @@ Os loops de consumo e publicação usam escopos de DI independentes por operaç�
 
 ### Contexto técnico de rastreamento — F4-11
 
+Em OS e Orçamento/Pagamento, a Infrastructure restaura o contexto validado ao processar uma mensagem e retoma o carrier persistido ao publicar a Outbox. `SqlOutbox` captura o span nativo ativo antes de persistir; sem tracer disponível, conserva somente a origem validada. Escopos registram IDs, correlação, resultado e duração, sem corpo, credenciais ou dados pessoais. Sucesso do consumo corresponde ao commit do processador; sucesso da publicação exige confirmação persistida na Outbox. Falha de telemetria não altera a transação, e reenvios mantêm o corpo já persistido. Nenhum SDK Datadog entra em Domain/Application. Testes locais sem profiler conferem logs, encerramento de escopos e isolamento, mas não comprovam a criação/exportação dos spans nem ingestão no Agent.
+
+
 Alinhamento explícito com Gabriel em 10/11/2026: o envelope v1 pode incluir `traceContext` opcional, fora de `dados`. Neste incremento, sua única chave permitida é `traceparent`, no formato W3C versão `00`, com trace-id hexadecimal minúsculo de 32 caracteres, parent-id de 16, flags de 2 e IDs não nulos. Exemplo: `{ "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" }`. Campo ausente/nulo mantém o contrato anterior. Não incluir baggage, tracestate, JWT, documento, credenciais ou cabeçalhos livres.
 
 O contexto é metadado técnico: não participa da chave/hash de negócio ou da decisão de estoque/Saga. Campos não permitidos e valores de traceparent inválidos são descartados do carrier, sem fabricar IDs; o formato estrutural JSON do envelope continua obrigatório. Reentrega com outro contexto não cria nova operação nem substitui o contexto do resultado/outbox já persistido.
