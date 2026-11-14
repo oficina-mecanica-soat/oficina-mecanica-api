@@ -135,6 +135,12 @@ O Terraform publica `database_name` e `secret_arn` sob `/oficina-mecanica/develo
 
 ### Composição dos workers SQS
 
+A API e Orçamento/Pagamento recebem `PROCESSAMENTO_REMOTO_ENABLED` e `FLUXO_DISTRIBUIDO_ENABLED` como variables explícitas do Environment, false por padrão. No Execução, preservar o nome vigente `PROCESSAMENTO_REMOTO_HABILITADO`. Habilitar o corte da API exige workers e consulta privada de clientes; no Orçamento exige workers. A composição confere conta/região, owner, ARN e fila FIFO real, sem converter erros de acesso em ausência.
+
+O modo aplicado é publicado em `api/fluxo_distribuido_habilitado` e `orcamento-pagamento/fluxo_distribuido_habilitado`. Consumir essas flags junto de `status/api-aplicacao` e `status/orcamento-pagamento-aplicacao`: o Terraform começa em `implantacao-pendente`, a esteira invalida disponibilidade anterior antes de aplicar e publica `ready` somente após rollout, imagem esperada e health privado. O checksum do ConfigMap provoca novo rollout quando o modo/configuração muda. Ready do workload não substitui prova funcional de SQS, pagamento ou Saga.
+
+Na janela autorizada, implantar primeiro as bases e entradas de mensageria com workers/corte desligados; os consumidores dependem dos contratos das filas dos outros serviços. Depois conferir as identidades e permissões reais, configurar as ativações e executar novamente as esteiras dos workloads. A Auth Lambda deve usar consulta privada sem conexão SQL. Somente habilitar o roteamento distribuído do Gateway quando todos os workloads estiverem ready e as flags aplicadas confirmarem o corte. A preparação do código não autoriza ativar AWS nem elimina a validação IAM/Academy e a contenção de segredos/artefatos pendentes.
+
 A infraestrutura própria de Orçamento/Pagamento publica `entrada_queue_url`, `entrada_queue_arn`, `dlq_url` e `dlq_arn` sob `/oficina-mecanica/{ambiente}/orcamento-pagamento`. O parâmetro `/oficina-mecanica/{ambiente}/status/orcamento-pagamento=ready` atesta somente a mensageria. Não equivale a banco disponível, workload implantado, consumidor ativo ou pagamento. A política da DLQ autoriza somente a entrada própria; o CD dessa infraestrutura não promove código da aplicação. Na destruição, a guarda exige ausência do contrato do produtor OS e nenhuma mensagem observada na entrada/DLQ, repetindo a conferência antes do plano salvo ser aplicado; não verifica nem drena Outbox SQL.
 
 

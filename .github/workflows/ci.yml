@@ -693,6 +693,127 @@ jobs:
           TESTE_INLINE_3
           node --test "$RUNNER_TEMP/bootstrap-account-state.test.cjs" "$RUNNER_TEMP/mensageria-os.test.cjs" "$RUNNER_TEMP/prepare-destroy.test.cjs" "$RUNNER_TEMP/fluxo-apply-api.test.cjs"
 
+      - name: "🧪 Testar composição real dos workers OS"
+        run: |
+          python - <<'TESTAR_CONFIGURACAO_OS'
+          import ast, json, os, re, textwrap
+          from pathlib import Path
+          from unittest.mock import patch
+          origem = Path('.github/workflows/aws-deploy.yml').read_text(encoding='utf-8')
+          trecho = origem.split('          def configuracao_fluxo():', 1)[1].split('          terraform_action =', 1)[0]
+          codigo = textwrap.dedent('          def configuracao_fluxo():' + trecho)
+          ambiente = {'TERRAFORM_ACTION':'apply','AWS_REGION':'us-east-1','SSM_ENVIRONMENT_NAME':'development'}
+          conta = '123456789012'
+          def executar(flags=None, defeito=None):
+              chamadas = []
+              def aws(*args):
+                  chamadas.append(args)
+                  if defeito == 'acesso': raise RuntimeError('AccessDenied simulado')
+                  if args[0] == 'sts': return conta
+                  if args[0] == 'ssm':
+                      nome = args[args.index('--name') + 1]
+                      if '/status/' in nome: return 'pending' if defeito == 'status' else 'ready'
+                      owner = nome.split('/')[-2]
+                      fila = 'oficina-mecanica-' + owner + '-development.fifo'
+                      if nome.endswith('queue_url'):
+                          return 'https://sqs.us-east-1.amazonaws.com/' + ('999999999999' if defeito == 'conta' else conta) + '/' + fila
+                      return 'arn:aws:sqs:us-east-1:' + conta + ':' + fila
+                  if args[0] == 'sqs':
+                      fila = args[args.index('--queue-url') + 1].split('/')[-1]
+                      return json.dumps({'QueueArn': 'arn:aws:sqs:us-east-1:' + conta + ':' + fila, 'FifoQueue': 'false' if defeito == 'fifo' else 'true'})
+                  raise AssertionError('Consulta inesperada no teste')
+              contexto = {'os': os, 'json': json, 'aws_output': aws}
+              with patch.dict(os.environ, {**ambiente, **(flags or {})}, clear=True):
+                  exec(compile(ast.parse(codigo), '<composicao-real>', 'exec'), contexto)
+                  resultado = contexto['configuracao_fluxo']()
+              return resultado, chamadas
+          resultado, chamadas = executar()
+          assert not resultado['processamento_remoto_habilitado'] and chamadas == []
+          resultado, chamadas = executar({'TERRAFORM_ACTION':'destroy','PROCESSAMENTO_REMOTO_ENABLED':'invalido'})
+          assert not resultado['fluxo_distribuido_habilitado'] and chamadas == []
+          flags = {'PROCESSAMENTO_REMOTO_ENABLED':'true','FLUXO_DISTRIBUIDO_ENABLED':'true','CLIENTES_API_ENABLED':'true'}
+          resultado, chamadas = executar(flags)
+          assert resultado['fluxo_distribuido_habilitado'] and resultado['conta_aws'] == conta
+          assert resultado['execucao_entrada_queue_url'] != resultado['orcamento_pagamento_entrada_queue_url']
+          for valores, defeito in [({'FLUXO_DISTRIBUIDO_ENABLED':'true'},None), ({'PROCESSAMENTO_REMOTO_ENABLED':'TRUE'},None), (flags,'conta'), (flags,'fifo'), (flags,'status'), (flags,'acesso')]:
+              try: executar(valores, defeito)
+              except (ValueError, RuntimeError): pass
+              else: raise AssertionError('Configuração indevida não foi bloqueada: ' + str(defeito))
+          print('Nove cenários de composição real aprovados, sem chamadas AWS.')
+          import contextlib, io, subprocess, tempfile
+          codigo_status = textwrap.dedent(re.search(r"          python - <<'INVALIDAR_API'\n(.*?)\n          INVALIDAR_API", origem, re.S).group(1))
+          nome_status = '/oficina-mecanica/development/status/api-aplicacao'
+          arn_status = 'arn:aws:ssm:us-east-1:' + conta + ':parameter' + nome_status
+          for caso in ['sem-state','correto','nome-alheio','arn-alheio','acesso','ausente']:
+              with tempfile.TemporaryDirectory(prefix='oficina-status-os-') as pasta:
+                  state = {'resources':[{'mode':'managed','type':'aws_ssm_parameter','name':'api_aplicacao_status','instances':[{'attributes':{'name':nome_status if caso!='nome-alheio' else '/outro/status','arn':arn_status}}]}]}
+                  if caso!='sem-state': (Path(pasta)/'terraform.tfstate').write_text(json.dumps(state),encoding='utf-8')
+                  chamadas=[]
+                  def consultar(args, **kwargs):
+                      chamadas.append(args)
+                      if args[2]=='get-parameter':
+                          if caso in ['acesso','ausente']:
+                              return subprocess.CompletedProcess(args,1,stdout='',stderr='(ParameterNotFound)' if caso=='ausente' else '(AccessDeniedException)')
+                          return subprocess.CompletedProcess(args,0,stdout=json.dumps({'Parameter':{'Type':'String','ARN':arn_status if caso!='arn-alheio' else 'arn:outro'}}))
+                      assert args[2]=='put-parameter' and args[args.index('--name')+1]==nome_status
+                      assert args[args.index('--value')+1]=='implantacao-pendente'
+                      return subprocess.CompletedProcess(args,0,stdout='')
+                  try:
+                      with patch.dict(os.environ,{'TF_WORKING_DIRECTORY':pasta,'SSM_ENVIRONMENT_NAME':'development'},clear=True),patch('subprocess.run',side_effect=consultar),contextlib.redirect_stdout(io.StringIO()):
+                          exec(compile(codigo_status,'<status-real>','exec'),{})
+                  except (ValueError,RuntimeError):
+                      assert caso in ['nome-alheio','arn-alheio','acesso']
+                  else:
+                      assert caso not in ['nome-alheio','arn-alheio','acesso']
+                      assert any(a[2]=='put-parameter' for a in chamadas)==(caso=='correto')
+          print('Seis cenários de invalidação do status aprovados, sem mutação real.')
+          TESTAR_CONFIGURACAO_OS
+
+      - name: "❤️ Testar publicação de disponibilidade da API"
+        run: |
+          node <<'TESTAR_HEALTH_OS'
+          const fs = require('node:fs');
+          const cp = require('node:child_process');
+          const path = require('node:path');
+          const os = require('node:os');
+          const assert = require('node:assert/strict');
+          const origem = fs.readFileSync('.github/workflows/aws-deploy.yml', 'utf8').replace(/\r/g, '');
+          const bloco = origem.split('      - name: "❤️ 06 · Conferir imagem, modo e health antes de publicar ready"')[1]?.split('        run: |\n')[1];
+          assert(bloco, 'Prova de disponibilidade ausente.');
+          const script = bloco.split('\n').map(l => l.slice(10)).join('\n');
+          const mocks = `
+          exec 3>&2
+          kubectl() {
+           if [ "$1" = get ] && [ "$2" = deployment ]; then printf '%s' "$ACTUAL_IMAGE";
+           elif [ "$1" = get ] && [ "$2" = configmap ]; then printf false;
+           else return 0; fi;
+          }
+          curl() { if [ "$HEALTH_STATUS" = 0 ]; then printf Healthy; fi; return "$HEALTH_STATUS"; }
+          seq() { printf 1; }
+          sleep() { return 0; }
+          aws() {
+           if [ "$2" = put-parameter ]; then printf READY_WRITE >&3; printf ready > "$RUNNER_TEMP/estado";
+           elif [[ "$4" = */fluxo_distribuido_habilitado ]]; then printf '%s' "$SSM_MODE";
+           elif [ -f "$RUNNER_TEMP/estado" ]; then cat "$RUNNER_TEMP/estado";
+           else printf implantacao-pendente; fi;
+          }
+          `;
+          const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 'bash';
+          for (const falha of ['nenhuma', 'health', 'imagem', 'modo']) {
+           const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oficina-api-health-'));
+           try {
+            const r = cp.spawnSync(bash, ['-s'], { input: mocks + '\n' + script, encoding:'utf8',
+             env:{...process.env,RUNNER_TEMP:dir,SSM_ENVIRONMENT_NAME:'development',EXPECTED_IMAGE:'teste:sha-validado',ACTUAL_IMAGE:falha==='imagem'?'teste:outra':'teste:sha-validado',HEALTH_STATUS:falha==='health'?'22':'0',SSM_MODE:falha==='modo'?'true':'false'} });
+            assert.equal(r.status===0, falha==='nenhuma', r.stderr);
+            assert.equal(r.stderr.includes('READY_WRITE'), falha==='nenhuma');
+           } finally {
+            assert(path.resolve(dir).startsWith(path.resolve(os.tmpdir()) + path.sep + 'oficina-api-health-'));
+            fs.rmSync(dir,{recursive:true,force:true});
+           }
+          }
+          console.log('Quatro cenários do health real aprovados, sem chamadas AWS/Kubernetes.');
+          TESTAR_HEALTH_OS
+
       - run: terraform fmt -check -recursive infra/terraform
       - run: terraform -chdir=infra/terraform/environments/dev init -backend=false -input=false
       - run: terraform -chdir=infra/terraform/environments/dev validate

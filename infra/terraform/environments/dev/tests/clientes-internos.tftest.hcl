@@ -10,6 +10,13 @@ mock_provider "aws" {
   }
 }
 mock_provider "kubernetes" {}
+override_resource {
+  target          = aws_sqs_queue.os_entrada
+  override_during = plan
+  values = {
+    url = "https://sqs.us-east-1.amazonaws.com/123456789012/oficina-mecanica-api-development.fifo"
+  }
+}
 
 override_data {
   target = data.aws_ssm_parameter.kubernetes_api_internal_node_port
@@ -52,4 +59,46 @@ run "credencial_privada_invalida_bloqueia" {
     clientes_internos_token      = "curta"
   }
   expect_failures = [var.clientes_internos_token]
+}
+
+run "corte_exige_workers_e_consulta_privada" {
+  command = plan
+  variables { fluxo_distribuido_habilitado = true }
+  expect_failures = [var.fluxo_distribuido_habilitado]
+}
+
+run "workers_recusam_fila_de_outra_conta" {
+  command = plan
+  variables {
+    processamento_remoto_habilitado       = true
+    conta_aws                             = "123456789012"
+    execucao_entrada_queue_url            = "https://sqs.us-east-1.amazonaws.com/999999999999/oficina-mecanica-execucao-development.fifo"
+    orcamento_pagamento_entrada_queue_url = "https://sqs.us-east-1.amazonaws.com/123456789012/oficina-mecanica-orcamento-pagamento-development.fifo"
+  }
+  expect_failures = [var.processamento_remoto_habilitado]
+}
+
+run "modo_e_workers_publicam_contratos_consistentes" {
+  command = plan
+  variables {
+    fluxo_distribuido_habilitado          = true
+    clientes_internos_habilitado          = true
+    clientes_internos_token               = "credencial-ficticia-exclusiva-somente-teste"
+    processamento_remoto_habilitado       = true
+    conta_aws                             = "123456789012"
+    execucao_entrada_queue_url            = "https://sqs.us-east-1.amazonaws.com/123456789012/oficina-mecanica-execucao-development.fifo"
+    orcamento_pagamento_entrada_queue_url = "https://sqs.us-east-1.amazonaws.com/123456789012/oficina-mecanica-orcamento-pagamento-development.fifo"
+  }
+  assert {
+    condition = (
+      kubernetes_config_map_v1.oficina_mecanica_api[0].data["Integracoes__FluxoDistribuido__Habilitado"] == "true" &&
+      kubernetes_config_map_v1.oficina_mecanica_api[0].data["ProcessamentoRemoto__Habilitado"] == "true" &&
+      kubernetes_config_map_v1.oficina_mecanica_api[0].data["ProcessamentoRemoto__FilaExecucaoUrl"] == var.execucao_entrada_queue_url &&
+      aws_ssm_parameter.api_fluxo_distribuido[0].value == "true" &&
+      aws_ssm_parameter.api_aplicacao_status[0].value == "implantacao-pendente" &&
+      aws_ssm_parameter.api_aplicacao_status[0].name == "/oficina-mecanica/development/status/api-aplicacao" &&
+      kubernetes_deployment_v1.oficina_mecanica_api[0].spec[0].template[0].metadata[0].annotations["checksum/config"] == sha256(jsonencode(kubernetes_config_map_v1.oficina_mecanica_api[0].data))
+    )
+    error_message = "Modo, workers, checksum e disponibilidade devem refletir a configuração aplicada."
+  }
 }

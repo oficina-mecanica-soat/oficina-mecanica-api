@@ -189,6 +189,8 @@ jobs:
 
       - name: "📝 07 · Escrever variáveis do Terraform"
         env:
+          FLUXO_DISTRIBUIDO_ENABLED: ${{ vars.FLUXO_DISTRIBUIDO_ENABLED || 'false' }}
+          PROCESSAMENTO_REMOTO_ENABLED: ${{ vars.PROCESSAMENTO_REMOTO_ENABLED || 'false' }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
           CLIENTES_API_ENABLED: ${{ vars.CLIENTES_API_ENABLED || 'false' }}
@@ -208,6 +210,44 @@ jobs:
                   text=True,
               )
               return result.stdout.strip()
+
+          def configuracao_fluxo():
+              valores = {"fluxo_distribuido_habilitado": False, "processamento_remoto_habilitado": False,
+                         "conta_aws": "", "execucao_entrada_queue_url": "", "orcamento_pagamento_entrada_queue_url": ""}
+              if os.environ["TERRAFORM_ACTION"] == "destroy":
+                  return valores
+              for chave in ("FLUXO_DISTRIBUIDO_ENABLED", "PROCESSAMENTO_REMOTO_ENABLED"):
+                  if os.environ.get(chave, "false") not in ("true", "false"):
+                      raise ValueError("Flag inválida: " + chave)
+              corte = os.environ.get("FLUXO_DISTRIBUIDO_ENABLED", "false") == "true"
+              remoto = os.environ.get("PROCESSAMENTO_REMOTO_ENABLED", "false") == "true"
+              if corte and (not remoto or os.environ.get("CLIENTES_API_ENABLED") != "true"):
+                  raise ValueError("Corte exige workers e consulta privada de clientes habilitados.")
+              valores.update(fluxo_distribuido_habilitado=corte, processamento_remoto_habilitado=remoto)
+              if not remoto:
+                  return valores
+              conta = aws_output("sts", "get-caller-identity", "--query", "Account", "--output", "text")
+              if len(conta) != 12 or not conta.isascii() or not conta.isdecimal():
+                  raise ValueError("Conta do runtime inválida.")
+              regiao = os.environ["AWS_REGION"]
+              base = "/oficina-mecanica/" + os.environ["SSM_ENVIRONMENT_NAME"]
+              def parametro(caminho):
+                  return aws_output("ssm", "get-parameter", "--name", base + "/" + caminho, "--query", "Parameter.Value", "--output", "text")
+              for owner, campo in (("execucao", "execucao_entrada_queue_url"), ("orcamento-pagamento", "orcamento_pagamento_entrada_queue_url")):
+                  if parametro("status/" + owner) != "ready":
+                      raise ValueError("Mensageria do serviço ainda não disponível: " + owner)
+                  nome = "oficina-mecanica-" + owner + "-" + os.environ["SSM_ENVIRONMENT_NAME"] + ".fifo"
+                  url = parametro(owner + "/entrada_queue_url")
+                  arn = parametro(owner + "/entrada_queue_arn")
+                  if url != "https://sqs." + regiao + ".amazonaws.com/" + conta + "/" + nome or arn != "arn:aws:sqs:" + regiao + ":" + conta + ":" + nome:
+                      raise ValueError("Fila publicada por outro owner, conta ou região.")
+                  atributos = json.loads(aws_output("sqs", "get-queue-attributes", "--queue-url", url,
+                      "--attribute-names", "QueueArn", "FifoQueue", "--query", "Attributes", "--output", "json"))
+                  if atributos.get("QueueArn") != arn or atributos.get("FifoQueue") != "true":
+                      raise ValueError("Fila FIFO real diverge do contrato publicado.")
+                  valores[campo] = url
+              valores["conta_aws"] = conta
+              return valores
 
           terraform_action = os.environ["TERRAFORM_ACTION"]
           clientes_internos_habilitado = False
@@ -251,6 +291,7 @@ jobs:
               webhook_token = os.environ["WEBHOOK_TOKEN"]
 
           values = {
+              **configuracao_fluxo(),
               "aws_region": os.environ["AWS_REGION"],
               "ssm_environment_name": os.environ["SSM_ENVIRONMENT_NAME"],
               "db_connection_string": db_connection_string,
@@ -474,6 +515,8 @@ jobs:
             for (const url of [contratos.entrada_queue_url, contratos.dlq_url].filter(Boolean)) confirmar('sqs', 'get-queue-attributes', '--queue-url', url, '--attribute-names', 'QueueArn');
             for (const nome of Object.keys(contratos)) confirmar('ssm', 'get-parameter', '--name', `${prefix}/api/${nome}`);
             confirmar('ssm', 'get-parameter', '--name', `${prefix}/status/api`);
+            confirmar('ssm', 'get-parameter', '--name', `${prefix}/status/api-aplicacao`);
+            confirmar('ssm', 'get-parameter', '--name', `${prefix}/api/fluxo_distribuido_habilitado`);
           }
 
           function consultarAws(...args) {
@@ -712,6 +755,33 @@ jobs:
         if: env.TERRAFORM_ACTION == 'destroy'
         run: node "$RUNNER_TEMP/verificar-mensageria-os.cjs" before-destroy
 
+      - name: "🚦 Invalidar disponibilidade anterior da API"
+        if: env.TERRAFORM_ACTION == 'apply'
+        run: |
+          python - <<'INVALIDAR_API'
+          import json, os, subprocess
+          from pathlib import Path
+          arquivo = Path(os.environ["TF_WORKING_DIRECTORY"]) / "terraform.tfstate"
+          state = json.loads(arquivo.read_text()) if arquivo.exists() else {"resources": []}
+          nome = "/oficina-mecanica/" + os.environ["SSM_ENVIRONMENT_NAME"] + "/status/api-aplicacao"
+          registros = [i["attributes"] for r in state.get("resources", [])
+                       if r.get("mode") == "managed" and r.get("type") == "aws_ssm_parameter"
+                       and r.get("name") == "api_aplicacao_status" and not r.get("module")
+                       for i in r.get("instances", [])]
+          if registros:
+              if len(registros) != 1 or registros[0].get("name") != nome:
+                  raise ValueError("Status do state não pertence à API neste ambiente.")
+              resposta = subprocess.run(["aws", "ssm", "get-parameter", "--name", nome, "--output", "json"], capture_output=True, text=True)
+              if resposta.returncode:
+                  if "(ParameterNotFound)" not in resposta.stderr:
+                      raise RuntimeError("Consulta do status falhou; disponibilidade não invalidada.")
+              else:
+                  parametro = json.loads(resposta.stdout)["Parameter"]
+                  if parametro.get("ARN") != registros[0].get("arn") or parametro.get("Type") != "String":
+                      raise ValueError("Status real diverge do ownership registrado no state.")
+                  subprocess.run(["aws", "ssm", "put-parameter", "--name", nome, "--type", "String", "--value", "implantacao-pendente", "--overwrite"], check=True, capture_output=True)
+          INVALIDAR_API
+
       - name: "✅ 07 · Aplicar plano do Terraform (apply ou destroy)"
         run: terraform -chdir="$TF_WORKING_DIRECTORY" apply -input=false -auto-approve tfplan
 
@@ -748,6 +818,7 @@ jobs:
     needs:
       - resolve_action
       - apply_or_destroy
+      - prepare_and_plan
     if: needs.resolve_action.outputs.terraform_action == 'apply' && needs.apply_or_destroy.result == 'success'
     runs-on: ubuntu-latest
     environment:
@@ -755,6 +826,7 @@ jobs:
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       EKS_CLUSTER_NAME: ${{ needs.apply_or_destroy.outputs.eks_cluster_name }}
+      EXPECTED_IMAGE: ${{ needs.prepare_and_plan.outputs.ecr_image_uri }}
 
     steps:
       - name: "🔑 01 · Configurar credenciais AWS"
@@ -818,3 +890,25 @@ jobs:
           fi
 
           echo "Service $service_name validado como NodePort na porta $node_port."
+
+      - name: "❤️ 06 · Conferir imagem, modo e health antes de publicar ready"
+        run: |
+          set -euo pipefail
+          test "$(kubectl get deployment oficina-mecanica-api -n oficina-mecanica -o jsonpath='{.spec.template.spec.containers[?(@.name=="oficina-mecanica-api")].image}')" = "$EXPECTED_IMAGE"
+          modo="$(kubectl get configmap oficina-mecanica-api-config -n oficina-mecanica -o jsonpath='{.data.Integracoes__FluxoDistribuido__Habilitado}')"
+          case "$modo" in true|false) ;; *) exit 1 ;; esac
+          prefix="/oficina-mecanica/$SSM_ENVIRONMENT_NAME"
+          test "$(aws ssm get-parameter --name "$prefix/api/fluxo_distribuido_habilitado" --query Parameter.Value --output text)" = "$modo"
+          test "$(aws ssm get-parameter --name "$prefix/status/api-aplicacao" --query Parameter.Value --output text)" = implantacao-pendente
+          kubectl port-forward -n oficina-mecanica service/oficina-mecanica-api 18080:80 > "$RUNNER_TEMP/api-health-port-forward.log" 2>&1 &
+          encaminhamento=$!
+          trap 'kill "$encaminhamento" 2>/dev/null || true' EXIT
+          for tentativa in $(seq 1 30); do
+            if curl --fail --silent --max-time 3 http://127.0.0.1:18080/api/health > "$RUNNER_TEMP/api-health.txt"; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(cat "$RUNNER_TEMP/api-health.txt")" = Healthy
+          aws ssm put-parameter --name "$prefix/status/api-aplicacao" --type String --value ready --overwrite >/dev/null
+          test "$(aws ssm get-parameter --name "$prefix/status/api-aplicacao" --query Parameter.Value --output text)" = ready
