@@ -56,6 +56,7 @@ public sealed class ProcessamentoRemotoWorkerTests : IAsyncLifetime
         saga.RegistrarOrcamento(Guid.NewGuid(), 3, 150m);
         saga.RegistrarDecisao(saga.OrcamentoId!.Value, 3, DecisaoOrcamento.Aprovado);
         saga.RegistrarInicioFisico(saga.PreparacaoId!.Value, 3);
+        (await dbContext.OrdensServico.SingleAsync()).RegistrarInicioExecucaoExterna();
         var autorizacao = new MensagemIntegracao(Guid.NewGuid(), "AutorizarExecucao", 1, saga.Id, saga.OrdemServicoId,
             "correlacao-worker", Guid.NewGuid(), DateTimeOffset.UtcNow,
             JsonSerializer.SerializeToElement(new AutorizarExecucaoDados(saga.PreparacaoId.Value, 3), JsonContrato.Options));

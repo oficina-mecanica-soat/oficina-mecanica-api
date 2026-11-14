@@ -3,6 +3,7 @@ using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
 using OficinaMecanica.Domain.GestaoOrdemServico.Interfaces;
+using OficinaMecanica.Domain.GestaoOrdemServico.Enums;
 
 namespace OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoPreparacao;
 
@@ -13,18 +14,21 @@ public sealed class ProcessarResultadoPreparacaoUseCase
     private readonly IOutbox _outbox;
     private readonly ISnapshotOrcamentoStore _snapshotOrcamentoStore;
     private readonly TimeProvider _relogio;
+    private readonly IOrdemServicoRepository _ordemServicoRepository;
 
     public ProcessarResultadoPreparacaoUseCase(
         IInbox inbox,
         ISagaOrdemServicoRepository sagaOrdemServicoRepository,
         IOutbox outbox,
         ISnapshotOrcamentoStore snapshotOrcamentoStore,
+        IOrdemServicoRepository ordemServicoRepository,
         TimeProvider relogio)
     {
         _inbox = inbox;
         _sagaOrdemServicoRepository = sagaOrdemServicoRepository;
         _outbox = outbox;
         _snapshotOrcamentoStore = snapshotOrcamentoStore;
+        _ordemServicoRepository = ordemServicoRepository;
         _relogio = relogio;
     }
 
@@ -107,6 +111,12 @@ public sealed class ProcessarResultadoPreparacaoUseCase
                 else
                 {
                     saga.RegistrarRecusaPreparacao(versao);
+                    if (dados is PreparacaoRecusadaDados { CodigoMotivo: "ESTOQUE_INSUFICIENTE" })
+                    {
+                        var ordem = await _ordemServicoRepository.ObterPorIdAsync(saga.OrdemServicoId, cancellationTokenTransacao)
+                            ?? throw new ContratoMensagemException("ORDEM_NAO_ENCONTRADA");
+                        ordem.Cancelar(MotivoCancelamentoOrdemServico.EstoqueInsuficiente);
+                    }
                 }
             }
             await _inbox.RegistrarAsync(mensagem.MensagemId, chave, hash, cancellationTokenTransacao);

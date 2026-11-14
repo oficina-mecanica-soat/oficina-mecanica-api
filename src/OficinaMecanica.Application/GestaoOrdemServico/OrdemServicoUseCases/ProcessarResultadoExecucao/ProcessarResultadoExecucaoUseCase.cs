@@ -11,17 +11,20 @@ public sealed class ProcessarResultadoExecucaoUseCase
     private readonly IInbox _inbox;
     private readonly IOutbox _outbox;
     private readonly ISagaOrdemServicoRepository _sagaOrdemServicoRepository;
+    private readonly IOrdemServicoRepository _ordemServicoRepository;
     private readonly TimeProvider _relogio;
 
     public ProcessarResultadoExecucaoUseCase(
         IInbox inbox,
         IOutbox outbox,
         ISagaOrdemServicoRepository sagaOrdemServicoRepository,
+        IOrdemServicoRepository ordemServicoRepository,
         TimeProvider relogio)
     {
         _inbox = inbox;
         _outbox = outbox;
         _sagaOrdemServicoRepository = sagaOrdemServicoRepository;
+        _ordemServicoRepository = ordemServicoRepository;
         _relogio = relogio;
     }
 
@@ -76,10 +79,16 @@ public sealed class ProcessarResultadoExecucaoUseCase
                 if (mensagem.Tipo == "ExecucaoIniciada")
                 {
                     saga.RegistrarInicioFisico(preparacaoId, versaoOrcamento);
+                    var ordem = await _ordemServicoRepository.ObterPorIdAsync(saga.OrdemServicoId, ct)
+                        ?? throw new ContratoMensagemException("ORDEM_NAO_ENCONTRADA");
+                    ordem.RegistrarInicioExecucaoExterna();
                 }
                 else
                 {
                     saga.RegistrarFinalizacao(preparacaoId, versaoOrcamento, finalizadoEm!.Value);
+                    var ordem = await _ordemServicoRepository.ObterPorIdAsync(saga.OrdemServicoId, ct)
+                        ?? throw new ContratoMensagemException("ORDEM_NAO_ENCONTRADA");
+                    ordem.RegistrarFinalizacaoExecucaoExterna(finalizadoEm.Value);
                     var cobranca = new MensagemIntegracao(Guid.CreateVersion7(), "CriarCobranca", 1, saga.Id,
                         saga.OrdemServicoId, mensagem.CorrelationId, mensagem.MensagemId, _relogio.GetUtcNow(),
                         JsonSerializer.SerializeToElement(new CriarCobrancaDados(saga.OrcamentoId!.Value, saga.VersaoOrcamento), JsonContrato.Options),

@@ -174,6 +174,53 @@ public sealed class OrdemServico
         Status = StatusOrdemServico.Entregue;
     }
 
+    public void RegistrarInicioExecucaoExterna()
+    {
+        if (Status == StatusOrdemServico.EmExecucao)
+        {
+            return;
+        }
+
+        if (Status is not (StatusOrdemServico.Recebida or StatusOrdemServico.EmDiagnostico or StatusOrdemServico.AguardandoAprovacao))
+        {
+            throw new DomainException(OrdemServicoErrorMessages.TransicaoStatusInvalida);
+        }
+
+        Status = StatusOrdemServico.EmExecucao;
+    }
+
+    public void RegistrarOrcamentoExterno()
+    {
+        if (Status == StatusOrdemServico.AguardandoAprovacao)
+        {
+            return;
+        }
+
+        if (Status is not (StatusOrdemServico.Recebida or StatusOrdemServico.EmDiagnostico))
+        {
+            throw new DomainException(OrdemServicoErrorMessages.TransicaoStatusInvalida);
+        }
+
+        Status = StatusOrdemServico.AguardandoAprovacao;
+    }
+
+    public void RegistrarFinalizacaoExecucaoExterna(DateTimeOffset finalizadoEm)
+    {
+        if (finalizadoEm == default || finalizadoEm.Offset != TimeSpan.Zero)
+        {
+            throw new DomainException(SagaOrdemServicoErrorMessages.DataFinalizacaoInvalida);
+        }
+
+        if (Status == StatusOrdemServico.Finalizada && DataFim == finalizadoEm.UtcDateTime)
+        {
+            return;
+        }
+
+        ExigirStatus(StatusOrdemServico.EmExecucao);
+        Status = StatusOrdemServico.Finalizada;
+        DataFim = finalizadoEm.UtcDateTime;
+    }
+
     public void Cancelar(MotivoCancelamentoOrdemServico motivo)
     {
         if (!Enum.IsDefined(motivo))

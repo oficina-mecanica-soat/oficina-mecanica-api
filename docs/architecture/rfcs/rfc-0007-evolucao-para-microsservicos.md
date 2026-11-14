@@ -244,6 +244,16 @@ Auditar somente ação, conta/ambiente, execução da esteira, IDs, digests e re
 
 ## HTTP, segurança e pagamentos
 
+### Entrada pública de OS no fluxo distribuído
+
+Com `Integracoes:FluxoDistribuido:Habilitado=true`, a rota de abertura existente exige `filialId`, mantém a validação de cliente/veículo/mecânico e congela os serviços/peças do catálogo. OS, Saga, snapshot e comando `PrepararExecucao` são persistidos na mesma transação SQL; uma falha impede resposta de sucesso e desfaz a abertura. Retorna `202 Accepted` com `Location` para consultar andamento. A reserva física pertence exclusivamente ao Execução: a abertura distribuída não lê nem altera o estoque legado. Sem a flag, o contrato anterior permanece (`201 Created`).
+
+As mutações legadas de diagnóstico, definição de serviços, reserva, decisão de orçamento, início/finalização física e o controlador de estoque respondem `409 Conflict` quando o fluxo distribuído está habilitado. Autenticação e perfis existentes continuam obrigatórios. Consultas físicas devem usar Execução; consultas/decisão/cobrança usam Orçamento/Pagamento. A retirada das rotas não autoriza habilitar a flag isoladamente: depende dos workers, contratos de infraestrutura e corte coordenado do Gateway/Auth.
+
+Cancelar OS no novo fluxo solicita compensação pela Saga e retorna `202`, sem estorno local ou declaração antecipada de cancelamento. Usa os dois motivos já existentes e os comandos atuais `CancelarPreparacao`/`CancelarOrcamento`; repetições preservam os comandos e motivos divergentes são recusados. A máquina de estados vigente exige preparação confirmada e recusa o cancelamento antes disso ou após início físico. Confirmação da preparação e confirmação do orçamento são ambas necessárias para concluir a compensação. Falha ou demora mantém a consulta de andamento pendente.
+
+Resultados aceitos pela Saga projetam o status da OS no mesmo commit do recebimento: orçamento gerado → `AguardandoAprovacao`, início físico confirmado → `EmExecucao`, finalização física → `Finalizada`. Não executam nem finalizam artificialmente os serviços do snapshot local. Cancelamento confirmado por ambos os serviços projeta `Cancelada` com o motivo do comando; registros históricos sem esse comando não recebem motivo inferido. Recusa explícita por estoque insuficiente projeta esse motivo existente. `Entregue` continua exigindo `PagamentoConfirmado` na Saga; finalização física ou conhecimento do identificador da cobrança não substituem confirmação financeira.
+
 Preservar rotas públicas existentes da OS e autorização por papel/cliente. APIs novas usam /api/v1/orcamentos e /api/v1/pagamentos no serviço de cobrança e /api/v1/execucoes no serviço de execução. Atualizar Gateway, OpenAPI e Postman na mesma tarefa de integração. Operações assíncronas retornam 202 com identificador e endpoint de consulta; não devolver sucesso de negócio antes da confirmação.
 
 ### Ações manuais HTTP do Execução
