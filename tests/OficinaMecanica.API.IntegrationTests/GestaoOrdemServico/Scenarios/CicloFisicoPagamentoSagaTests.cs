@@ -84,6 +84,78 @@ public sealed class CicloFisicoPagamentoSagaTests : IAsyncLifetime
         return (await dbContext.Set<RegistroOutboxSaga>().SingleAsync(o => o.Tipo == "CriarCobranca")).Id;
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dado_InicioFisicoTardio_Quando_ReceberDuranteCompensacao_Entao_PersisteRecuperacaoSemConfirmarCancelamento(bool orcamentoJaCancelado)
+    {
+        // Arrange: o início venceu no Execução, mas seu evento ainda não chegou à OS.
+        var saga = await PrepararAsync();
+        await using (var contexto = _fixture.CriarDbContext())
+        {
+            (await contexto.SagasOrdemServico.SingleAsync()).IniciarCompensacao();
+            await contexto.SaveChangesAsync();
+        }
+        if (orcamentoJaCancelado)
+        {
+            await ProcessarExecucaoAsync(Mensagem(saga, "OrcamentoCancelado", new OrcamentoCanceladoDados(saga.OrcamentoId, 3)));
+        }
+        var iniciada = Mensagem(saga, "ExecucaoIniciada", new ExecucaoIniciadaDados(saga.PreparacaoId!.Value, 3));
+        var cancelada = Mensagem(saga, "PreparacaoCancelada", new PreparacaoCanceladaDados(saga.PreparacaoId.Value, 2));
+        var finalizada = Mensagem(saga, "ExecucaoFinalizada", new ExecucaoFinalizadaDados(saga.PreparacaoId.Value, 3, DateTimeOffset.UtcNow));
+
+        // Act: cada processamento usa outro escopo/DbContext e lê o estado persistido.
+        await ProcessarExecucaoAsync(iniciada);
+        await ProcessarExecucaoAsync(iniciada);
+        await ProcessarExecucaoAsync(iniciada with { MensagemId = Guid.NewGuid() });
+        await FluentActions.Awaiting(() => ProcessarExecucaoAsync(cancelada)).Should().ThrowAsync<DomainException>();
+        await FluentActions.Awaiting(() => ProcessarExecucaoAsync(finalizada)).Should().ThrowAsync<DomainException>();
+
+        // Assert: reconhecer o início não resolve automaticamente a recuperação pendente.
+        await using var verificacao = _fixture.CriarDbContext();
+        var atual = await verificacao.SagasOrdemServico.SingleAsync();
+        atual.Estado.Should().Be(EstadoSagaOrdemServico.RecuperacaoPendente);
+        atual.InicioFisicoConfirmado.Should().BeTrue();
+        atual.PreparacaoCancelada.Should().BeFalse();
+        atual.OrcamentoCancelado.Should().Be(orcamentoJaCancelado);
+        atual.FinalizadoEm.Should().BeNull();
+        (await verificacao.Set<RegistroOutboxSaga>().CountAsync()).Should().Be(1); // Só a autorização preparada no Arrange.
+        (await verificacao.Set<RecebimentoMensagem>().CountAsync()).Should().Be(orcamentoJaCancelado ? 3 : 2);
+        (await verificacao.Set<RecebimentoMensagem>().AnyAsync(r => r.Id == cancelada.MensagemId || r.Id == finalizada.MensagemId)).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dado_CancelamentoPreparacaoConfirmado_Quando_ReceberInicioTardio_Entao_NaoReabreExecucaoNemConfirmaRecibo(bool compensacaoCompleta)
+    {
+        // Arrange: contraponto do cenário anterior, em que o cancelamento venceu.
+        var saga = await PrepararAsync();
+        await using (var contexto = _fixture.CriarDbContext())
+        {
+            (await contexto.SagasOrdemServico.SingleAsync()).IniciarCompensacao();
+            await contexto.SaveChangesAsync();
+        }
+        await ProcessarExecucaoAsync(Mensagem(saga, "PreparacaoCancelada", new PreparacaoCanceladaDados(saga.PreparacaoId!.Value, 2)));
+        if (compensacaoCompleta)
+        {
+            await ProcessarExecucaoAsync(Mensagem(saga, "OrcamentoCancelado", new OrcamentoCanceladoDados(saga.OrcamentoId, 3)));
+        }
+        var iniciada = Mensagem(saga, "ExecucaoIniciada", new ExecucaoIniciadaDados(saga.PreparacaoId.Value, 3));
+
+        // Act / Assert: reentregas não convertem um resultado conflitante em sucesso.
+        await FluentActions.Awaiting(() => ProcessarExecucaoAsync(iniciada)).Should().ThrowAsync<DomainException>();
+        await FluentActions.Awaiting(() => ProcessarExecucaoAsync(iniciada with { MensagemId = Guid.NewGuid() })).Should().ThrowAsync<DomainException>();
+        await using var verificacao = _fixture.CriarDbContext();
+        var atual = await verificacao.SagasOrdemServico.SingleAsync();
+        atual.Estado.Should().Be(compensacaoCompleta ? EstadoSagaOrdemServico.Compensada : EstadoSagaOrdemServico.CompensacaoPendente);
+        atual.InicioFisicoConfirmado.Should().BeFalse();
+        atual.PreparacaoCancelada.Should().BeTrue();
+        atual.OrcamentoCancelado.Should().Be(compensacaoCompleta);
+        (await verificacao.Set<RegistroOutboxSaga>().CountAsync()).Should().Be(1);
+        (await verificacao.Set<RecebimentoMensagem>().CountAsync()).Should().Be(compensacaoCompleta ? 2 : 1);
+    }
+
     [RequiresDockerFact]
     public async Task Dado_FinalizacaoFisicaConfirmada_Quando_Reentregar_Entao_DeveSolicitarUmaCobrancaPreservandoContexto()
     {
