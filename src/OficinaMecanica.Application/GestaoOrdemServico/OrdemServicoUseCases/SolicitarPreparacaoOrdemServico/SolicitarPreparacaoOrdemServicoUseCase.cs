@@ -15,24 +15,35 @@ namespace OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.So
 
 public sealed class SolicitarPreparacaoOrdemServicoUseCase
 {
-    private readonly ISagaIntegracaoRepository _sagaIntegracaoRepository;
-    private readonly ISnapshotOrcamentoRepository _snapshotOrcamentoRepository;
+    private readonly ISagaOrdemServicoRepository _sagaOrdemServicoRepository;
+    private readonly IOutbox _outbox;
+    private readonly ISnapshotOrcamentoStore _snapshotOrcamentoStore;
+    private readonly IConsultaSnapshotOrcamento _consultaSnapshotOrcamento;
     private readonly IOrdemServicoRepository _ordemServicoRepository;
-    private readonly IRecebimentoMensagemRepository _recebimentoMensagemRepository;
+    private readonly IInbox _inbox;
     private readonly IValidator<SolicitarPreparacaoOrdemServicoRequest> _validator;
     private readonly IValidator<SolicitarOrcamentoSagaRequest> _snapshotValidator;
     private readonly TimeProvider _relogio;
     private readonly ILogger<SolicitarPreparacaoOrdemServicoUseCase> _logger;
 
-    public SolicitarPreparacaoOrdemServicoUseCase(ISagaIntegracaoRepository sagas, ISnapshotOrcamentoRepository snapshots,
-        IOrdemServicoRepository ordens, IRecebimentoMensagemRepository recebimentos,
-        IValidator<SolicitarPreparacaoOrdemServicoRequest> validator, IValidator<SolicitarOrcamentoSagaRequest> snapshotValidator,
-        TimeProvider relogio, ILogger<SolicitarPreparacaoOrdemServicoUseCase> logger)
+    public SolicitarPreparacaoOrdemServicoUseCase(
+        ISagaOrdemServicoRepository sagaOrdemServicoRepository,
+        IOutbox outbox,
+        ISnapshotOrcamentoStore snapshotOrcamentoStore,
+        IConsultaSnapshotOrcamento consultaSnapshotOrcamento,
+        IOrdemServicoRepository ordens,
+        IInbox inbox,
+        IValidator<SolicitarPreparacaoOrdemServicoRequest> validator,
+        IValidator<SolicitarOrcamentoSagaRequest> snapshotValidator,
+        TimeProvider relogio,
+        ILogger<SolicitarPreparacaoOrdemServicoUseCase> logger)
     {
-        _sagaIntegracaoRepository = sagas;
-        _snapshotOrcamentoRepository = snapshots;
+        _sagaOrdemServicoRepository = sagaOrdemServicoRepository;
+        _outbox = outbox;
+        _snapshotOrcamentoStore = snapshotOrcamentoStore;
+        _consultaSnapshotOrcamento = consultaSnapshotOrcamento;
         _ordemServicoRepository = ordens;
-        _recebimentoMensagemRepository = recebimentos;
+        _inbox = inbox;
         _validator = validator;
         _snapshotValidator = snapshotValidator;
         _relogio = relogio;
@@ -48,13 +59,13 @@ public sealed class SolicitarPreparacaoOrdemServicoUseCase
         }
 
         var resultado = Result<Guid>.Falha(SagaIntegracaoValidationMessages.OrdemNaoEncontrada, TipoErro.NaoEncontrado);
-        await _recebimentoMensagemRepository.ExecutarEmTransacaoAsync(async cancellationTokenTransacao =>
+        await _inbox.ExecutarEmTransacaoAsync(async cancellationTokenTransacao =>
         {
-            var saga = await _sagaIntegracaoRepository.ObterPorOrdemAsync(request.OrdemServicoId, cancellationTokenTransacao);
+            var saga = await _sagaOrdemServicoRepository.ObterPorOrdemAsync(request.OrdemServicoId, cancellationTokenTransacao);
             MensagemIntegracao mensagem;
             if (saga is not null)
             {
-                var anterior = await _sagaIntegracaoRepository.ObterComandoAsync("PrepararExecucao", request.OrdemServicoId, saga.VersaoPreparacao, cancellationTokenTransacao)
+                var anterior = await _outbox.ObterComandoAsync("PrepararExecucao", request.OrdemServicoId, saga.VersaoPreparacao, cancellationTokenTransacao)
                     ?? throw new ContratoMensagemException("PREPARACAO_NAO_SOLICITADA");
                 var dadosAnteriores = JsonContrato.Ler<PrepararExecucaoDados>(anterior.Dados.GetRawText());
                 if (dadosAnteriores.FilialId != request.FilialId || anterior.CorrelationId != request.CorrelationId)
@@ -76,7 +87,7 @@ public sealed class SolicitarPreparacaoOrdemServicoUseCase
                     resultado = Result<Guid>.Falha(SagaIntegracaoValidationMessages.OrdemIncompativel, TipoErro.Validacao);
                     return;
                 }
-                var snapshot = await _snapshotOrcamentoRepository.ObterAsync(ordem.Id, 1, cancellationTokenTransacao)
+                var snapshot = await _consultaSnapshotOrcamento.ObterAsync(ordem.Id, 1, cancellationTokenTransacao)
                     ?? throw new ContratoMensagemException("SNAPSHOT_NAO_ENCONTRADO");
                 saga = SagaOrdemServico.Iniciar(ordem.Id, 1, 1);
                 var validacaoSnapshot = await _snapshotValidator.ValidateAsync(new(saga.Id, ordem.Id,
@@ -97,13 +108,14 @@ public sealed class SolicitarPreparacaoOrdemServicoUseCase
                     itens.OrderBy(i => i.ItemId).Select(i => new ItemPreparacaoDados(i.ItemId, (int)i.Quantidade)).ToArray(), snapshot.Servicos);
                 mensagem = new(Guid.CreateVersion7(), "PrepararExecucao", 1, saga.Id, ordem.Id, request.CorrelationId,
                     request.OperacaoId, _relogio.GetUtcNow(), JsonSerializer.SerializeToElement(dados, JsonContrato.Options));
-                await _sagaIntegracaoRepository.AdicionarAsync(saga, snapshot, cancellationTokenTransacao);
-                await _sagaIntegracaoRepository.AdicionarComandoAsync(mensagem, saga.VersaoPreparacao, "Execucao", cancellationTokenTransacao);
+                await _sagaOrdemServicoRepository.AdicionarAsync(saga, cancellationTokenTransacao);
+                await _snapshotOrcamentoStore.RegistrarAsync(saga.Id, snapshot, cancellationTokenTransacao);
+                await _outbox.AdicionarComandoAsync(mensagem, saga.VersaoPreparacao, "Execucao", cancellationTokenTransacao);
             }
             var chave = $"PrepararExecucao:{request.OrdemServicoId:D}:{saga.VersaoPreparacao}";
             var hash = JsonContrato.Hash(mensagem, JsonContrato.Ler<PrepararExecucaoDados>(mensagem.Dados.GetRawText()));
-            await _recebimentoMensagemRepository.VerificarRepeticaoAsync(request.OperacaoId, chave, hash, cancellationTokenTransacao);
-            await _recebimentoMensagemRepository.RegistrarAsync(request.OperacaoId, chave, hash, cancellationTokenTransacao);
+            await _inbox.VerificarRepeticaoAsync(request.OperacaoId, chave, hash, cancellationTokenTransacao);
+            await _inbox.RegistrarAsync(request.OperacaoId, chave, hash, cancellationTokenTransacao);
             resultado = Result<Guid>.Ok(saga.Id);
         }, cancellationToken);
         if (resultado.Sucesso)

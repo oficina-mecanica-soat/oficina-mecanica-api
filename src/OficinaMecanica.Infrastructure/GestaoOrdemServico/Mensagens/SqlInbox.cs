@@ -5,13 +5,13 @@ using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Infrastructure.Persistence;
 
-namespace OficinaMecanica.Infrastructure.GestaoOrdemServico.Repositories;
+namespace OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens;
 
-public sealed class RecebimentoMensagemRepository : IRecebimentoMensagemRepository
+public sealed class SqlInbox : IInbox
 {
     private readonly OficinaMecanicaDbContext _dbContext;
 
-    public RecebimentoMensagemRepository(OficinaMecanicaDbContext dbContext)
+    public SqlInbox(OficinaMecanicaDbContext dbContext)
     {
         _dbContext = dbContext;
     }

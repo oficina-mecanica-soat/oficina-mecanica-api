@@ -3,19 +3,26 @@ using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens.Contratos;
 using OficinaMecanica.Domain.GestaoOrdemServico.Enums;
+using OficinaMecanica.Domain.GestaoOrdemServico.Interfaces;
 
 namespace OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoOrcamento;
 
 public sealed class ProcessarResultadoOrcamentoUseCase
 {
-    private readonly IRecebimentoMensagemRepository _recebimentoMensagemRepository;
-    private readonly ISagaIntegracaoRepository _sagaIntegracaoRepository;
+    private readonly IInbox _inbox;
+    private readonly ISagaOrdemServicoRepository _sagaOrdemServicoRepository;
+    private readonly IOutbox _outbox;
     private readonly TimeProvider _relogio;
 
-    public ProcessarResultadoOrcamentoUseCase(IRecebimentoMensagemRepository recebimentos, ISagaIntegracaoRepository sagas, TimeProvider relogio)
+    public ProcessarResultadoOrcamentoUseCase(
+        IInbox inbox,
+        ISagaOrdemServicoRepository sagaOrdemServicoRepository,
+        IOutbox outbox,
+        TimeProvider relogio)
     {
-        _recebimentoMensagemRepository = recebimentos;
-        _sagaIntegracaoRepository = sagas;
+        _inbox = inbox;
+        _sagaOrdemServicoRepository = sagaOrdemServicoRepository;
+        _outbox = outbox;
         _relogio = relogio;
     }
 
@@ -71,15 +78,15 @@ public sealed class ProcessarResultadoOrcamentoUseCase
         }
         var chave = $"{mensagem.Tipo}:{mensagem.OrdemServicoId:D}:{versao}";
         var hash = JsonContrato.Hash(mensagem, dados);
-        await _recebimentoMensagemRepository.ExecutarEmTransacaoAsync(async cancellationTokenTransacao =>
+        await _inbox.ExecutarEmTransacaoAsync(async cancellationTokenTransacao =>
         {
-            if (!await _recebimentoMensagemRepository.VerificarRepeticaoAsync(mensagem.MensagemId, chave, hash, cancellationTokenTransacao))
+            if (!await _inbox.VerificarRepeticaoAsync(mensagem.MensagemId, chave, hash, cancellationTokenTransacao))
             {
-                var saga = await _sagaIntegracaoRepository.ObterAsync(mensagem.SagaId, mensagem.OrdemServicoId, cancellationTokenTransacao)
+                var saga = await _sagaOrdemServicoRepository.ObterAsync(mensagem.SagaId, mensagem.OrdemServicoId, cancellationTokenTransacao)
                     ?? throw new ContratoMensagemException("SAGA_NAO_ENCONTRADA");
                 if (dados is OrcamentoGeradoDados gerado)
                 {
-                    var comando = await _sagaIntegracaoRepository.ObterComandoAsync("GerarOrcamento", saga.OrdemServicoId, versao, cancellationTokenTransacao)
+                    var comando = await _outbox.ObterComandoAsync("GerarOrcamento", saga.OrdemServicoId, versao, cancellationTokenTransacao)
                         ?? throw new ContratoMensagemException("GERACAO_NAO_SOLICITADA");
                     if (mensagem.CausationId != comando.MensagemId)
                     {
@@ -130,11 +137,11 @@ public sealed class ProcessarResultadoOrcamentoUseCase
                     saga.ConfirmarCancelamentoPreparacao(preparacao.PreparacaoId, versao);
                 }
             }
-            await _recebimentoMensagemRepository.RegistrarAsync(mensagem.MensagemId, chave, hash, cancellationTokenTransacao);
+            await _inbox.RegistrarAsync(mensagem.MensagemId, chave, hash, cancellationTokenTransacao);
         }, cancellationToken);
     }
 
     private Task AdicionarComandoAsync<T>(MensagemIntegracao origem, string tipo, int versao, string destino, T dados, CancellationToken cancellationTokenTransacao) =>
-        _sagaIntegracaoRepository.AdicionarComandoAsync(new(Guid.CreateVersion7(), tipo, 1, origem.SagaId, origem.OrdemServicoId, origem.CorrelationId,
+        _outbox.AdicionarComandoAsync(new(Guid.CreateVersion7(), tipo, 1, origem.SagaId, origem.OrdemServicoId, origem.CorrelationId,
             origem.MensagemId, _relogio.GetUtcNow(), JsonSerializer.SerializeToElement(dados, JsonContrato.Options), origem.TraceContext), versao, destino, cancellationTokenTransacao);
 }

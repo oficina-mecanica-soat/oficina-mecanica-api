@@ -6,22 +6,30 @@ using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
 using OficinaMecanica.Application.GestaoOrdemServico.Mensagens;
 using OficinaMecanica.Application.GestaoOrdemServico.ValidationMessages;
 using OficinaMecanica.Domain.GestaoOrdemServico.Enums;
+using OficinaMecanica.Domain.GestaoOrdemServico.Interfaces;
 
 namespace OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoSaga;
 
 public sealed class SolicitarOrcamentoSagaUseCase
 {
-    private readonly ISagaIntegracaoRepository _sagaIntegracaoRepository;
-    private readonly IRecebimentoMensagemRepository _recebimentoMensagemRepository;
+    private readonly ISagaOrdemServicoRepository _sagaOrdemServicoRepository;
+    private readonly IOutbox _outbox;
+    private readonly IInbox _inbox;
     private readonly IValidator<SolicitarOrcamentoSagaRequest> _validator;
     private readonly TimeProvider _relogio;
     private readonly ILogger<SolicitarOrcamentoSagaUseCase> _logger;
 
-    public SolicitarOrcamentoSagaUseCase(ISagaIntegracaoRepository sagas, IRecebimentoMensagemRepository recebimentos,
-        IValidator<SolicitarOrcamentoSagaRequest> validator, TimeProvider relogio, ILogger<SolicitarOrcamentoSagaUseCase> logger)
+    public SolicitarOrcamentoSagaUseCase(
+        ISagaOrdemServicoRepository sagaOrdemServicoRepository,
+        IOutbox outbox,
+        IInbox inbox,
+        IValidator<SolicitarOrcamentoSagaRequest> validator,
+        TimeProvider relogio,
+        ILogger<SolicitarOrcamentoSagaUseCase> logger)
     {
-        _sagaIntegracaoRepository = sagas;
-        _recebimentoMensagemRepository = recebimentos;
+        _sagaOrdemServicoRepository = sagaOrdemServicoRepository;
+        _outbox = outbox;
+        _inbox = inbox;
         _validator = validator;
         _relogio = relogio;
         _logger = logger;
@@ -44,10 +52,10 @@ public sealed class SolicitarOrcamentoSagaUseCase
         var chave = $"GerarOrcamento:{request.OrdemServicoId:D}:{dados.Versao}";
         var hash = JsonContrato.Hash(mensagem, dados);
         var resultado = Result<Guid>.Falha(SagaIntegracaoValidationMessages.SagaNaoEncontrada, TipoErro.NaoEncontrado);
-        await _recebimentoMensagemRepository.ExecutarEmTransacaoAsync(async cancellationTokenTransacao =>
+        await _inbox.ExecutarEmTransacaoAsync(async cancellationTokenTransacao =>
         {
-            var repetida = await _recebimentoMensagemRepository.VerificarRepeticaoAsync(request.OperacaoId, chave, hash, cancellationTokenTransacao);
-            var saga = await _sagaIntegracaoRepository.ObterAsync(request.SagaId, request.OrdemServicoId, cancellationTokenTransacao);
+            var repetida = await _inbox.VerificarRepeticaoAsync(request.OperacaoId, chave, hash, cancellationTokenTransacao);
+            var saga = await _sagaOrdemServicoRepository.ObterAsync(request.SagaId, request.OrdemServicoId, cancellationTokenTransacao);
             if (saga is null)
             {
                 return;
@@ -58,10 +66,10 @@ public sealed class SolicitarOrcamentoSagaUseCase
                 {
                     throw new ContratoMensagemException("SAGA_INCOMPATIVEL");
                 }
-                await _sagaIntegracaoRepository.AdicionarComandoAsync(mensagem, dados.Versao, "OrcamentoPagamento", cancellationTokenTransacao);
+                await _outbox.AdicionarComandoAsync(mensagem, dados.Versao, "OrcamentoPagamento", cancellationTokenTransacao);
             }
-            await _recebimentoMensagemRepository.RegistrarAsync(request.OperacaoId, chave, hash, cancellationTokenTransacao);
-            var comando = await _sagaIntegracaoRepository.ObterComandoAsync("GerarOrcamento", request.OrdemServicoId, dados.Versao, cancellationTokenTransacao);
+            await _inbox.RegistrarAsync(request.OperacaoId, chave, hash, cancellationTokenTransacao);
+            var comando = await _outbox.ObterComandoAsync("GerarOrcamento", request.OrdemServicoId, dados.Versao, cancellationTokenTransacao);
             resultado = Result<Guid>.Ok(comando?.MensagemId ?? mensagem.MensagemId);
         }, cancellationToken);
         if (resultado.Sucesso)
