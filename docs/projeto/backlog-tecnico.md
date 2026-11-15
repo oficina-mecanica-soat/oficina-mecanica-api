@@ -33,7 +33,7 @@ Extensão da frente Gabriel no API #411: cinco cenários BDD persistidos aprovad
 
 ### Matriz integrada e painel ampliado — 15/11/2026
 
-Merges confirmados: API #411 em 4bb3e65 e Execução #68 em ff47c6b. A matriz BDD passa a fixar Execução ff47c6bef450c3e615a8052876ceb05c092070d3, preservando Orçamento/Pagamento c2983aae256c527c5a3d9fe0db7a4802224b718f e os cinco cenários obrigatórios; o CI desta entrega deve conferir essa combinação. A configuração não habilita deploy nem muda regras de negócio.
+Merges confirmados: API #411 em 4bb3e65 e Execução #68 em ff47c6b. A matriz BDD passa a fixar Execução ff47c6bef450c3e615a8052876ceb05c092070d3, preservando Orçamento/Pagamento c2983aae256c527c5a3d9fe0db7a4802224b718f e os cinco cenários obrigatórios; o CI desta entrega deve conferir essa combinação. A configuração não habilita deploy nem muda regras de negócio. API #413, da Geovanna, revisado/aprovado e integrado em 618b706 após os dez checks: correlação sanitizada da abertura HTTP preservada na Saga/Outbox e em todos os envelopes BDD. Essa correção foi incorporada à branch da matriz, cujos cinco cenários devem validar a combinação final.
 
 [Kubernetes #82](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-kubernetes/pull/82), da Geovanna, integrado em 4c99442: painel ampliado com CPU, memória, reinícios, latência p95 e contagens HTTP dos três serviços. Validador real do workflow (painel e sete mutações negativas), actionlint e checks remotos aprovados; nomes/tags de serviço conferidos nos workloads. Definição não importada; schema remoto, parsing, disponibilidade das métricas, baseline e alertas/recuperação continuam pendentes. F4-11 permanece em andamento.
 
