@@ -4,6 +4,25 @@
 
 Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece para o escopo atual; itens históricos abaixo não viram trabalho automático. Responsável indica quem conduz a tarefa com seu Codex. Contratos são compartilhados; alterações incompatíveis devem ser alinhadas antes de implementação.
 
+### Validação local do corte distribuído — Gabriel, 15/11/2026
+
+Fontes: API base `bfc292d`, Execução `d92db66`, Orçamento/Pagamento `ba052d4` e Auth `1e72bd8`. Verificador temporário fora dos repositórios iniciou os três hosts Kestrel com `Integracoes:FluxoDistribuido:Habilitado=true`, SQL separados e DynamoDB Local. Cliente/veículo/mecânico/catálogos e saldo sintéticos foram preparados somente nos bancos locais dos respectivos owners; nenhuma OS ou Saga foi semeada para os seis casos. A abertura pública criou OS/Saga/snapshot/outbox com 202 e Location; o fluxo usou o produtor real da OS, publicadores SQL reais e worker do Execução por arquivos, com um barramento substituto em memória. Não representa SQS nem roteamento Gateway.
+
+| Caso executado | Resultado local observado |
+| --- | --- |
+| Aprovação e início manual | Aprovação e ações do mecânico por HTTP, com repetições, produziram uma cobrança pendente e baixa única: Saga `AguardandoPagamento`, OS `Finalizada`, saldo 7/0. Entrega antes de pagamento foi recusada. |
+| Recusa de orçamento | Ambos os cancelamentos foram confirmados: Saga `Compensada`, OS `Cancelada`, saldo 10/0. |
+| Cancelamento público pela OS | Solicitação repetida permaneceu 202, preservou comandos e aguardou as duas confirmações; terminou em `Compensada`/`Cancelada`, saldo 10/0. |
+| Estoque insuficiente | Saga `PreparacaoRecusada`, OS projetada como `Cancelada`, saldo 2/0 e nenhuma reserva parcial. |
+| Cancelamento após início conhecido | HTTP recusou a solicitação; Saga e OS permaneceram `EmExecucao`, com saldo 7/3. |
+| Início físico com evento atrasado | Cancelamento solicitado pela rota pública antes de a OS receber o início. Execução recusou liberar o estoque; cancelamento do orçamento chegou primeiro. Ao receber início/reentrega, a OS persistiu `RecuperacaoPendente` e status físico `EmExecucao`, saldo 7/3, sem compensação ou cobrança fictícia. |
+
+Foram 64 verificações HTTP, 45 mensagens observadas no barramento substituto, reentregas e um comando `CriarCobranca` retido sem chamada ao provedor. Os bloqueios das mutações legadas exercitadas retornaram 409 no corte local. JWT e logins usaram dados exclusivamente sintéticos; nenhum secret real foi lido ou alterado. Não houve confirmação financeira sintética.
+
+Regressões acrescentadas ao arquivo existente `CancelamentoDistribuidoTests`: iniciam a compensação pelo caso de uso publicado, preservam preparação 2/orçamento 3 e verificam início tardio antes/depois do resultado de cancelamento do orçamento, sem novos comandos ou recibo falso para resultado recusado. Suítes completas locais aprovadas, com coleta de cobertura e formatação: API 660 (219 Domain, 247 Application, 194 integração), Execução 337, Orçamento/Pagamento 288 e Auth 72; total 1.357, nenhum falhou ou foi ignorado. A contagem agrega suítes distintas, não 1.357 cenários ponta a ponta. Não houve correção ou alteração de produção nem modificação nos outros repositórios.
+
+Limites: flags locais não ativaram Environments ou AWS; hosts, bancos e transporte são descartáveis. O barramento registra o cancelamento recusado para inspeção, mas não emula ACK, visibilidade ou DLQ. Permanecem pendentes SQS/IAM dentro dos Pods, Gateway/TLS/corte implantado, autenticação privada remota, Mercado Pago com credenciais reais de teste, ingestão/alertas Datadog e tratamento operacional da recuperação. F4-05/F4-10 avançam na prova local; F4-10/F4-11/F4-12 não estão concluídas. Nenhum README, pasta auxiliar versionada, merge ou promoção foi realizado nesta entrega.
+
 ### Conferência do enunciado e preparação do aceite — 15/11/2026
 
 O PDF reenviado em Downloads é idêntico ao preservado no contexto histórico (SHA-256 comparado). Revisão integral dos requisitos e revisão estrutural local: 12 projetos e 435 arquivos C# em Domain/Application dos três serviços, sem referência de projeto entre repositórios ou dependência encontrada de Infrastructure/EF Core/AWS nessas camadas. Application referencia Domain; a porta de pagamento permanece na Application e o adaptador/DTOs Mercado Pago na Infrastructure. Isso não certifica todas as regras SOLID, segurança ou ausência de acoplamento comportamental; ownership, compensação e invariantes precisam também do aceite distribuído. Nenhuma refatoração cosmética foi introduzida.
