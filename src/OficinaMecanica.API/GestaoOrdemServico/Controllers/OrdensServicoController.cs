@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using OficinaMecanica.API.Extensions.Responses;
 using OficinaMecanica.API.Extensions.Security;
+using OficinaMecanica.API.Middlewares;
 using OficinaMecanica.Application.Identidade;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.AbrirOrdemServico;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.AguardarAprovacaoOrcamento;
@@ -40,7 +41,8 @@ public sealed class OrdensServicoController : ControllerBase
     {
         if (fluxo.Value.Habilitado)
         {
-            var distribuido = await useCase.ExecuteDistribuidoAsync(request, cancellationToken);
+            var distribuido = await useCase.ExecuteDistribuidoAsync(request,
+                HttpContext.Items[CorrelationIdMiddleware.ItemName] as string, cancellationToken);
             return distribuido.Sucesso
                 ? AcceptedAtAction(nameof(ConsultarAndamento), new { ordemServicoId = distribuido.Valor!.Id }, distribuido.Valor)
                 : this.ToActionResult(distribuido);

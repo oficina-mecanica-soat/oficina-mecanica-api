@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoExecucao;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoOrcamento;
@@ -15,7 +16,7 @@ using ExecucaoMensageria = OficinaMecanica.Execucao.Infrastructure.Mensagens;
 
 namespace OficinaMecanica.FluxoDistribuido.IntegrationTests.Fixtures;
 
-internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider orcamento, ServiceProvider execucao, string diretorio)
+internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider orcamento, ServiceProvider execucao, string diretorio, string correlacao)
 {
     public async Task ConvergirAsync()
     {
@@ -96,6 +97,8 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
         foreach (var arquivo in arquivos)
         {
             var corpo = await File.ReadAllTextAsync(arquivo);
+            using var documento = JsonDocument.Parse(corpo);
+            documento.RootElement.GetProperty("correlationId").GetString().Should().Be(correlacao);
             // Cada recebimento usa um novo escopo; repetir o JSON testa a Inbox persistida.
             await receber(corpo);
             await receber(corpo);
