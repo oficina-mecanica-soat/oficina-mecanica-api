@@ -6,7 +6,7 @@ Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece par
 
 ### Validação local do corte distribuído — Gabriel, 15/11/2026
 
-Fontes: API base `bfc292d`, Execução `d92db66`, Orçamento/Pagamento `ba052d4` e Auth `1e72bd8`. Verificador temporário fora dos repositórios iniciou os três hosts Kestrel com `Integracoes:FluxoDistribuido:Habilitado=true`, SQL separados e DynamoDB Local. Cliente/veículo/mecânico/catálogos e saldo sintéticos foram preparados somente nos bancos locais dos respectivos owners; nenhuma OS ou Saga foi semeada para os seis casos. A abertura pública criou OS/Saga/snapshot/outbox com 202 e Location; o fluxo usou o produtor real da OS, publicadores SQL reais e worker do Execução por arquivos, com um barramento substituto em memória. Não representa SQS nem roteamento Gateway.
+Fontes da revalidação final: API base `e8a6da6` com as regressões do PR #411, Execução `507d940` (PR #68), Orçamento/Pagamento `c2983aa` e Auth `1e72bd8`. Verificador temporário fora dos repositórios iniciou os três hosts Kestrel com `Integracoes:FluxoDistribuido:Habilitado=true`, SQL separados e DynamoDB Local. Cliente/veículo/mecânico/catálogos e saldo sintéticos foram preparados somente nos bancos locais dos respectivos owners; nenhuma OS ou Saga foi semeada para os seis casos. A abertura pública criou OS/Saga/snapshot/outbox com 202 e Location; o fluxo usou o produtor real da OS, publicadores SQL reais e worker do Execução por arquivos, com um barramento substituto em memória. Não representa SQS nem roteamento Gateway.
 
 | Caso executado | Resultado local observado |
 | --- | --- |
@@ -19,9 +19,13 @@ Fontes: API base `bfc292d`, Execução `d92db66`, Orçamento/Pagamento `ba052d4`
 
 Foram 64 verificações HTTP, 45 mensagens observadas no barramento substituto, reentregas e um comando `CriarCobranca` retido sem chamada ao provedor. Os bloqueios das mutações legadas exercitadas retornaram 409 no corte local. JWT e logins usaram dados exclusivamente sintéticos; nenhum secret real foi lido ou alterado. Não houve confirmação financeira sintética.
 
-Regressões acrescentadas ao arquivo existente `CancelamentoDistribuidoTests`: iniciam a compensação pelo caso de uso publicado, preservam preparação 2/orçamento 3 e verificam início tardio antes/depois do resultado de cancelamento do orçamento, sem novos comandos ou recibo falso para resultado recusado. Suítes completas locais aprovadas, com coleta de cobertura e formatação: API 660 (219 Domain, 247 Application, 194 integração), Execução 337, Orçamento/Pagamento 288 e Auth 72; total 1.357, nenhum falhou ou foi ignorado. A contagem agrega suítes distintas, não 1.357 cenários ponta a ponta. Não houve correção ou alteração de produção nem modificação nos outros repositórios.
+Regressões acrescentadas ao arquivo existente `CancelamentoDistribuidoTests`: iniciam a compensação pelo caso de uso publicado, preservam preparação 2/orçamento 3 e verificam início tardio antes/depois do resultado de cancelamento do orçamento, sem novos comandos ou recibo falso para resultado recusado. Suítes completas locais aprovadas, com coleta de cobertura e formatação: API 661 (219 Domain, 247 Application, 195 integração), Execução 343, Orçamento/Pagamento 288 e Auth 72; total 1.364, nenhum falhou ou foi ignorado. A contagem agrega suítes distintas, não 1.364 cenários ponta a ponta. As regressões e este registro estão no [PR API #411](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/411), em revisão. Não houve alteração das regras de negócio.
 
 Limites: flags locais não ativaram Environments ou AWS; hosts, bancos e transporte são descartáveis. O barramento registra o cancelamento recusado para inspeção, mas não emula ACK, visibilidade ou DLQ. Permanecem pendentes SQS/IAM dentro dos Pods, Gateway/TLS/corte implantado, autenticação privada remota, Mercado Pago com credenciais reais de teste, ingestão/alertas Datadog e tratamento operacional da recuperação. F4-05/F4-10 avançam na prova local; F4-10/F4-11/F4-12 não estão concluídas. Nenhum README, pasta auxiliar versionada, merge ou promoção foi realizado nesta entrega.
+
+### Swagger do Execução — Gabriel, 15/11/2026
+
+[PR Execução #68](https://github.com/oficina-mecanica-soat/oficina-mecanica-execucao/pull/68), em revisão: Swagger runtime conforme a referência da API, JWT e respostas tipadas, 202 com Location e artefato OpenAPI existente exportado dos quatro endpoints de negócio. Health anônimo permanece disponível na rota e na collection. Habilitação em Development/Testing ou por configuração explícita; nenhuma infraestrutura ou esteira alterada. Seis novos casos de documentação/ambiente integram os 343 testes aprovados. A obrigatoriedade existente de operacaoId é declarada também na desserialização. Os seis cenários HTTP acima foram repetidos com essa implementação e API #410 incorporada. F4-13 avança na documentação; aceite remoto e conclusões finais dos READMEs permanecem pendentes.
 
 ### Conferência do enunciado e preparação do aceite — 15/11/2026
 
@@ -452,3 +456,4 @@ Antes de iniciar uma nova frente, revisar primeiro os itens `P0`. Depois da entr
 ### Padronização obrigatória de estrutura — 10/11/2026
 
 Por orientação explícita de Gabriel, as pastas de scripts foram removidas da API e do Execução. Lógica operacional e testes são mantidos nos workflows existentes; arquivos temporários são gerados fora do conteúdo versionado. O gate de Git Flow impede pastas de scripts e novos diretórios de topo em todo PR. Não acrescentar estruturas auxiliares sem alinhamento. Esta reorganização não altera recursos de infraestrutura, contratos de mensagens ou regras de negócio; AWS permanece desabilitada.
+
