@@ -59,7 +59,15 @@ Doze casos locais aprovados, zero falhas/ignorados; formatação e actionlint co
 
 ### Logs dos carriers na jornada local — Gabriel, 15/11/2026
 
+[PR API #418](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/418) integrado em develop em b3df41b após dez checks aprovados; [CI com doze casos](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43751764964).
+
 Captura de ILogger em memória na suíte distribuída, com provider/escopos próprios por participante e coleta compartilhada somente na fixture. As quatro jornadas de contexto exigem registros de OS, Execução e Orçamento/Pagamento e verificam ausência dos marcadores sintéticos proibidos em texto, campos estruturados, escopos e exceções. Doze cenários locais aprovados, zero falhas/ignorados; formatação e diff aprovados. Sem exportação ou versionamento de logs brutos, alteração de produção, README ou pastas novas. A prova está limitada aos eventos e configuração de logging exercitados pela fixture; não certifica serialização Serilog, pipeline/indexação Datadog ou ausência de qualquer dado sensível em toda a aplicação. F4-11 continua aguardando aceite remoto.
+
+### Entrega bloqueada sem confirmação financeira — Gabriel, 15/11/2026
+
+Seis jornadas locais adicionadas: pagamento pendente, recusado ou desconhecido; consulta indisponível; moeda ou valor divergentes. Consultas são repetidas e processadores reais preservam Saga AguardandoPagamento, pagamentoConfirmado=false, entrega recusada e saldo físico 7/0. Recusa financeira é entregue à OS pelo tipo PagamentoRecusado já aprovado, acrescentado ao roteador da fixture; nenhum novo contrato ou consumidor de produção. Depois de corrigir a resposta do provedor substituto, confirmação válida repetida permite entrega com uma cobrança, outboxes drenadas e sem nova baixa. Falhas de publicação e retomada permanecem exercitadas.
+
+Dezoito cenários da combinação final (incluindo contexto/logs de #417/#418) aprovados localmente, zero falhas/ignorados, com formatação e actionlint aprovados. Job passa a exigir dezoito; commits fixados e gates mantidos. Somente testes, validação de quantidade e documentação existente; nenhum README, pasta nova ou código de produção da API/Orçamento/Execução alterado. Esse provedor não executa HTTP real, assinatura/webhook, credenciais, política de retry de rede ou checkout Mercado Pago; F4-08/F4-10/F4-12 continuam com aceite remoto pendente. Sem AWS e sem promoção release/main.
 
 ### Conferência do enunciado e preparação do aceite — 15/11/2026
 
