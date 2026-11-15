@@ -23,6 +23,10 @@ O PDF reenviado em Downloads é idêntico ao preservado no contexto histórico (
 
 Preparo documental/Postman não equivale a teste integrado executado. A collection completa antiga fica identificada como histórica; a nova usa contratos atuais, IDs retornados e ações manuais do mecânico. Endereço AWS antigo removido dos environments, sem substituir por URL inventada. Não houve ativação AWS, alteração real de Datadog, deploy ou promoção.
 
+Validações do preparo: 21 requisições com scripts executados contra respostas sintéticas, captura de IDs/tokens e preservação de `operacaoId` nas repetições; status inesperados rejeitados; environments sem credenciais e 31 links relativos conferidos. Gate de estrutura e diff aprovados. Proteções efetivas de `main` consultadas nos três microsserviços: PR obrigatório, quality gate e validação de branches exigidos, deleção/force-push bloqueados. Sem alteração dessas configurações.
+
+Material preparado no [PR API #409](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/409). Não confundir esses testes de scripts com execução HTTP real, BDD integrado ou validação do Datadog.
+
 ### Acompanhamento das frentes
 
 | ID | Responsável | Dependências | Entrega e aceite | Acompanhamento em 14/11/2026 |
