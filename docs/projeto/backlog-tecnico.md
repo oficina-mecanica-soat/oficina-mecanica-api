@@ -456,4 +456,3 @@ Antes de iniciar uma nova frente, revisar primeiro os itens `P0`. Depois da entr
 ### Padronização obrigatória de estrutura — 10/11/2026
 
 Por orientação explícita de Gabriel, as pastas de scripts foram removidas da API e do Execução. Lógica operacional e testes são mantidos nos workflows existentes; arquivos temporários são gerados fora do conteúdo versionado. O gate de Git Flow impede pastas de scripts e novos diretórios de topo em todo PR. Não acrescentar estruturas auxiliares sem alinhamento. Esta reorganização não altera recursos de infraestrutura, contratos de mensagens ou regras de negócio; AWS permanece desabilitada.
-
