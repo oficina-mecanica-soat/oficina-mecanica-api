@@ -43,13 +43,15 @@ Pré-requisitos consultados sem ler valores secretos: os oito repositórios mant
 
 ### Recuperação integrada dos publicadores — Gabriel, 15/11/2026
 
-Entrega no [PR API #416](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/416); CI e integração devem ser confirmados no PR antes de tratar a entrega como integrada.
+Entrega no [PR API #416](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/416), integrado em develop em 5f57cd1 após os dez checks aprovados; [CI com oito BDD sem falhas/ignorados](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43749162850). CD manteve deploy skipped e promoção bloqueada por falta de operação AWS confirmada.
 
 Suíte BDD ampliada de cinco para oito casos: aprovação/execução/pagamento/entrega, recusa compensada e estoque insuficiente executam também com erro após cada primeiro envio pelo adaptador local, antes da confirmação da Outbox. Publicadores reais dos três serviços são reconstruídos em novos escopos. SQL e DynamoDB Local confirmam tentativa persistida, lease/responsável liberados e próximo envio agendado; relógio controlado dos publicadores permite o reenvio. Cada mensagem deve ter exatamente duas tentativas com mesmo ID e JSON; outboxes SQL/DynamoDB drenadas ao final. Saldos, confirmações de compensação e cobrança única continuam verificados. Na falta de estoque, somente OS/Execução publicam; o orçamento não é acionado.
 
 Oito casos locais aprovados, zero falhas/ignorados, com formatação e actionlint aprovados. CI passa a exigir pelo menos oito; versões dos participantes permanecem fixadas, sem alteração em produção, contrato, infraestrutura, README ou pastas. As três classes auxiliares de teste ficam no diretório Fixtures existente. F4-10 avança na recuperação persistida entre participantes; não comprova kill/crash/reinício de processo, SQS/FIFO/DLQ/IAM, HTTP completo neste cenário, Mercado Pago ou trace exportado. Provedor financeiro e transporte continuam substitutos locais; F4-10/F4-11/F4-12 não estão encerradas.
 
 ### Contexto técnico na jornada distribuída — Gabriel, 15/11/2026
+
+Entrega no [PR API #417](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/417); acompanhar checks e estado de integração no PR.
 
 Quatro cenários adicionados à suíte existente: contexto ausente, válido, com baggage/tracestate/Authorization sintéticos proibidos e traceparent inválido. Fixture injeta somente o metadado técnico no primeiro comando persistido; o restante usa processadores, publicadores e bancos reais locais. Não representa captura de header HTTP, spans exportados ou uso de segredo real. Reentregas preservam mensagemId e mudam o contexto; compara-se o corpo das outboxes SQL e a primeira pendência DynamoDB antes/depois para impedir substituição de resultados já persistidos. Quando existe origem válida, o trace-id deve acompanhar a jornada; todo carrier publicado deve conter somente traceparent válido. Ausência/invalidade na origem não proíbe contexto nativo legítimo novo. Cenários retomam os publicadores após falha e verificam saldo 7/0, cobrança única e entrega após confirmação pelo provedor substituto.
 
