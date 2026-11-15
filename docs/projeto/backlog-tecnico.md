@@ -65,6 +65,8 @@ Captura de ILogger em memória na suíte distribuída, com provider/escopos pró
 
 ### Entrega bloqueada sem confirmação financeira — Gabriel, 15/11/2026
 
+[PR da entrega](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/419); acompanhar os checks e a integração no PR.
+
 Seis jornadas locais adicionadas: pagamento pendente, recusado ou desconhecido; consulta indisponível; moeda ou valor divergentes. Consultas são repetidas e processadores reais preservam Saga AguardandoPagamento, pagamentoConfirmado=false, entrega recusada e saldo físico 7/0. Recusa financeira é entregue à OS pelo tipo PagamentoRecusado já aprovado, acrescentado ao roteador da fixture; nenhum novo contrato ou consumidor de produção. Depois de corrigir a resposta do provedor substituto, confirmação válida repetida permite entrega com uma cobrança, outboxes drenadas e sem nova baixa. Falhas de publicação e retomada permanecem exercitadas.
 
 Dezoito cenários da combinação final (incluindo contexto/logs de #417/#418) aprovados localmente, zero falhas/ignorados, com formatação e actionlint aprovados. Job passa a exigir dezoito; commits fixados e gates mantidos. Somente testes, validação de quantidade e documentação existente; nenhum README, pasta nova ou código de produção da API/Orçamento/Execução alterado. Esse provedor não executa HTTP real, assinatura/webhook, credenciais, política de retry de rede ou checkout Mercado Pago; F4-08/F4-10/F4-12 continuam com aceite remoto pendente. Sem AWS e sem promoção release/main.
