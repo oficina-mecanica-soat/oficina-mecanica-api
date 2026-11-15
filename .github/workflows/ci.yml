@@ -402,7 +402,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      EXECUCAO_REF: d92db662ed90239e5f99bcb0116aa029731020a2
+      EXECUCAO_REF: ff47c6bef450c3e615a8052876ceb05c092070d3
       ORCAMENTO_PAGAMENTO_REF: c2983aae256c527c5a3d9fe0db7a4802224b718f
       PROJETO_BDD: tests/OficinaMecanica.FluxoDistribuido.IntegrationTests/OficinaMecanica.FluxoDistribuido.IntegrationTests.csproj
 
