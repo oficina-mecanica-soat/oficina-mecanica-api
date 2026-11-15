@@ -2,12 +2,96 @@ using FluentAssertions;
 using OficinaMecanica.Domain.GestaoOrdemServico.Enums;
 using OficinaMecanica.FluxoDistribuido.IntegrationTests.Fixtures;
 using OficinaMecanica.OrcamentoPagamento.Domain.Orcamentos.Enums;
+using OficinaMecanica.OrcamentoPagamento.Application.Pagamentos.Contratos;
 using DecisaoOrcamento = OficinaMecanica.OrcamentoPagamento.Domain.Orcamentos.Enums.DecisaoOrcamento;
 
 namespace OficinaMecanica.FluxoDistribuido.IntegrationTests.Scenarios;
 
 public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture) : IClassFixture<AmbienteDistribuidoFixture>
 {
+    [Theory]
+    [InlineData(StatusPagamentoProvedor.Pendente)]
+    [InlineData(StatusPagamentoProvedor.Recusado)]
+    [InlineData(StatusPagamentoProvedor.Desconhecido)]
+    public async Task Dado_PagamentoNaoConfirmado_Quando_ConferirERepetir_Entao_BloqueiaEntregaAteConfirmacaoValida(StatusPagamentoProvedor status)
+    {
+        await using var jornada = await fixture.CriarJornadaAsync(falharPublicacao: true);
+        await PrepararCobrancaAsync(jornada);
+        jornada.Provedor.StatusConsulta = status;
+
+        for (var tentativa = 0; tentativa < 2; tentativa++)
+            (await jornada.ConferirPagamentoAsync()).Should().Be(status != StatusPagamentoProvedor.Desconhecido);
+        await jornada.ConvergirAsync();
+
+        await ConferirEntregaBloqueadaAsync(jornada);
+        jornada.Provedor.StatusConsulta = StatusPagamentoProvedor.Confirmado;
+        await ConfirmarEEntregarAsync(jornada);
+    }
+
+    [Theory]
+    [InlineData("indisponivel")]
+    [InlineData("moeda-divergente")]
+    [InlineData("valor-divergente")]
+    public async Task Dado_ConsultaFinanceiraComFalha_Quando_ConferirERepetir_Entao_NaoConfirmaEPermiteRetomadaValida(string falha)
+    {
+        await using var jornada = await fixture.CriarJornadaAsync(falharPublicacao: true);
+        await PrepararCobrancaAsync(jornada);
+        jornada.Provedor.ConsultaIndisponivel = falha == "indisponivel";
+        jornada.Provedor.MoedaConsulta = falha == "moeda-divergente" ? "USD" : "BRL";
+        jornada.Provedor.DiferencaValor = falha == "valor-divergente" ? 1m : 0m;
+
+        for (var tentativa = 0; tentativa < 2; tentativa++)
+        {
+            if (falha == "indisponivel")
+                await Assert.ThrowsAsync<HttpRequestException>(() => jornada.ConferirPagamentoAsync());
+            else
+                await Assert.ThrowsAsync<OrcamentoPagamento.Application.Mensagens.ContratoMensagemException>(() => jornada.ConferirPagamentoAsync());
+        }
+        await jornada.ConvergirAsync();
+
+        await ConferirEntregaBloqueadaAsync(jornada);
+        jornada.Provedor.ConsultaIndisponivel = false;
+        jornada.Provedor.MoedaConsulta = "BRL";
+        jornada.Provedor.DiferencaValor = 0m;
+        await ConfirmarEEntregarAsync(jornada);
+    }
+
+    private static async Task PrepararCobrancaAsync(JornadaDistribuida jornada)
+    {
+        await jornada.AbrirAsync();
+        await jornada.ConvergirAsync();
+        await jornada.DecidirAsync(DecisaoOrcamento.Aprovado);
+        await jornada.ConvergirAsync();
+        await jornada.IniciarServicoAsync();
+        await jornada.ConvergirAsync();
+        await jornada.FinalizarExecucaoAsync();
+        await jornada.ConvergirAsync();
+        jornada.Provedor.QuantidadeCriacoes.Should().Be(1);
+    }
+
+    private static async Task ConferirEntregaBloqueadaAsync(JornadaDistribuida jornada)
+    {
+        (await jornada.SagaAsync()).Estado.Should().Be(EstadoSagaOrdemServico.AguardandoPagamento);
+        (await jornada.AndamentoAsync()).PagamentoConfirmado.Should().BeFalse();
+        (await jornada.SaldoAsync()).Disponivel.Should().Be(7);
+        (await jornada.SaldoAsync()).Reservada.Should().Be(0);
+        jornada.Provedor.QuantidadeCriacoes.Should().Be(1);
+        await Assert.ThrowsAsync<Domain.Shared.Exceptions.DomainException>(() => jornada.EntregarAsync());
+    }
+
+    private static async Task ConfirmarEEntregarAsync(JornadaDistribuida jornada)
+    {
+        await jornada.ConfirmarPagamentoAsync();
+        await jornada.ConfirmarPagamentoAsync();
+        await jornada.ConvergirAsync();
+        (await jornada.EntregarAsync()).Status.Should().Be(nameof(StatusOrdemServico.Entregue));
+        (await jornada.SagaAsync()).Estado.Should().Be(EstadoSagaOrdemServico.PagamentoConfirmado);
+        jornada.Provedor.QuantidadeCriacoes.Should().Be(1);
+        (await jornada.SaldoAsync()).Disponivel.Should().Be(7);
+        (await jornada.SaldoAsync()).Reservada.Should().Be(0);
+        await jornada.ConferirRecuperacaoAsync("OS", "Execucao", "Orcamento");
+    }
+
     [Theory]
     [InlineData("ausente")]
     [InlineData("valido")]

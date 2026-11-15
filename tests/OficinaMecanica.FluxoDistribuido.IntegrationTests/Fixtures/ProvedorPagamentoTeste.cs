@@ -7,6 +7,10 @@ internal sealed class ProvedorPagamentoTeste : IProvedorPagamento
 {
     private CheckoutResponse? _checkout;
     public int QuantidadeCriacoes { get; private set; }
+    public StatusPagamentoProvedor StatusConsulta { get; set; } = StatusPagamentoProvedor.Confirmado;
+    public bool ConsultaIndisponivel { get; set; }
+    public string MoedaConsulta { get; set; } = "BRL";
+    public decimal DiferencaValor { get; set; }
 
     public Task<CheckoutResponse?> ConsultarCheckoutPorReferenciaAsync(Guid referencia, CancellationToken cancellationToken = default)
     {
@@ -22,7 +26,9 @@ internal sealed class ProvedorPagamentoTeste : IProvedorPagamento
 
     public Task<PagamentoProvedorResponse> ConsultarPagamentoAsync(string pagamentoId, CancellationToken cancellationToken = default)
     {
+        if (ConsultaIndisponivel) throw new HttpRequestException("Provedor sintético indisponível.");
         var checkout = _checkout ?? throw new InvalidOperationException("Checkout de teste ainda não criado.");
-        return Task.FromResult(new PagamentoProvedorResponse(pagamentoId, checkout.Referencia, checkout.Valor, "BRL", StatusPagamentoProvedor.Confirmado));
+        return Task.FromResult(new PagamentoProvedorResponse(pagamentoId, checkout.Referencia,
+            checkout.Valor + DiferencaValor, MoedaConsulta, StatusConsulta));
     }
 }

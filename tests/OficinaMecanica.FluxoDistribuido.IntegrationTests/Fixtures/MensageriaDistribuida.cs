@@ -64,6 +64,7 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
                         break;
                     case "CobrancaCriada":
                     case "PagamentoConfirmado":
+                    case "PagamentoRecusado":
                         await provider.GetRequiredService<ProcessarResultadoPagamentoUseCase>().ExecuteAsync(corpo);
                         break;
                     default:
