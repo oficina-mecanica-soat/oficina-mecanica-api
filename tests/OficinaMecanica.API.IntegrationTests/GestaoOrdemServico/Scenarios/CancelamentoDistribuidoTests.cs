@@ -34,7 +34,7 @@ public sealed class CancelamentoDistribuidoTests(OficinaMecanicaApiFixture fixtu
             }).Build()).BuildServiceProvider();
     }
 
-    private async Task<Guid> PrepararAsync(bool iniciarFisicamente = false)
+    private async Task<Guid> PrepararAsync(bool iniciarFisicamente = false, bool autorizar = false)
     {
         await using var contexto = fixture.CriarDbContext();
         await SagaIntegracaoTestDataFactory.CriarAsync(contexto);
@@ -42,14 +42,96 @@ public sealed class CancelamentoDistribuidoTests(OficinaMecanicaApiFixture fixtu
         var comando = new MensagemIntegracao(Guid.NewGuid(), "PrepararExecucao", 1, saga.Id, saga.OrdemServicoId,
             "correlacao-cancelamento", Guid.NewGuid(), DateTimeOffset.UtcNow, JsonSerializer.SerializeToElement(new { Versao = 2 }, JsonContrato.Options));
         contexto.Add(RegistroOutboxSaga.Criar(comando, 2, "Execucao"));
-        if (iniciarFisicamente)
+        if (iniciarFisicamente || autorizar)
         {
             saga.RegistrarOrcamento(Guid.NewGuid(), 3, 150m);
             saga.RegistrarDecisao(saga.OrcamentoId!.Value, 3, DecisaoOrcamento.Aprovado);
-            saga.RegistrarInicioFisico(saga.PreparacaoId!.Value, 3);
+            if (iniciarFisicamente)
+            {
+                saga.RegistrarInicioFisico(saga.PreparacaoId!.Value, 3);
+            }
+            if (autorizar)
+            {
+                var autorizacao = comando with
+                {
+                    MensagemId = Guid.NewGuid(),
+                    Tipo = "AutorizarExecucao",
+                    Dados = JsonSerializer.SerializeToElement(new AutorizarExecucaoDados(saga.PreparacaoId!.Value, 3), JsonContrato.Options)
+                };
+                contexto.Add(RegistroOutboxSaga.Criar(autorizacao, 3, "Execucao"));
+            }
         }
         await contexto.SaveChangesAsync();
         return saga.OrdemServicoId;
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dado_CancelamentoSolicitado_Quando_InicioFisicoChegarTarde_Entao_PreservaRecuperacaoEComandos(bool orcamentoCanceladoAntesDoInicio)
+    {
+        // Arrange: preparação 2, orçamento 3, autorização emitida sem início recebido.
+        var ordemId = await PrepararAsync(autorizar: true);
+        await using var servicos = CriarServicos();
+        await using (var escopo = servicos.CreateAsyncScope())
+        {
+            var resultado = await escopo.ServiceProvider.GetRequiredService<SolicitarCancelamentoOrdemServicoUseCase>()
+                .ExecuteAsync(new(ordemId, MotivoCancelamentoOrdemServico.ReprovacaoOrcamento));
+            resultado.Sucesso.Should().BeTrue();
+        }
+        await using var contexto = fixture.CriarDbContext();
+        var saga = await contexto.SagasOrdemServico.SingleAsync();
+        var autorizacao = JsonContrato.LerEnvelope((await contexto.Set<RegistroOutboxSaga>().SingleAsync(r => r.Tipo == "AutorizarExecucao")).Corpo);
+        var cancelarOrcamento = JsonContrato.LerEnvelope((await contexto.Set<RegistroOutboxSaga>().SingleAsync(r => r.Tipo == "CancelarOrcamento")).Corpo);
+        var inicio = autorizacao with
+        {
+            MensagemId = Guid.NewGuid(),
+            Tipo = "ExecucaoIniciada",
+            CausationId = Guid.NewGuid(), // Operação manual do mecânico, não o comando de autorização.
+            Dados = JsonSerializer.SerializeToElement(new ExecucaoIniciadaDados(saga.PreparacaoId!.Value, 3), JsonContrato.Options)
+        };
+        var orcamento = autorizacao with
+        {
+            MensagemId = Guid.NewGuid(),
+            Tipo = "OrcamentoCancelado",
+            CausationId = cancelarOrcamento.MensagemId,
+            Dados = JsonSerializer.SerializeToElement(new OrcamentoCanceladoDados(saga.OrcamentoId, 3), JsonContrato.Options)
+        };
+        async Task ProcessarAsync(MensagemIntegracao mensagem)
+        {
+            await using var escopo = servicos.CreateAsyncScope();
+            await escopo.ServiceProvider.GetRequiredService<IProcessadorMensagem>().ProcessarAsync(JsonContrato.Serializar(mensagem));
+        }
+
+        // Act: a ordem de chegada entre resultados de produtores diferentes não resolve a recuperação.
+        if (orcamentoCanceladoAntesDoInicio)
+        {
+            await ProcessarAsync(orcamento);
+        }
+        await ProcessarAsync(inicio);
+        await ProcessarAsync(inicio with { MensagemId = Guid.NewGuid() });
+        if (!orcamentoCanceladoAntesDoInicio)
+        {
+            await FluentActions.Awaiting(() => ProcessarAsync(orcamento)).Should().ThrowAsync<DomainException>();
+        }
+        await using (var repeticao = servicos.CreateAsyncScope())
+        {
+            await FluentActions.Awaiting(() => repeticao.ServiceProvider.GetRequiredService<SolicitarCancelamentoOrdemServicoUseCase>()
+                .ExecuteAsync(new(ordemId, MotivoCancelamentoOrdemServico.ReprovacaoOrcamento))).Should().ThrowAsync<DomainException>();
+        }
+
+        // Assert: permanece a compensação incerta, sem criar outra liberação ou cobrança.
+        await using var verificacao = fixture.CriarDbContext();
+        var atual = await verificacao.SagasOrdemServico.SingleAsync();
+        atual.Estado.Should().Be(EstadoSagaOrdemServico.RecuperacaoPendente);
+        atual.InicioFisicoConfirmado.Should().BeTrue();
+        atual.PreparacaoCancelada.Should().BeFalse();
+        atual.OrcamentoCancelado.Should().Be(orcamentoCanceladoAntesDoInicio);
+        (await verificacao.OrdensServico.SingleAsync()).Status.Should().Be(StatusOrdemServico.EmExecucao);
+        (await verificacao.Set<RegistroOutboxSaga>().CountAsync()).Should().Be(4);
+        (await verificacao.Set<RegistroOutboxSaga>().CountAsync(r => r.Tipo == "CancelarPreparacao")).Should().Be(1);
+        (await verificacao.Set<RegistroOutboxSaga>().CountAsync(r => r.Tipo == "CancelarOrcamento")).Should().Be(1);
+        (await verificacao.Set<RecebimentoMensagem>().AnyAsync(r => r.Id == orcamento.MensagemId)).Should().Be(orcamentoCanceladoAntesDoInicio);
     }
 
     [RequiresDockerFact]

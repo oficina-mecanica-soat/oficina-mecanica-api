@@ -3,10 +3,12 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.AbrirOrdemServico;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.CancelarOrdemServico;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ConsultarAndamentoOrdemServico;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.EntregarOrdemServico;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.Responses;
 using OficinaMecanica.Domain.GestaoOrdemServico.Aggregates;
+using MotivoCancelamentoOrdemServico = OficinaMecanica.Domain.GestaoOrdemServico.Enums.MotivoCancelamentoOrdemServico;
 using OficinaMecanica.Execucao.Application.Preparacoes.FinalizarExecucao;
 using OficinaMecanica.Execucao.Application.Preparacoes.FinalizarServico;
 using OficinaMecanica.Execucao.Application.Preparacoes.IniciarExecucaoServico;
@@ -73,6 +75,14 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
     }
 
     public Task ConvergirAsync() => _mensageria.ConvergirAsync();
+
+    public async Task SolicitarCancelamentoAsync()
+    {
+        await using var scope = _os.CreateAsyncScope();
+        var resultado = await scope.ServiceProvider.GetRequiredService<SolicitarCancelamentoOrdemServicoUseCase>()
+            .ExecuteAsync(new(Ordem.Id, MotivoCancelamentoOrdemServico.ReprovacaoOrcamento));
+        resultado.Sucesso.Should().BeTrue();
+    }
 
     public async Task<AndamentoOrdemServicoResponse> AndamentoAsync()
     {
