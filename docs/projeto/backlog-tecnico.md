@@ -4,6 +4,31 @@
 
 Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece para o escopo atual; itens históricos abaixo não viram trabalho automático. Responsável indica quem conduz a tarefa com seu Codex. Contratos são compartilhados; alterações incompatíveis devem ser alinhadas antes de implementação.
 
+### Conferência do enunciado e preparação do aceite — 15/11/2026
+
+O PDF reenviado em Downloads é idêntico ao preservado no contexto histórico (SHA-256 comparado). Revisão integral dos requisitos e revisão estrutural local: 12 projetos e 435 arquivos C# em Domain/Application dos três serviços, sem referência de projeto entre repositórios ou dependência encontrada de Infrastructure/EF Core/AWS nessas camadas. Application referencia Domain; a porta de pagamento permanece na Application e o adaptador/DTOs Mercado Pago na Infrastructure. Isso não certifica todas as regras SOLID, segurança ou ausência de acoplamento comportamental; ownership, compensação e invariantes precisam também do aceite distribuído. Nenhuma refatoração cosmética foi introduzida.
+
+| Exigência literal | Preparo e pendência de aceite |
+| --- | --- |
+| Três serviços, repositórios/infra/bancos próprios; SQL e NoSQL | OS, Execução e Orçamento/Pagamento definidos e implementados. Provar configuração e execução conjunta com bancos/credenciais próprios no ambiente. |
+| Comunicação desacoplada sem banco alheio | Contratos REST/SQS e corte preparados; comprovar workers, identidade do Pod, rede e retirada do caminho legado na janela autorizada. |
+| Saga com compensação | Máquina persistida, Inbox/Outbox e testes locais existentes; demonstrar sucesso, compensação de ambos os participantes, reentrega e recuperação sem efeitos duplicados. |
+| Mercado Pago | Adaptador e fluxo financeiro preparados; credenciais, checkout sandbox e notificação/consulta reais continuam P0 de aceite. |
+| Unitários, cobertura >=80% por serviço e qualidade no CI | Evidências dos PRs existentes; recolher os runs da versão final de cada serviço. Não encerrar com cobertura consolidada misturando serviços. |
+| Ao menos um fluxo completo BDD | Conferir teste/evidência que percorra a jornada completa; testes isolados nomeados Dado/Quando/Então e collection manual não encerram essa exigência. Aceite completo ainda pendente. |
+| CI/CD independente, Kubernetes e main protegida | Workflows/gates preparados. Conferir proteção atual e comprovar deploy físico de cada serviço; vídeo exige pelo menos um deploy com testes. Job ignorado ou promoção lógica não é prova. |
+| Observabilidade da Fase 3 e rastreamento distribuído | Painel Saga existente; preparar ingestão dos três serviços e demonstrar correlação/falha/recuperação. F3-008/F3-009 ainda têm Lambda, métricas de negócio e alerta de falha de OS pendentes; painel vazio não encerra itens. |
+| Swagger ou Postman atualizado; arquitetura e cobertura no README por serviço | Collection distribuída e environments preparados nesta frente; validar no ambiente. Swagger runtime e documentação final dos serviços devem acompanhar a versão entregue. README da API preservado nesta frente. |
+| Vídeo <=15 minutos e PDF | [Roteiro integrado](../evidencias/validacao-integrada.md) reúne cenários, observabilidade, sequência do vídeo de 14m30s e checklist do PDF. Gravação, diagrama final, links e envio permanecem pendentes. |
+
+Preparo documental/Postman não equivale a teste integrado executado. A collection completa antiga fica identificada como histórica; a nova usa contratos atuais, IDs retornados e ações manuais do mecânico. Endereço AWS antigo removido dos environments, sem substituir por URL inventada. Não houve ativação AWS, alteração real de Datadog, deploy ou promoção.
+
+Validações do preparo: 21 requisições com scripts executados contra respostas sintéticas, captura de IDs/tokens e preservação de `operacaoId` nas repetições; status inesperados rejeitados; environments sem credenciais e 31 links relativos conferidos. Gate de estrutura e diff aprovados. Proteções efetivas de `main` consultadas nos três microsserviços: PR obrigatório, quality gate e validação de branches exigidos, deleção/force-push bloqueados. Sem alteração dessas configurações.
+
+Material preparado no [PR API #409](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/409). Não confundir esses testes de scripts com execução HTTP real, BDD integrado ou validação do Datadog.
+
+### Acompanhamento das frentes
+
 | ID | Responsável | Dependências | Entrega e aceite | Acompanhamento em 14/11/2026 |
 | --- | --- | --- | --- | --- |
 | F4-01 | Gabriel | — | Validar ambiente atual via esteiras e Postman; registrar impedimentos e evidências, sem provisionamento direto. | Validações AWS anteriores registradas no README do Execução; endpoints/fluxos isolados não equivalem a aceite completo dos três serviços. Laboratório offline. |

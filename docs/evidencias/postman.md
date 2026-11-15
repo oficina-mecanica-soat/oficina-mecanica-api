@@ -1,52 +1,35 @@
-# Evidencia: Collection Postman
+# Postman: contratos e validação manual
 
-Este arquivo documenta a collection Postman completa da API, usada tanto para exploracao manual das rotas quanto para o teste de carga que validou o HPA (ver [`kubernetes-hpa.md`](kubernetes-hpa.md)).
+## Arquivos e finalidade
 
-## Arquivos
-
-| Arquivo | Descricao |
+| Arquivo | Uso |
 | --- | --- |
-| [`../postman/oficina-mecanica-api.postman_collection.json`](../postman/oficina-mecanica-api.postman_collection.json) | Collection completa (Postman Collection v2.1), importada diretamente do `swagger.json` publicado pela API. |
-| [`../postman/oficina-mecanica-local.postman_environment.json`](../postman/oficina-mecanica-local.postman_environment.json) | Environment para execucao local (`baseUrl = http://localhost:5093`). |
-| [`../postman/oficina-mecanica-aws-dev.postman_environment.json`](../postman/oficina-mecanica-aws-dev.postman_environment.json) | Environment para o ambiente AWS de demonstracao. |
+| [Collection distribuída](../postman/oficina-mecanica-distribuida.postman_collection.json) | Fluxo atual de OS, Execução e Orçamento/Pagamento; autenticação, compensação e testes negativos. Preparada a partir dos controllers e DTOs, não de uma exportação Swagger única. |
+| [Collection completa histórica da API](../postman/oficina-mecanica-api.postman_collection.json) | Importação original do Swagger da API; útil para cadastros e consulta do contrato legado. Não representa sozinha o fluxo distribuído atual. |
+| [Environment local](../postman/oficina-mecanica-local.postman_environment.json) | API em `http://localhost:5093`; endereços de Execução e Orçamento/Pagamento devem ser preenchidos conforme processos/portas realmente iniciados. |
+| [Environment AWS development](../postman/oficina-mecanica-aws-dev.postman_environment.json) | `baseUrl` vazio para preencher com o Gateway vigente. Os três serviços usam esse endereço público. |
 
-## Metodologia de construcao
+O [roteiro integrado](validacao-integrada.md) define pré-condições, cenários, observabilidade, evidências e gravação. A existência da collection não comprova que essas chamadas passaram no ambiente.
 
-A collection **nao foi escrita manualmente**: foi importada diretamente da URL `swagger.json` publicada pela propria API (`{{baseUrl}}/swagger/v1/swagger.json`), garantindo fidelidade total ao contrato real exposto pelo Swashbuckle — inclusive a autenticacao. Como a especificacao OpenAPI gerada pela API ja declara quais operacoes exigem Bearer token (a partir dos atributos `[Authorize]`/`[AllowAnonymous]` dos controllers), o importador do Postman aplicou automaticamente um bloco de autenticacao Bearer em cada requisicao protegida, e nenhum nas rotas publicas (`login`, `consultar-status` de ordem de servico, `health`, webhook de notificacao de orcamento).
+## Importação e preparação
 
-## Autenticacao automatica
+1. Importar a collection distribuída e o environment desejado. A collection histórica pode ser importada separadamente para preparar os cadastros que ainda pertencem à API.
+2. Preencher `baseUrl` sem barra final. Na AWS usar HTTPS do Gateway, não Load Balancer público antigo. Localmente, preencher `execucaoBaseUrl` e `orcamentoBaseUrl`; `osBaseUrl` referencia `baseUrl`.
+3. Preencher em valores locais `login`/`senha`, `loginMecanico`/`senhaMecanico` e documento do cliente de teste. Não presumir que todos os perfis compartilham a mesma credencial.
+4. Informar `clienteId`, `veiculoId`, `mecanicoId`, `filialId`, `servicoCatalogoId`, `pecaInsumoCatalogoId` e `quantidade`. Veículo, cliente, catálogo e saldo precisam estar coerentes. O exemplo usa um serviço e uma peça; adaptar para cenários sem peças ou com vários serviços.
+5. Executar os logins: atendente/administrador preenche `token`; mecânico preenche `tokenMecanico`; `/auth/documento` preenche `tokenCliente` a partir de `accessToken`. O último endpoint exige a Lambda pelo Gateway ou equivalente local explicitamente preparado.
+6. Executar abertura e consultas manualmente. O modo distribuído deve retornar `202`, não `201`; consultar até a Saga disponibilizar os IDs da preparação/orçamento/pagamento. Nunca inventar os IDs.
 
-A requisicao de login (`POST /api/v1/identidade/autenticacao/login`) tem um script de pos-resposta que captura o token e salva na variavel de environment `token`:
+## Organização dos cenários
 
-```javascript
-if (pm.response.code === 200) {
-    const jsonData = pm.response.json();
-    pm.environment.set('token', jsonData.token);
-}
-```
+- Pastas 01 a 04: autenticação, abertura, aprovação, trabalho manual e pagamento/entrega. A aprovação não inicia o trabalho do mecânico.
+- Pasta 05: caminhos alternativos, em outra OS antes do início físico. Recusa e cancelamento não são passos posteriores à entrega nem devem ser executados ambos indiscriminadamente.
+- IDs `operacao*Id` são gerados uma vez por ação e preservados nas repetições. Ao iniciar nova jornada ou trocar `servicoId`, limpar os IDs de operação anteriores. Não confundir instância de serviço com ID de catálogo.
+- A consulta de andamento captura IDs recebidos. A consulta de pagamento mostra `enderecoCheckout`; abrir manualmente o endereço sandbox e usar as contas de teste do provedor. A collection não contém assinatura de webhook, access token Mercado Pago ou chamada que confirme pagamento manualmente.
+- Não executar a collection inteira com Runner: há esperas assíncronas, pagamento interativo e cenários mutuamente exclusivos. Os scripts validam o status esperado da etapa, não substituem a conferência do estado persistido, saldo e efeitos únicos.
 
-Todas as demais requisicoes protegidas referenciam `{{token}}` no cabecalho de autorizacao, entao basta rodar o login uma vez por sessao de testes.
+## Segurança e evidências
 
-> Correcao aplicada antes de commitar: o importador do Postman gerou os blocos de autenticacao referenciando `{{bearerToken}}` (nome generico padrao do importador OpenAPI), enquanto o script de login salva em `{{token}}`. Substituido em todas as 47 ocorrencias para manter consistencia — sem essa correcao, a autenticacao automatica falharia silenciosamente em toda rota protegida.
+Os environments versionados têm tokens, senhas, documentos e IDs vazios. O tipo `secret` ajuda a ocultar valores na interface, mas não garante remoção em uma exportação: revisar o arquivo antes de compartilhar. Limpar valores locais, cabeçalhos Authorization, cookies, assinaturas e respostas sensíveis de prints/relatórios.
 
-## Environments
-
-| Environment | `baseUrl` | Uso |
-| --- | --- | --- |
-| Local | `http://localhost:5093` | Execucao via Docker Compose ou Kubernetes local (port-forward). |
-| AWS Dev | Hostname do Load Balancer da AWS (ex.: `http://a69481265379a4560b49618419fb7363-769502012.us-east-1.elb.amazonaws.com`) | Ambiente publicado na AWS. |
-
-O `baseUrl` do environment AWS Dev reflete o Load Balancer ativo no momento da captura desta evidencia. Como o ambiente e recriado a cada `terraform apply` (e destruido ao final da demonstracao), esse hostname muda a cada nova execucao — o valor atual sempre pode ser obtido via `terraform output api_service_hostname`.
-
-Em ambos os environments, a variavel `token` foi exportada **vazia** de proposito (nunca commitar um JWT capturado, mesmo de ambiente de demonstracao).
-
-## Uso no teste de carga (HPA)
-
-Essa mesma collection foi usada como gerador de carga real no **Postman Performance Test** (Collection Runner), contra o ambiente AWS, para validar o escalonamento automatico do HPA. Detalhes completos, configuracao do teste e evidencia visual em [`kubernetes-hpa.md`](kubernetes-hpa.md).
-
-## Como importar
-
-1. Postman -> **Import** -> **File** -> selecionar os 3 arquivos acima (collection + 2 environments).
-2. Selecionar o environment desejado (`Local` ou `AWS Dev`) no seletor superior direito.
-3. Rodar a requisicao de login uma vez (captura o token automaticamente).
-4. Rodar qualquer outra requisicao — a autenticacao Bearer ja e aplicada automaticamente onde a rota exige.
+A [evidência de HPA](kubernetes-hpa.md) refere-se ao teste histórico com a collection da API e ao ambiente daquela execução. Ela permanece histórica; não demonstra implantação ou desempenho dos três serviços atuais.

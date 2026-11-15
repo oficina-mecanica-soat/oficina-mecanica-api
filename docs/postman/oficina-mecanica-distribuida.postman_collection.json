@@ -1,0 +1,991 @@
+{
+  "info": {
+    "name": "Oficina Mecânica — fluxo distribuído",
+    "description": "Roteiro manual do fluxo distribuído. Requer ambiente preparado, dados válidos e workers. Execute uma etapa por vez e aguarde convergência por consulta; não execute tudo automaticamente pelo Runner. Não contém credenciais. Consulte docs/evidencias/validacao-integrada.md. A collection completa histórica da API permanece separada.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "osBaseUrl",
+      "value": "{{baseUrl}}"
+    },
+    {
+      "key": "execucaoBaseUrl",
+      "value": "{{baseUrl}}"
+    },
+    {
+      "key": "orcamentoBaseUrl",
+      "value": "{{baseUrl}}"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('correlationId')) pm.environment.set('correlationId', pm.variables.replaceIn('{{$guid}}'));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 · Autenticação e autorização",
+      "item": [
+        {
+          "name": "Entrar como atendente/administrador",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/identidade/autenticacao/login",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{login}}\",\n  \"senha\": \"{{senha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const json = pm.response.json(); pm.test('JWT retornado', () => pm.expect(json.token).to.be.a('string').and.not.empty); if (json.token) pm.environment.set('token', json.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Entrar como mecânico",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/identidade/autenticacao/login",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{loginMecanico}}\",\n  \"senha\": \"{{senhaMecanico}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const json = pm.response.json(); pm.test('JWT do mecânico retornado', () => pm.expect(json.token).to.be.a('string').and.not.empty); if (json.token) pm.environment.set('tokenMecanico', json.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Autenticar cliente por documento — Gateway",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/documento",
+            "description": "AWS: usa a Lambda pública pelo Gateway. Local: exige essa rota preparada; o endpoint de login da API não substitui autenticação do Cliente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documento\": \"{{documentoCliente}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const json = pm.response.json(); pm.test('Access token retornado', () => pm.expect(json.accessToken).to.be.a('string').and.not.empty); if (json.accessToken) pm.environment.set('tokenCliente', json.accessToken); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consulta /me sem JWT",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/clientes/me/ordens-servico",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consulta /me com JWT Cliente",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/clientes/me/ordens-servico",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rota administrativa com JWT Cliente",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenCliente}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/administrativo/mecanicos/listar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 · Abrir e acompanhar OS",
+      "item": [
+        {
+          "name": "Abrir nova OS distribuída",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/gestao-ordem-servico/ordens-servico/cadastrar",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"clienteId\":\"{{clienteId}}\",\"documentoCliente\":null,\"veiculoId\":\"{{veiculoId}}\",\"mecanicoId\":\"{{mecanicoId}}\",\"servicosCatalogoIds\":[\"{{servicoCatalogoId}}\"],\"pecasInsumos\":[{\"pecaInsumoCatalogoId\":\"{{pecaInsumoCatalogoId}}\",\"quantidade\":{{quantidade}}}],\"filialId\":\"{{filialId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 202', () => pm.response.to.have.status(202));",
+                  "if (pm.response.code === 202) { const json = pm.response.json(); pm.test('OS e Location retornados', () => { pm.expect(json.id).to.be.a('string').and.not.empty; pm.expect(pm.response.headers.get('Location')).to.be.a('string').and.not.empty; }); if (json.id) pm.environment.set('ordemServicoId', json.id); if (json.servicos && json.servicos.length === 1) pm.environment.set('servicoId', json.servicos[0].id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar andamento — repetir até convergir",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/gestao-ordem-servico/ordens-servico/{{ordemServicoId}}/consultar-andamento",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const json = pm.response.json();",
+                  "pm.test('Andamento pertence à OS', () => pm.expect(json.ordemServicoId).to.eql(pm.environment.get('ordemServicoId')));",
+                  "if (pm.response.code === 200 && json.sagaId != null) pm.environment.set('sagaId', json.sagaId);",
+                  "if (pm.response.code === 200 && json.preparacaoId != null) pm.environment.set('preparacaoId', json.preparacaoId);",
+                  "if (pm.response.code === 200 && json.orcamentoId != null) pm.environment.set('orcamentoId', json.orcamentoId);",
+                  "if (pm.response.code === 200 && json.versaoOrcamento != null) pm.environment.set('versaoOrcamento', json.versaoOrcamento);",
+                  "if (pm.response.code === 200 && json.pagamentoId != null) pm.environment.set('pagamentoId', json.pagamentoId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar OS e IDs das instâncias de serviço",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/gestao-ordem-servico/ordens-servico/consultar/{{ordemServicoId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar preparação no Execução",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMecanico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{execucaoBaseUrl}}/api/v1/execucoes/{{ordemServicoId}}/preparacoes/{{preparacaoId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar orçamento vigente",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{orcamentoBaseUrl}}/api/v1/orcamentos/{{orcamentoId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 · Aprovar e executar manualmente",
+      "item": [
+        {
+          "name": "Aprovar orçamento",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{orcamentoBaseUrl}}/api/v1/orcamentos/{{orcamentoId}}/decisao",
+            "description": "Aguardar autorização no Execução. Aprovação não inicia o serviço físico.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"versao\":{{versaoOrcamento}},\"decisao\":1,\"operacaoId\":\"{{operacaoAprovacaoId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('operacaoAprovacaoId')) pm.environment.set('operacaoAprovacaoId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Iniciar serviço — ação do mecânico",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMecanico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{execucaoBaseUrl}}/api/v1/execucoes/{{ordemServicoId}}/preparacoes/{{preparacaoId}}/servicos/{{servicoId}}/iniciar-execucao",
+            "description": "Conserve operacaoId ao repetir a mesma ação. Para outro serviço/OS, limpe o ID local e informe o servicoId da instância correspondente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"operacaoId\":\"{{operacaoInicioId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('operacaoInicioId')) pm.environment.set('operacaoInicioId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar serviço — repetir para cada instância",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMecanico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{execucaoBaseUrl}}/api/v1/execucoes/{{ordemServicoId}}/preparacoes/{{preparacaoId}}/servicos/{{servicoId}}/finalizar",
+            "description": "Conserve operacaoId ao repetir a mesma ação. Para outro serviço/OS, limpe o ID local e informe o servicoId da instância correspondente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"operacaoId\":\"{{operacaoFimServicoId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('operacaoFimServicoId')) pm.environment.set('operacaoFimServicoId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar execução — após todos os serviços",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenMecanico}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{execucaoBaseUrl}}/api/v1/execucoes/{{ordemServicoId}}/preparacoes/{{preparacaoId}}/finalizar",
+            "description": "Conserve operacaoId ao repetir a mesma ação. Para outro serviço/OS, limpe o ID local e informe o servicoId da instância correspondente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"operacaoId\":\"{{operacaoFimExecucaoId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('operacaoFimExecucaoId')) pm.environment.set('operacaoFimExecucaoId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 · Pagamento e entrega",
+      "item": [
+        {
+          "name": "Consultar pagamento e checkout sandbox",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{orcamentoBaseUrl}}/api/v1/pagamentos/{{pagamentoId}}",
+            "description": "Obtenha pagamentoId na consulta de andamento após finalização. Abra enderecoCheckout manualmente com conta de teste; espere webhook assinado e consulta ao provedor. Não há confirmação financeira manual nesta collection."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Entregar somente após confirmação financeira",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/gestao-ordem-servico/ordens-servico/{{ordemServicoId}}/entregar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Webhook sem assinatura deve ser recusado",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{orcamentoBaseUrl}}/api/v1/pagamentos/notificacoes/mercado-pago?data.id=123",
+            "description": "Teste negativo, não confirma pagamento. Não simula a validação real do provedor.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"payment\",\n  \"data\": {\n    \"id\": \"123\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 · Compensação — outra OS antes do trabalho físico",
+      "item": [
+        {
+          "name": "Recusar orçamento — caminho alternativo à aprovação",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{orcamentoBaseUrl}}/api/v1/orcamentos/{{orcamentoId}}/decisao",
+            "description": "Usar nova OS preparada e orçamento ainda sem decisão. Aguardar ambas as compensações e conferir saldo uma única vez.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"versao\":{{versaoOrcamento}},\"decisao\":2,\"operacaoId\":\"{{operacaoRecusaId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('operacaoRecusaId')) pm.environment.set('operacaoRecusaId', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Solicitar cancelamento — alternativa à recusa",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/gestao-ordem-servico/ordens-servico/{{ordemServicoId}}/cancelar",
+            "description": "Preparação já confirmada, antes do início físico. Motivo 2 = ReprovacaoOrcamento. Não executar após fluxo feliz concluído.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"ordemServicoId\":\"{{ordemServicoId}}\",\"motivo\":2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 202', () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mutação física legada deve estar bloqueada",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{osBaseUrl}}/api/v1/gestao-ordem-servico/ordens-servico/{{ordemServicoId}}/iniciar-execucao",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP esperado: 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

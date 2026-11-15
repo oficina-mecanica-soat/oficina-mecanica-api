@@ -21,6 +21,8 @@ Este é o índice mestre da documentação do projeto. Use este arquivo para nav
 | Projeto | [`projeto/README.md`](projeto/README.md) | Entrada para pendências do projeto. |
 | Backlog técnico | [`projeto/backlog-tecnico.md`](projeto/backlog-tecnico.md) | Estado final da Fase 3 e evoluções pós-entrega. |
 | Evidências | [`evidencias/`](evidencias/) | Registrar prints e saídas reais de qualidade, segurança e infra. |
+| Aceite e demonstração | [`evidencias/validacao-integrada.md`](evidencias/validacao-integrada.md) | Roteiro integrado, observabilidade, vídeo e conferência do PDF. |
+| Postman | [`evidencias/postman.md`](evidencias/postman.md) | Importar collections, configurar endereços e executar os cenários manualmente. |
 | OpenAPI | [`openapi/`](openapi/) | Consultar contrato versionado da API. |
 | C4 Model | [`architecture/diagrams/c4-model/README.md`](architecture/diagrams/c4-model/README.md) | Ver modelo C4 validado e arquivos Structurizr/SVG. |
 | Diagramas finais | [`architecture/diagrams/`](architecture/diagrams/) | Guardar diagramas de infraestrutura AWS e de fluxo CI/CD. |
