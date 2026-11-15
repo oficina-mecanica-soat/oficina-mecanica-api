@@ -34,6 +34,8 @@ public sealed class OrdensServicoController : ControllerBase
 {
     [HttpPost("ordens-servico/cadastrar")]
     [Authorize(Roles = PerfisAcesso.AdministradorAtendente)]
+    [ProducesResponseType(typeof(OrdemServicoResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(OrdemServicoResponse), StatusCodes.Status202Accepted)]
     public async Task<IActionResult> Abrir([FromServices] AbrirOrdemServicoUseCase useCase, [FromBody] AbrirOrdemServicoRequest request, [FromServices] IOptions<FluxoDistribuidoOptions> fluxo, CancellationToken cancellationToken)
     {
         if (fluxo.Value.Habilitado)
@@ -204,13 +206,15 @@ public sealed class OrdensServicoController : ControllerBase
 
     [HttpPost("ordens-servico/{ordemServicoId:guid}/cancelar")]
     [Authorize(Roles = PerfisAcesso.AdministradorAtendenteMecanico)]
+    [ProducesResponseType(typeof(OrdemServicoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CancelamentoOrdemServicoResponse), StatusCodes.Status202Accepted)]
     public async Task<IActionResult> Cancelar([FromServices] CancelarOrdemServicoUseCase useCase, Guid ordemServicoId, [FromBody] CancelarOrdemServicoRequest request, [FromServices] SolicitarCancelamentoOrdemServicoUseCase solicitarCancelamento, [FromServices] IOptions<FluxoDistribuidoOptions> fluxo, CancellationToken cancellationToken)
     {
         if (fluxo.Value.Habilitado)
         {
             var distribuido = await solicitarCancelamento.ExecuteAsync(request with { OrdemServicoId = ordemServicoId }, cancellationToken);
             return distribuido.Sucesso
-                ? AcceptedAtAction(nameof(ConsultarAndamento), new { ordemServicoId }, new { SagaId = distribuido.Valor })
+                ? AcceptedAtAction(nameof(ConsultarAndamento), new { ordemServicoId }, new CancelamentoOrdemServicoResponse(distribuido.Valor))
                 : this.ToActionResult(distribuido);
         }
 

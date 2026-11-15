@@ -70,6 +70,31 @@ public sealed class SwaggerDocumentationTests : ApiIntegrationTestBase
     }
 
     [RequiresDockerFact]
+    public async Task Dado_OperacoesDistribuidas_Quando_GerarSwagger_Entao_DeveDocumentarAceitacaoSemRemoverRespostasLegadas()
+    {
+        // Arrange
+        const string abertura = "/api/v1/gestao-ordem-servico/ordens-servico/cadastrar";
+        const string cancelamento = "/api/v1/gestao-ordem-servico/ordens-servico/{ordemServicoId}/cancelar";
+
+        // Act
+        var swagger = await GetJsonAsync("/swagger/v1/swagger.json");
+
+        // Assert
+        var paths = swagger.GetProperty("paths");
+        var respostasAbertura = paths.GetProperty(abertura).GetProperty("post").GetProperty("responses");
+        var respostasCancelamento = paths.GetProperty(cancelamento).GetProperty("post").GetProperty("responses");
+
+        respostasAbertura.TryGetProperty("201", out _).Should().BeTrue();
+        respostasCancelamento.TryGetProperty("200", out _).Should().BeTrue();
+        respostasAbertura.GetProperty("202").GetProperty("content").GetProperty(ApiResponseContentTypes.Json)
+            .GetProperty("schema").GetProperty("$ref").GetString().Should().EndWith("/OrdemServicoResponse");
+        respostasCancelamento.GetProperty("202").GetProperty("content").GetProperty(ApiResponseContentTypes.Json)
+            .GetProperty("schema").GetProperty("$ref").GetString().Should().EndWith("/CancelamentoOrdemServicoResponse");
+        swagger.GetProperty("components").GetProperty("schemas").GetProperty("CancelamentoOrdemServicoResponse")
+            .GetProperty("properties").GetProperty("sagaId").GetProperty("format").GetString().Should().Be("uuid");
+    }
+
+    [RequiresDockerFact]
     public async Task Dado_EndpointWebhookOrcamento_Quando_GerarSwagger_Entao_DeveDocumentarTokenExternoSemBearer()
     {
         // Arrange

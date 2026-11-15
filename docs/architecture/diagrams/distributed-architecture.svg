@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1380" viewBox="0 0 1680 1380"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#52657c"/></marker></defs><rect width="100%" height="100%" fill="#f5f7fb"/>
+<text x="60" y="66" font-family="Segoe UI,Arial,sans-serif" font-size="36" font-weight="700" fill="#24354b">Oficina Mecânica | Arquitetura distribuída</text>
+<text x="60" y="105" font-family="Segoe UI,Arial,sans-serif" font-size="20" font-weight="400" fill="#24354b">Visão geral para demonstração • ADR-0024/25/26 e RFC-0007 • infraestrutura compartilhada, dados próprios</text>
+<rect x="60" y="155" width="390" height="115" rx="12" fill="#ffffff" stroke="#ccd6e5" stroke-width="2"/>
+<text x="80" y="193" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Usuários</text>
+<text x="80" y="226" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Cliente, atendente, administrador</text>
+<text x="80" y="253" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">e mecânico • HTTPS / JWT</text>
+<rect x="550" y="155" width="500" height="115" rx="12" fill="#e8f0fc" stroke="#88a8d4" stroke-width="2"/>
+<text x="570" y="193" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Amazon API Gateway</text>
+<text x="570" y="226" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Entrada pública única</text>
+<text x="570" y="253" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">OS / Execução / Orçamento e Pagamento</text>
+<rect x="1150" y="155" width="470" height="115" rx="12" fill="#f3edfc" stroke="#b6a0d3" stroke-width="2"/>
+<text x="1170" y="193" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Auth Lambda</text>
+<text x="1170" y="226" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Emite JWT do Cliente por documento</text>
+<text x="1170" y="253" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Consulta privada de cliente na OS</text>
+<polyline points="450,210 550,210" fill="none" stroke="#52657c" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="1050,210 1150,210" fill="none" stroke="#52657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1060" y="192" font-family="Segoe UI,Arial,sans-serif" font-size="17" font-weight="400" fill="#24354b">/auth</text>
+<rect x="55" y="365" width="1570" height="225" rx="14" fill="#edf3f9" stroke="#b7c8dc" stroke-width="2"/>
+<text x="80" y="395" font-family="Segoe UI,Arial,sans-serif" font-size="20" font-weight="700" fill="#24354b">Amazon EKS</text>
+<text x="1090" y="395" font-family="Segoe UI,Arial,sans-serif" font-size="20" font-weight="700" fill="#24354b">Workloads independentes</text>
+<rect x="80" y="425" width="440" height="135" rx="12" fill="#e8f0fc" stroke="#88a8d4" stroke-width="2"/>
+<text x="100" y="463" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Ordem de Serviço (API)</text>
+<text x="100" y="496" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Atendimento e catálogos • Saga</text>
+<text x="100" y="523" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Estado da OS • Inbox / Outbox</text>
+<rect x="620" y="425" width="440" height="135" rx="12" fill="#e8f5ed" stroke="#8ebfa2" stroke-width="2"/>
+<text x="640" y="463" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Execução e Produção</text>
+<text x="640" y="496" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Diagnóstico, reserva e estoque</text>
+<text x="640" y="523" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Trabalho manual • Inbox / Outbox</text>
+<rect x="1160" y="425" width="440" height="135" rx="12" fill="#fff3e4" stroke="#d7b486" stroke-width="2"/>
+<text x="1180" y="463" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Orçamento / Pagamento</text>
+<text x="1180" y="496" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Orçamento, decisão e cobrança</text>
+<text x="1180" y="523" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Mercado Pago • Inbox / Outbox</text>
+<polyline points="800,270 800,315 300,315 300,425" fill="none" stroke="#52657c" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="800,315 840,315 840,425" fill="none" stroke="#52657c" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="840,315 1380,315 1380,425" fill="none" stroke="#52657c" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="1385,270 1385,300 230,300 230,425" fill="none" stroke="#52657c" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+<text x="60" y="292" font-family="Segoe UI,Arial,sans-serif" font-size="17" font-weight="400" fill="#24354b">Consulta privada autenticada (sem SQL na Lambda)</text>
+<rect x="80" y="660" width="440" height="130" rx="12" fill="#fff9e7" stroke="#d2bd7b" stroke-width="2"/>
+<text x="100" y="698" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Entrada OS + DLQ</text>
+<text x="100" y="731" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Resultados dos dois participantes</text>
+<text x="100" y="758" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">FIFO • consumidor OS</text>
+<polyline points="300,660 300,560" fill="none" stroke="#52657c" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+<rect x="620" y="660" width="440" height="130" rx="12" fill="#fff9e7" stroke="#d2bd7b" stroke-width="2"/>
+<text x="640" y="698" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Entrada Execução + DLQ</text>
+<text x="640" y="731" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Preparação / autorização / cancelamento</text>
+<text x="640" y="758" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">FIFO • consumidor Execução</text>
+<polyline points="840,660 840,560" fill="none" stroke="#52657c" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+<rect x="1160" y="660" width="440" height="130" rx="12" fill="#fff9e7" stroke="#d2bd7b" stroke-width="2"/>
+<text x="1180" y="698" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Entrada Orçamento + DLQ</text>
+<text x="1180" y="731" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Gerar / cancelar orçamento • cobrança</text>
+<text x="1180" y="758" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">FIFO • consumidor Orçamento/Pagamento</text>
+<polyline points="1380,660 1380,560" fill="none" stroke="#52657c" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+<text x="80" y="625" font-family="Segoe UI,Arial,sans-serif" font-size="20" font-weight="700" fill="#24354b">Amazon SQS</text>
+<text x="80" y="826" font-family="Segoe UI,Arial,sans-serif" font-size="18" font-weight="400" fill="#24354b">Produtores: OS → Execução e Orçamento/Pagamento; participantes → OS. Sem SNS no fluxo atual.</text>
+<rect x="80" y="885" width="440" height="125" rx="12" fill="#e8f0fc" stroke="#88a8d4" stroke-width="2"/>
+<text x="100" y="923" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">SQL Server • OS</text>
+<text x="100" y="956" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Banco da OS • EF Core</text>
+<text x="100" y="983" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Credencial própria</text>
+<rect x="620" y="885" width="440" height="125" rx="12" fill="#e8f5ed" stroke="#8ebfa2" stroke-width="2"/>
+<text x="640" y="923" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">DynamoDB • Execução</text>
+<text x="640" y="956" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Estado, reservas e deduplicação</text>
+<text x="640" y="983" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Persistência atômica própria</text>
+<rect x="1160" y="885" width="440" height="125" rx="12" fill="#fff3e4" stroke="#d7b486" stroke-width="2"/>
+<text x="1180" y="923" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">SQL Server • Orçamento/Pagamento</text>
+<text x="1180" y="956" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Banco e migrations próprios</text>
+<text x="1180" y="983" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Credencial exclusiva</text>
+<polyline points="520,510 555,510 555,947 520,947" fill="none" stroke="#52657c" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="1060,510 1095,510 1095,947 1060,947" fill="none" stroke="#52657c" stroke-width="2" marker-end="url(#arrow)"/>
+<polyline points="1600,510 1635,510 1635,947 1600,947" fill="none" stroke="#52657c" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="80" y="1049" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">SQL: bancos lógicos isolados no RDS compartilhado. Nenhum serviço acessa o banco de outro.</text>
+<rect x="80" y="1120" width="980" height="125" rx="12" fill="#f3edfc" stroke="#b6a0d3" stroke-width="2"/>
+<text x="100" y="1158" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Datadog • plataforma existente</text>
+<text x="100" y="1191" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Logs, APM, correlação, Kubernetes e integrações AWS</text>
+<text x="100" y="1218" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Ingestão, alertas e jornada real precisam ser evidenciados</text>
+<rect x="1160" y="1120" width="440" height="125" rx="12" fill="#fff3e4" stroke="#d7b486" stroke-width="2"/>
+<text x="1180" y="1158" font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#17345c">Mercado Pago • sandbox</text>
+<text x="1180" y="1191" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Checkout HTTPS e consulta ao provedor</text>
+<text x="1180" y="1218" font-family="Segoe UI,Arial,sans-serif" font-size="19" font-weight="400" fill="#24354b">Webhook assinado não basta sozinho</text>
+<polyline points="1600,535 1650,535 1650,1180 1600,1180" fill="none" stroke="#52657c" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+<polyline points="1600,1210 1665,1210 1665,130 800,130 800,155" fill="none" stroke="#52657c" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow)"/>
+<text x="1150" y="120" font-family="Segoe UI,Arial,sans-serif" font-size="17" font-weight="400" fill="#24354b">Webhook assinado → Gateway → Orçamento/Pagamento</text>
+<text x="80" y="1287" font-family="Segoe UI,Arial,sans-serif" font-size="17" font-weight="400" fill="#24354b">Cada serviço mantém Clean Architecture. Setas tracejadas: mensageria/integração. Semântica: contratos da RFC-0007.</text>
+<text x="80" y="1317" font-family="Segoe UI,Arial,sans-serif" font-size="17" font-weight="400" fill="#24354b">Arquitetura preparada em código; não é evidência de implantação. AWS Academy: LabRole compartilhada, sem isolamento IAM por Pod.</text>
+<text x="80" y="1347" font-family="Segoe UI,Arial,sans-serif" font-size="17" font-weight="400" fill="#24354b">Entrada via VPC Link / NLB privado: OS 80 • Execução 8081 • Orçamento/Pagamento 8082.</text>
+</svg>
