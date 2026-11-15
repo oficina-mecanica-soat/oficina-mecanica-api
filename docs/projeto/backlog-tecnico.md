@@ -4,6 +4,40 @@
 
 Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece para o escopo atual; itens históricos abaixo não viram trabalho automático. Responsável indica quem conduz a tarefa com seu Codex. Contratos são compartilhados; alterações incompatíveis devem ser alinhadas antes de implementação.
 
+### Prontidão da próxima janela AWS — revisão Gabriel, 15/11/2026
+
+[PR da revisão](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/421); conferir checks e integração no PR.
+
+Oito clones atualizados por fetch/pull em develop, sem novas entregas ou PRs da Geovanna desde a integração anterior. Referências consultadas: API 853f083, Execução ff47c6b, Orçamento/Pagamento c2983aa, Auth 1e72bd8, VPC a6de871, Kubernetes 4c99442, RDS 8bbf66f e Gateway 0dc270a. Atualizações futuras exigem nova conferência antes da janela; esta revisão não comprova recursos na conta do laboratório.
+
+| Verificação de configuração | Observado e preparo restante |
+| --- | --- |
+| Controle AWS/ação | Os oito repositórios têm AWS_DEPLOY_ENABLED=false, sem override dessa variável em development, e controle versionado em destroy. Nenhuma flag/ação foi alterada. Retorno para apply e habilitação ficam condicionados à janela explícita e ao fluxo por PR/CD. |
+| Promoções | AUTO_PR_ENABLED=true em sete repositórios; Orçamento/Pagamento=false. Sem overrides no Environment. Preparar false durante a janela que deve parar em develop; promoção release/main continua retida. |
+| Branch dos Environments | Seis já limitavam development a develop. Execução e Auth tinham política null/sem proteções do Environment; alinhados nesta revisão à mesma lista customizada, somente branch develop, e resultado relido pela API GitHub. Workflows já exigiam develop; sem alteração de secrets, rulesets de PR, deploy ou AWS. |
+| Credenciais AWS | Três secrets temporários presentes nos Environments dos sete repositórios originais, com metadados de atualização em 12/11. No Environment/repositório de Orçamento/Pagamento não constam esses nomes. Presença/data não comprovam validade; preparar credenciais do laboratório da janela e conferir conta/região pelo runner. |
+| Escopo da consulta de secrets | Conferidos nomes/datas em Environment e repositório, sem leitura de valores. A consulta de secrets da organização retornou 403 por falta de escopo admin:org no token; herança de organização não foi comprovada ou descartada. Nenhum escopo foi ampliado; ausência nos dois escopos auditados não comprova ausência global. |
+| JWT/state | JWT_SECRET nos três serviços, AUTH_LAMBDA_JWT_SECRET na Lambda e TERRAFORM_STATE_KEY nos quatro estão cadastrados. Issuer/audience do Execução/Auth conferidos; Orçamento tem defaults contratuais. Valores dos secrets não comparados, descriptografados ou rotacionados; preservar a chave de recuperação por owner. |
+| Clientes privados | CLIENTES_INTERNOS_TOKEN presente na API/Auth; CLIENTES_API_ENABLED=false em ambos. Mesmo valor/validade não comprovados por metadados. Ativação da API antecede a Lambda privada. |
+| RDS próprio | DB_USERNAME está cadastrado. ORCAMENTO_PAGAMENTO_DB_ENABLED ausente nos escopos de Variables consultados, portanto default false. Habilitar no preparo autorizado para obter banco/login próprios e status/rds-orcamento-pagamento pronto. Workflow RDS atual exige Kubernetes; essa dependência prevalece na sequência específica da janela. |
+| Workers/corte | Execução tem PROCESSAMENTO_REMOTO_HABILITADO=false. Flags PROCESSAMENTO_REMOTO_ENABLED/FLUXO_DISTRIBUIDO_ENABLED de API/Orçamento e corte do Gateway estão ausentes e assumem false. Nomes corretos e ordem estão no roteiro; nenhuma ativação realizada. |
+| Mercado Pago | Não constam MERCADO_PAGO_ACCESS_TOKEN/MERCADO_PAGO_WEBHOOK_SECRET em Environment/repositório de Orçamento, nem as Variables MERCADO_PAGO_RECEBEDOR_ID/MERCADO_PAGO_URL_NOTIFICACAO/MERCADO_PAGO_ATIVO. Escopo de organização permanece não verificado. Configurar sandbox e callback da URL real do Gateway antes de habilitar e provar pagamento. |
+| Datadog | DD_API_KEY presente em Kubernetes/Auth. Valores/site/validade/ingestão não validados. Painel versionado e Agent não equivalem a importação, dados ou alerta testado. |
+| Dados para aceite | Preparar cliente/veículo/mecânico/catálogos na API e saldo exclusivo de teste no Execução, com os IDs/filial do snapshot. Seed da API e fixtures locais não abastecem remotamente o Execução. Operação local de escrita só com a exceção explícita da janela; não presumir autorização a partir dos testes locais. |
+
+Procedimento concreto incorporado ao [roteiro existente](../evidencias/validacao-integrada.md#configuração-exigida-antes-de-executar): VPC → Kubernetes → RDS/banco próprio → API inicial sem worker/corte e com clientes privados → Auth privada → Gateway inicial sem corte para obter URL → Execução remoto → Orçamento remoto/distribuído/Mercado Pago configurado → API distribuída → Gateway distribuído. Reaplicações devem capturar as Variables em novo plano/tentativa do CD completo; alterar Variable não dispara deploy. Nenhum comando AWS, apply/destroy, state, IAM, workload ou conta Datadog foi alterado nesta revisão.
+
+#### Evidências de CI para preparar o aceite
+
+| Componente e referência integrada | CI completo consultado | Testes / cobertura de linhas observados |
+| --- | --- | --- |
+| API 853f083, PR #420 | [CI](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43766779170) | 662 testes de serviço; 93,06%. Job BDD separado: 19 aprovados, zero falhas/ignorados. |
+| Execução ff47c6b, PR #68 | [CI](https://github.com/oficina-mecanica-soat/oficina-mecanica-execucao/actions/runs/43744894506) | 343 testes; 95,03%. |
+| Orçamento/Pagamento c2983aa | [CI completo #9](https://github.com/oficina-mecanica-soat/oficina-mecanica-orcamento-pagamento/actions/runs/43640083679) | 288 testes; 93,98%. #10 posterior altera somente documentação/OpenAPI; confirmar novamente o CI/imagem do apply. |
+| Auth 1e72bd8, PR #47 | [CI](https://github.com/oficina-mecanica-soat/oficina-mecanica-auth-lambda/actions/runs/43658665891) | 72 testes; 95,3%. |
+
+Cobertura é medida separadamente por serviço, sem somar o BDD ou os percentuais. A tabela não identifica imagem implantada, ARN, hostname, conta atual ou SHA de deploy; esses campos e os runs/tentativas reais devem ser coletados no ambiente. As etapas restantes de SQS/IAM/Gateway, checkout/webhook Mercado Pago, ingestão/alertas Datadog e vídeo continuam abertas. F4-10/F4-11/F4-12 não são encerradas pela revisão de prontidão.
+
 ### Validação local do corte distribuído — Gabriel, 15/11/2026
 
 Fontes da revalidação final: API base `e8a6da6` com as regressões do PR #411, Execução `507d940` (PR #68), Orçamento/Pagamento `c2983aa` e Auth `1e72bd8`. Verificador temporário fora dos repositórios iniciou os três hosts Kestrel com `Integracoes:FluxoDistribuido:Habilitado=true`, SQL separados e DynamoDB Local. Cliente/veículo/mecânico/catálogos e saldo sintéticos foram preparados somente nos bancos locais dos respectivos owners; nenhuma OS ou Saga foi semeada para os seis casos. A abertura pública criou OS/Saga/snapshot/outbox com 202 e Location; o fluxo usou o produtor real da OS, publicadores SQL reais e worker do Execução por arquivos, com um barramento substituto em memória. Não representa SQS nem roteamento Gateway.
@@ -65,7 +99,7 @@ Captura de ILogger em memória na suíte distribuída, com provider/escopos pró
 
 ### Entrega bloqueada sem confirmação financeira — Gabriel, 15/11/2026
 
-[PR da entrega](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/419); acompanhar os checks e a integração no PR.
+[PR API #419](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/419) integrado em develop em c79d947 após dez checks aprovados e dezoito BDD no CI 43752377103.
 
 Seis jornadas locais adicionadas: pagamento pendente, recusado ou desconhecido; consulta indisponível; moeda ou valor divergentes. Consultas são repetidas e processadores reais preservam Saga AguardandoPagamento, pagamentoConfirmado=false, entrega recusada e saldo físico 7/0. Recusa financeira é entregue à OS pelo tipo PagamentoRecusado já aprovado, acrescentado ao roteador da fixture; nenhum novo contrato ou consumidor de produção. Depois de corrigir a resposta do provedor substituto, confirmação válida repetida permite entrega com uma cobrança, outboxes drenadas e sem nova baixa. Falhas de publicação e retomada permanecem exercitadas.
 
@@ -73,7 +107,7 @@ Dezoito cenários da combinação final (incluindo contexto/logs de #417/#418) a
 
 ### Interrupção real do processo Execução — Gabriel, 15/11/2026
 
-[PR da entrega](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/420); acompanhar CI e integração no PR.
+[PR API #420](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/420) integrado em develop em 853f083 após os dez checks e dezenove BDD aprovados; CI de referência na matriz de prontidão acima.
 
 Novo cenário no BDD existente: API Execução compilada da versão fixada ff47c6b e iniciada em processo filho, com saúde HTTP, JWT sintético e worker local sobre a tabela da jornada. Arquivo temporário bloqueia a saída; após reserva e falha de publicação confirmadas no DynamoDB Local, Process.Kill encerra o processo sem shutdown gracioso. Novo PID recebe a mesma tabela e diretório, com reentrega do comando original. Resultado conserva ID e mensagem persistidos; OS exige um único recebimento de ExecucaoPreparada. Saldo permanece 7 disponíveis/3 reservados após retomada; cancelamento repetido converge a Compensada com ambas as confirmações e 10/0, sem cobrança. Processo pai não consome comandos nem publica a outbox do Execução nesse caso. Relógio do worker é real; espera limitada inclui a lease de um minuto se o kill ocorrer em voo.
 

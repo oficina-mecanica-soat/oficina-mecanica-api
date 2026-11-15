@@ -19,6 +19,52 @@ Antes do corte, verificar `status/api-aplicacao`, `status/execucao` e `status/or
 
 Para cada serviço, guardar link do CI e CD, SHA da imagem, cobertura e análise de qualidade. Confirmar workload, banco/credencial próprios, saúde HTTP, versão e identidade AWS observada dentro do Pod. A LabRole compartilhada é exceção acadêmica expressa; não comprova isolamento IAM entre Pods.
 
+### Configuração exigida antes de executar
+
+O retrato datado dos repositórios, configurações presentes/ausentes e CIs de referência fica no [backlog canônico](../projeto/backlog-tecnico.md). Esta seção descreve o procedimento futuro; não habilita deploy nem atesta recursos existentes.
+
+| Componente | Preparação exigida para a janela |
+| --- | --- |
+| Oito repositórios | Credenciais temporárias da mesma janela em `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN`, no Environment `development`. Conferir `AWS_REGION` e identidade da conta pelo runner autorizado. Presença/data de secret não comprovam validade. |
+| Controle de execução | Revisar `infra/terraform/environments/dev/terraform-action.env`. A primeira subida exige retorno explícito para `apply` por PR, CI aprovado e janela autorizada. Habilitar `AWS_DEPLOY_ENABLED` somente para o owner que será executado. Manter promoções retidas; preparar `AUTO_PR_ENABLED=false` durante o aceite em develop. |
+| Estados/planos protegidos | API, Execução, Orçamento/Pagamento e Auth exigem `TERRAFORM_STATE_KEY` correspondente aos seus próprios backups. Preservar chave, state e cache por conta; não gerar outra chave como tentativa de corrigir restauração. Em conta nova sem cache compatível, seguir o bootstrap/recuperação já implementado pelo owner, com ausência confirmada e guardrails; não assumir state vazio ou copiar cache de outra conta. |
+| JWT compartilhado | `JWT_SECRET` nos três serviços e `AUTH_LAMBDA_JWT_SECRET` na Lambda devem validar a mesma chave. Issuer `oficina-mecanica-auth` e audience `oficina-mecanica-api`; Execução exige `JWT_ISSUER`/`JWT_AUDIENCE` explícitos, Orçamento usa esses nomes com defaults, Auth usa `AUTH_LAMBDA_JWT_ISSUER`/`AUTH_LAMBDA_JWT_AUDIENCE`. Conferir a API pelo ConfigMap atual. Não imprimir chaves nem rotacioná-las sem coordenação. |
+| Clientes privados | Mesmo `CLIENTES_INTERNOS_TOKEN` na API e Lambda, distinto do JWT. `CLIENTES_API_ENABLED=true` primeiro na API, depois na Lambda. A validação da Lambda deve confirmar consulta privada e ausência de connection string SQL. |
+| RDS | Conferir `DB_USERNAME`; habilitar `ORCAMENTO_PAGAMENTO_DB_ENABLED=true` no preparo do banco próprio. O workflow atual exige Kubernetes pronto e usa Job no EKS para o bootstrap SQL. Só avançar após `status/rds` e `status/rds-orcamento-pagamento` prontos e limpeza do Job/Secret temporários confirmada. |
+| Workers | Execução usa `PROCESSAMENTO_REMOTO_HABILITADO`; API e Orçamento/Pagamento usam `PROCESSAMENTO_REMOTO_ENABLED`. São nomes diferentes e não intercambiáveis. Ativação requer fila OS publicada; API também exige filas dos dois participantes antes de habilitar seu worker. |
+| Corte distribuído | `FLUXO_DISTRIBUIDO_ENABLED` na API, Orçamento/Pagamento e Gateway, respeitando a ordem abaixo. Na API, true exige worker e clientes privados. No Orçamento, true exige worker. No Gateway, true exige os guardrails de workloads/flags/Lambda/listeners já implementados. |
+| Mercado Pago | `MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET`, `MERCADO_PAGO_RECEBEDOR_ID` e `MERCADO_PAGO_URL_NOTIFICACAO`, com `MERCADO_PAGO_ATIVO=true` somente após configuração completa. URL HTTPS do Gateway efetivamente criado mais a rota `/api/v1/pagamentos/notificacoes/mercado-pago`; não inventar hostname. Validar conta vendedora, comprador e checkout de teste; configuração aceita pelo workflow não comprova pagamento. |
+| Datadog | `DD_API_KEY` no Kubernetes e Auth, site da conta conferido (`DD_SITE` tem default `datadoghq.com` no workflow Kubernetes). Usar o workflow existente `datadog-observability.yml`; Agent/Cluster Agent não importam o painel Saga nem criam monitores. Importação, ingestão, baseline e disparo/recuperação permanecem etapas de aceite. |
+
+Alterar uma Variable não dispara o CD. Os CDs de development são disparados por push em develop; o workflow AWS é reutilizável. Para reaplicar uma configuração em fases sobre um commit de apply já autorizado, usar rerun completo do CD correspondente, com novo plano salvo e nova tentativa. Não reutilizar o plano de outra configuração/tentativa nem apenas repetir o job de aplicação. Conferir a imagem/árvore exigida pelo workflow e a disponibilidade dos artifacts antes da execução.
+
+### Sequência que resolve as dependências atuais
+
+Cada linha depende de comprovação da anterior. Interromper diante de falha de acesso, identidade, contrato, restauração ou saúde; registrar o erro e preservar estado/mensagens. Nenhuma exceção nova de IAM, troca de credencial de workload ou alteração de arquitetura está autorizada por este roteiro.
+
+Ao retomar ambiente existente, inventariar filas/outboxes e jornadas em curso antes de ativar modos. Esta sequência não autoriza purge ou descarte de mensagens/Sagas; reconciliar as pendências pelo mecanismo aprovado.
+
+| Fase | Owner e configuração | Critério para avançar |
+| --- | --- | --- |
+| 1 | VPC | Contratos e `status/vpc` confirmados na conta/região da janela. |
+| 2 | Kubernetes/ECR/ingressos privados | EKS/nodes, três registries, NLB interno/listeners e contratos conferidos. Verificar IMDSv2 obrigatório/hop limit 2 nos nodes efetivos pela etapa acadêmica existente. Conferir execução do workflow Datadog e seus resultados. |
+| 3 | RDS com banco de Orçamento habilitado | RDS e bootstrap do banco/login próprios confirmados. A versão atual do workflow exige Kubernetes antes desta fase. |
+| 4 | Primeiro apply da API: worker/corte false, clientes privados true | Publicar a entrada FIFO/DLQ OS e o workload. `status/api` confirma mensageria; `status/api-aplicacao`, rollout, imagem e health privado confirmam o workload. Esta passagem não anuncia fluxo distribuído ativo. |
+| 5 | Auth com clientes privados true | API privada já disponível; validação pela própria Lambda, JWT novo e ausência de acesso SQL no modo privado. |
+| 6 | Gateway inicial com corte false | Publicar o Gateway base pelos contratos de VPC/Kubernetes/Auth e obter sua URL real. Esta passagem permite configurar a URL do webhook antes do corte dos microsserviços. Não executar a jornada distribuída ainda. |
+| 7 | Execução com processamento remoto true | Sua tabela/filas e workload prontos; resultado aponta para a fila OS da fase 4. Provar LabRole/conta dentro do Pod, acesso DynamoDB/SQS e saúde privada. `status/execucao` é de infraestrutura e não substitui essa prova. |
+| 8 | Orçamento/Pagamento com worker e fluxo distribuído true | Consumir banco/credencial próprios e fila OS. Configurar Mercado Pago com a URL real da fase 6 e `MERCADO_PAGO_ATIVO=true` após configuração completa. Exigir `status/orcamento-pagamento-aplicacao`, rollout/imagem/health privados e contratos aplicados; não iniciar cobrança antes de o callback estar roteado na fase 10. |
+| 9 | Reaplicar API com worker/corte true e clientes privados true | Entradas dos dois participantes já publicadas. Conferir FIFO/ARN/conta/região, configuração aplicada, rollout e estado do workload. |
+| 10 | Reaplicar Gateway com corte true | Guardrails aprovam flags API/Orçamento, status, Lambda privada sem SQL e listeners 8081/8082 com targets saudáveis. Confirmar roteamento público e callback; então iniciar os cenários de aceite. |
+
+Antes da primeira OS, preparar dados sintéticos pelos mecanismos suportados e autorizados para cada owner. O seed da API não abastece a tabela do Execução: registrar explicitamente filial, IDs de catálogo/instâncias e saldo inicial no serviço correto. Os fixtures locais não autorizam escrita remota. Se a janela exigir novamente o verificador local com escrita, sua exceção deve ser explicitamente autorizada; a regra padrão da ADR-0025 mantém operações locais apenas de consulta.
+
+### Evidências a recolher na janela
+
+Para cada owner, relacionar conta/região, SHA integrado, run/tentativa do plano e apply, imagem realmente em execução, rollout/health e contratos publicados. Usar o CI do PR correspondente e a cobertura do serviço; não preencher SHA de imagem a partir do nome da branch. BDD e CIs históricos de referência no backlog não comprovam a versão implantada.
+
+Na jornada, guardar IDs técnicos e estados antes/depois: reserva, orçamento/decisão, início manual, finalização física, cobrança, confirmação de teste e entrega; em outra OS, recusa/cancelamento e ambas as compensações. Acrescentar prova real de reentrega/outbox/DLQ, identidade no Pod, corte legado e trace correlacionado. Capturas/logs/prints devem excluir documentos, senhas, JWT, assinatura de webhook e secrets. Conferir o painel com dados e o alerta com disparo/recuperação; ausência de dados não encerra aceite.
+
 ## Postman e dados da jornada
 
 Importar a [collection distribuída](../postman/oficina-mecanica-distribuida.postman_collection.json) e um [environment](postman.md). Usar variáveis locais para senhas/tokens. O endpoint público é o mesmo Gateway para os três serviços; em execução local, preencher os endereços individuais e não presumir que Docker Compose legado inicialize todos os serviços e workers.
