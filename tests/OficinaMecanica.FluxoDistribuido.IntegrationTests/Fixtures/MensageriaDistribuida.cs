@@ -24,6 +24,7 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
     private readonly FalhasPublicacao? _falhas = falharPublicacao ? new() : null;
     private readonly RelogioPublicacao _relogio = new();
     public ContextoTraceJornada? ContextoTrace { get; set; }
+    public bool ExecucaoExterna { get; set; }
 
     public void ConferirRetomada(params string[] origens) => _falhas?.ConferirRetomada(origens);
 
@@ -33,9 +34,9 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
         {
             var houveAtividade = await PublicarOsAsync();
             houveAtividade |= await PublicarOrcamentoAsync();
-            houveAtividade |= await PublicarExecucaoAsync();
+            if (!ExecucaoExterna) houveAtividade |= await PublicarExecucaoAsync();
 
-            houveAtividade |= await TransferirAsync("Execucao", corpo => ReceberAsync(execucao, async provider =>
+            if (!ExecucaoExterna) houveAtividade |= await TransferirAsync("Execucao", corpo => ReceberAsync(execucao, async provider =>
                 await provider.GetRequiredService<ProcessadorPreparacao>().ProcessarAsync(corpo)));
             houveAtividade |= await TransferirAsync("OrcamentoPagamento", corpo => ReceberAsync(orcamento, async provider =>
             {
@@ -179,9 +180,10 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
 
     private async Task<bool> TransferirAsync(string destino, Func<string, Task> receber)
     {
-        var entrada = Path.Combine(diretorio, destino, "entrada");
-        if (!Directory.Exists(entrada)) return false;
-        var arquivos = Directory.GetFiles(entrada, "*.json").Order(StringComparer.Ordinal).ToArray();
+        var entradas = new List<string> { Path.Combine(diretorio, destino, "entrada") };
+        if (ExecucaoExterna && destino == "OrdemServico") entradas.Add(Path.Combine(diretorio, "Execucao", "saida"));
+        var arquivos = entradas.Where(Directory.Exists).SelectMany(entrada => Directory.GetFiles(entrada, "*.json"))
+            .Order(StringComparer.Ordinal).ToArray();
         foreach (var arquivo in arquivos)
         {
             var corpo = await File.ReadAllTextAsync(arquivo);

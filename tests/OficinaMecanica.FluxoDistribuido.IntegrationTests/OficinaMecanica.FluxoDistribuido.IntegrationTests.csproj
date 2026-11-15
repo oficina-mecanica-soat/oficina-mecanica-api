@@ -21,6 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AssemblyMetadata Include="ExecucaoApiDll" Value="$([System.IO.Path]::GetFullPath('$(RepositorioExecucao)/src/OficinaMecanica.Execucao.API/bin/$(Configuration)/net10.0/OficinaMecanica.Execucao.API.dll'))" />
+    <ProjectReference Include="$(RepositorioExecucao)/src/OficinaMecanica.Execucao.API/OficinaMecanica.Execucao.API.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../src/OficinaMecanica.Infrastructure/OficinaMecanica.Infrastructure.csproj" />
     <ProjectReference Include="$(RepositorioExecucao)/src/OficinaMecanica.Execucao.Infrastructure/OficinaMecanica.Execucao.Infrastructure.csproj" />
     <ProjectReference Include="$(RepositorioOrcamentoPagamento)/src/OficinaMecanica.OrcamentoPagamento.Infrastructure/OficinaMecanica.OrcamentoPagamento.Infrastructure.csproj" />

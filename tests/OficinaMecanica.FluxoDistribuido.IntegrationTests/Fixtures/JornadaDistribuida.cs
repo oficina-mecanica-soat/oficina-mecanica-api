@@ -3,6 +3,7 @@ using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.AbrirOrdemServico;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.CancelarOrdemServico;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ConsultarAndamentoOrdemServico;
@@ -15,6 +16,7 @@ using OficinaMecanica.Execucao.Application.Preparacoes.FinalizarServico;
 using OficinaMecanica.Execucao.Application.Preparacoes.IniciarExecucaoServico;
 using OficinaMecanica.Execucao.Domain.GestaoEstoque.Entities;
 using OficinaMecanica.Execucao.Infrastructure.Persistencia;
+using OficinaMecanica.Execucao.Infrastructure.Hosting;
 using OficinaMecanica.FluxoDistribuido.IntegrationTests.Factories;
 using OficinaMecanica.Infrastructure.Persistence;
 using OficinaMecanica.OrcamentoPagamento.Application.Orcamentos.OrcamentoUseCases.RegistrarDecisaoOrcamento;
@@ -78,6 +80,51 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
     }
 
     public Task ConvergirAsync() => _mensageria.ConvergirAsync();
+
+    public ProcessoExecucaoLocal CriarProcessoExecucao()
+    {
+        _mensageria.ExecucaoExterna = true;
+        var config = _execucao.GetRequiredService<IOptions<ProcessamentoLocalOptions>>().Value;
+        var diretorio = Path.Combine(_diretorio, "Execucao");
+        Directory.CreateDirectory(diretorio);
+        return new(config.Endpoint, config.Tabela, diretorio);
+    }
+
+    public void BloquearSaidaExecucao() => File.WriteAllText(Path.Combine(_diretorio, "Execucao", "saida"), "Bloqueio exclusivo do teste de interrupção.");
+
+    public void LiberarSaidaExecucao() => File.Delete(Path.Combine(_diretorio, "Execucao", "saida"));
+
+    public async Task<PendenciaOutbox?> PendenciaExecucaoAsync()
+    {
+        await using var scope = _execucao.CreateAsyncScope();
+        var registro = await scope.ServiceProvider.GetRequiredService<IArmazenamentoExecucao>()
+            .ObterPrimeiraOutboxAsync(CancellationToken.None);
+        return registro?.Ler<PendenciaOutbox>();
+    }
+
+    public async Task ConferirResultadoRecuperadoAsync(Guid mensagemId)
+    {
+        await using var scope = _os.CreateAsyncScope();
+        var recebimentos = scope.ServiceProvider.GetRequiredService<OficinaMecanicaDbContext>()
+            .Set<OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens.RecebimentoMensagem>();
+        (await recebimentos.CountAsync(recebimento => recebimento.Id == mensagemId)).Should().Be(1,
+            "a OS deve receber o ID persistido antes da interrupção real do processo");
+        var chave = $"ExecucaoPreparada:{Ordem.Id:D}:";
+        (await recebimentos.CountAsync(recebimento => recebimento.ChaveOperacao.StartsWith(chave))).Should().Be(1,
+            "o reinício não pode fabricar outra identidade de resultado para a preparação");
+    }
+
+    public async Task ReentregarPreparacaoAsync()
+    {
+        await using var scope = _os.CreateAsyncScope();
+        var corpo = await scope.ServiceProvider.GetRequiredService<OficinaMecanicaDbContext>()
+            .Set<OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens.RegistroOutboxSaga>()
+            .Where(registro => registro.OrdemServicoId == Ordem.Id && registro.Tipo == "PrepararExecucao")
+            .Select(registro => registro.Corpo).SingleAsync();
+        var entrada = Path.Combine(_diretorio, "Execucao", "entrada");
+        Directory.CreateDirectory(entrada);
+        await File.WriteAllTextAsync(Path.Combine(entrada, Guid.NewGuid().ToString("N") + ".json"), corpo);
+    }
 
     public async Task DefinirContextoPreparacaoAsync(ContextoTraceJornada contexto)
     {

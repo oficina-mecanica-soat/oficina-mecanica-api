@@ -4,11 +4,79 @@ using OficinaMecanica.FluxoDistribuido.IntegrationTests.Fixtures;
 using OficinaMecanica.OrcamentoPagamento.Domain.Orcamentos.Enums;
 using OficinaMecanica.OrcamentoPagamento.Application.Pagamentos.Contratos;
 using DecisaoOrcamento = OficinaMecanica.OrcamentoPagamento.Domain.Orcamentos.Enums.DecisaoOrcamento;
+using Xunit.Abstractions;
 
 namespace OficinaMecanica.FluxoDistribuido.IntegrationTests.Scenarios;
 
-public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture) : IClassFixture<AmbienteDistribuidoFixture>
+public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture, ITestOutputHelper saida) : IClassFixture<AmbienteDistribuidoFixture>
 {
+    [Fact]
+    public async Task Dado_ReservaPersistidaESaidaBloqueada_Quando_InterromperEReiniciarProcesso_Entao_RetomaResultadoECompensaSemDuplicarSaldo()
+    {
+        await using var jornada = await fixture.CriarJornadaAsync();
+        await using var processo = jornada.CriarProcessoExecucao();
+        jornada.BloquearSaidaExecucao();
+        await processo.IniciarAsync();
+        var processoAnterior = processo.Id;
+        await jornada.AbrirAsync();
+        await AguardarProcessoAsync(jornada, processo, async () =>
+            (await jornada.PendenciaExecucaoAsync()) is { Tentativas: > 0, LeaseAte: null });
+        var pendente = (await jornada.PendenciaExecucaoAsync())!;
+        pendente.Mensagem.Tipo.Should().Be("ExecucaoPreparada");
+        pendente.UltimoErro.Should().Be("FALHA_PUBLICACAO");
+        (await jornada.SaldoAsync()).Disponivel.Should().Be(7);
+        (await jornada.SaldoAsync()).Reservada.Should().Be(3);
+        (await jornada.SagaAsync()).Estado.Should().Be(EstadoSagaOrdemServico.Preparando);
+
+        // Kill real: nenhum StopAsync/graceful shutdown confirma a Outbox antes de encerrar.
+        await processo.InterromperAsync();
+        saida.WriteLine("Processo {0} encerrado à força após tentativa persistida; resultado {1} pendente.", processoAnterior, pendente.Mensagem.MensagemId);
+        var recuperavel = (await jornada.PendenciaExecucaoAsync())!;
+        Execucao.Application.Mensagens.JsonContrato.Serializar(recuperavel.Mensagem)
+            .Should().Be(Execucao.Application.Mensagens.JsonContrato.Serializar(pendente.Mensagem));
+        await jornada.ReentregarPreparacaoAsync();
+        jornada.LiberarSaidaExecucao();
+        await processo.IniciarAsync();
+        processo.Id.Should().NotBe(processoAnterior);
+        saida.WriteLine("Novo processo {0} iniciado com a mesma tabela e arquivos locais.", processo.Id);
+        await AguardarProcessoAsync(jornada, processo, async () =>
+            (await jornada.SagaAsync()).Estado == EstadoSagaOrdemServico.AguardandoAprovacao
+            && await jornada.PendenciaExecucaoAsync() is null);
+        (await jornada.SaldoAsync()).Disponivel.Should().Be(7);
+        (await jornada.SaldoAsync()).Reservada.Should().Be(3);
+        await jornada.ConferirResultadoRecuperadoAsync(pendente.Mensagem.MensagemId);
+
+        await jornada.SolicitarCancelamentoAsync();
+        await jornada.SolicitarCancelamentoAsync();
+        await AguardarProcessoAsync(jornada, processo, async () =>
+            (await jornada.SagaAsync()).Estado == EstadoSagaOrdemServico.Compensada
+            && await jornada.PendenciaExecucaoAsync() is null);
+        var compensada = await jornada.SagaAsync();
+        compensada.PreparacaoCancelada.Should().BeTrue();
+        compensada.OrcamentoCancelado.Should().BeTrue();
+        (await jornada.StatusOrcamentoAsync()).Should().Be(StatusOrcamento.Cancelado);
+        (await jornada.SaldoAsync()).Disponivel.Should().Be(10);
+        (await jornada.SaldoAsync()).Reservada.Should().Be(0);
+        jornada.Provedor.QuantidadeCriacoes.Should().Be(0);
+        await processo.InterromperAsync();
+        await jornada.ConferirRecuperacaoAsync("OS", "Execucao", "Orcamento");
+        saida.WriteLine("Mesmo resultado recebido pela OS; reserva 7/3 preservada e compensação final 10/0, sem cobrança.");
+    }
+
+    private static async Task AguardarProcessoAsync(JornadaDistribuida jornada, ProcessoExecucaoLocal processo, Func<Task<bool>> condicao)
+    {
+        // A lease real do publicador dura um minuto; não adiantar o relógio para recuperar um kill em voo.
+        using var prazo = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        while (!prazo.IsCancellationRequested)
+        {
+            processo.ConferirAtivo();
+            await jornada.ConvergirAsync();
+            if (await condicao()) return;
+            await Task.Delay(100, prazo.Token);
+        }
+        throw new TimeoutException("A jornada não convergiu com o worker externo no prazo local.");
+    }
+
     [Theory]
     [InlineData(StatusPagamentoProvedor.Pendente)]
     [InlineData(StatusPagamentoProvedor.Recusado)]
