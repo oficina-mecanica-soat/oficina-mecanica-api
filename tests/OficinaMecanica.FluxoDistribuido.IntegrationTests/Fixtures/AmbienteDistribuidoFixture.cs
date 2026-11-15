@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OficinaMecanica.Execucao.Infrastructure.Mensagens;
 using OficinaMecanica.Execucao.Infrastructure.Persistencia;
 using OficinaMecanica.Infrastructure.Persistence;
@@ -35,13 +36,14 @@ public sealed class AmbienteDistribuidoFixture : IAsyncLifetime
         var conexaoOs = new SqlConnectionStringBuilder(_sql.GetConnectionString()) { InitialCatalog = "Os_" + id }.ConnectionString;
         var conexaoOrcamento = new SqlConnectionStringBuilder(_sql.GetConnectionString()) { InitialCatalog = "Orcamento_" + id }.ConnectionString;
         var provedor = new ProvedorPagamentoTeste();
-        var os = CriarServicosSql(conexaoOs, true, provedor);
-        var orcamento = CriarServicosSql(conexaoOrcamento, false, provedor);
+        var logs = new LogsJornada();
+        var os = CriarServicosSql(conexaoOs, true, provedor, logs);
+        var orcamento = CriarServicosSql(conexaoOrcamento, false, provedor, logs);
         var endpoint = $"http://{_dynamo.Hostname}:{_dynamo.GetMappedPublicPort(8000)}";
         var clienteDynamo = DynamoDbLocal.CriarClient(endpoint);
         var tabela = "jornada-" + id;
 
-        var services = new ServiceCollection().AddLogging();
+        var services = new ServiceCollection().AddLogging(builder => builder.AddProvider(logs.CriarProvedor()));
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ProcessamentoLocal:Endpoint"] = endpoint,
@@ -55,7 +57,7 @@ public sealed class AmbienteDistribuidoFixture : IAsyncLifetime
             new TransporteArquivos(Path.Combine(diretorio, "OrdemServico", "entrada")));
         var execucao = services.BuildServiceProvider();
 
-        var jornada = new JornadaDistribuida(os, orcamento, execucao, clienteDynamo, diretorio, provedor, falharPublicacao);
+        var jornada = new JornadaDistribuida(os, orcamento, execucao, clienteDynamo, diretorio, provedor, falharPublicacao, logs);
         try
         {
             await DynamoDbLocal.PrepararTabelaAsync(clienteDynamo, tabela, CancellationToken.None);
@@ -72,9 +74,9 @@ public sealed class AmbienteDistribuidoFixture : IAsyncLifetime
         }
     }
 
-    private static ServiceProvider CriarServicosSql(string conexao, bool ordemServico, ProvedorPagamentoTeste provedor)
+    private static ServiceProvider CriarServicosSql(string conexao, bool ordemServico, ProvedorPagamentoTeste provedor, LogsJornada logs)
     {
-        var services = new ServiceCollection().AddLogging();
+        var services = new ServiceCollection().AddLogging(builder => builder.AddProvider(logs.CriarProvedor()));
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["ConnectionStrings:DefaultConnection"] = conexao
