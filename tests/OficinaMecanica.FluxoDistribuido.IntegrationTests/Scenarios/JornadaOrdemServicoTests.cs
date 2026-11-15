@@ -8,6 +8,38 @@ namespace OficinaMecanica.FluxoDistribuido.IntegrationTests.Scenarios;
 
 public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture) : IClassFixture<AmbienteDistribuidoFixture>
 {
+    [Theory]
+    [InlineData("ausente")]
+    [InlineData("valido")]
+    [InlineData("campos-proibidos")]
+    [InlineData("invalido")]
+    public async Task Dado_ContextoTecnico_Quando_RetomarEReentregarComOutroTrace_Entao_PreservaContratoEEfeitosUnicos(string cenario)
+    {
+        await using var jornada = await fixture.CriarJornadaAsync(falharPublicacao: true);
+        var contexto = new ContextoTraceJornada(cenario);
+        await jornada.AbrirAsync();
+        await jornada.DefinirContextoPreparacaoAsync(contexto);
+        await jornada.ConvergirAsync();
+        await jornada.DecidirAsync(DecisaoOrcamento.Aprovado);
+        await jornada.ConvergirAsync();
+        (await jornada.SagaAsync()).InicioFisicoConfirmado.Should().BeFalse();
+
+        await jornada.IniciarServicoAsync();
+        await jornada.ConvergirAsync();
+        await jornada.FinalizarExecucaoAsync();
+        await jornada.ConvergirAsync();
+        await jornada.ConfirmarPagamentoAsync();
+        await jornada.ConvergirAsync();
+        var entregue = await jornada.EntregarAsync();
+
+        entregue.Status.Should().Be(nameof(StatusOrdemServico.Entregue));
+        (await jornada.SaldoAsync()).Disponivel.Should().Be(7);
+        (await jornada.SaldoAsync()).Reservada.Should().Be(0);
+        jornada.Provedor.QuantidadeCriacoes.Should().Be(1);
+        await jornada.ConferirRecuperacaoAsync("OS", "Execucao", "Orcamento");
+        contexto.ConferirJornada();
+    }
+
     [Fact]
     public async Task Dado_OrdemPreparada_Quando_RepetirCancelamento_Entao_CompensaAmbosSemDuplicarLiberacao()
     {

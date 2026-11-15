@@ -1,4 +1,5 @@
 using Amazon.DynamoDBv2;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,6 +76,21 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
     }
 
     public Task ConvergirAsync() => _mensageria.ConvergirAsync();
+
+    public async Task DefinirContextoPreparacaoAsync(ContextoTraceJornada contexto)
+    {
+        _mensageria.ContextoTrace = contexto;
+        await using var scope = _os.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<OficinaMecanicaDbContext>();
+        var registro = await db.Set<OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens.RegistroOutboxSaga>()
+            .SingleAsync(registro => registro.OrdemServicoId == Ordem.Id && registro.Tipo == "PrepararExecucao");
+        var mensagem = OficinaMecanica.Application.GestaoOrdemServico.Mensagens.JsonContrato.LerEnvelope(registro.Corpo);
+        // Estímulo técnico sintético: não representa captura HTTP ou span exportado pelo profiler.
+        var corpo = JsonSerializer.Serialize(mensagem with { TraceContext = contexto.Origem },
+            OficinaMecanica.Application.GestaoOrdemServico.Mensagens.JsonContrato.Options);
+        db.Entry(registro).Property(registro => registro.Corpo).CurrentValue = corpo;
+        await db.SaveChangesAsync();
+    }
 
     public async Task ConferirRecuperacaoAsync(params string[] origens)
     {

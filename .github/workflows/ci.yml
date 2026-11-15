@@ -488,7 +488,7 @@ jobs:
             }
             $total += [int]$contadores.passed
           }
-          if ($total -lt 8) { throw 'Os oito cenários BDD obrigatórios não foram executados.' }
+          if ($total -lt 12) { throw 'Os doze cenários BDD obrigatórios não foram executados.' }
           Write-Host "Cenários BDD aprovados: $total"
 
       - name: "⬆️ 11 · Publicar evidência dos testes distribuídos"

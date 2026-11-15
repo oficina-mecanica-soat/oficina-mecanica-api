@@ -23,6 +23,7 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
 {
     private readonly FalhasPublicacao? _falhas = falharPublicacao ? new() : null;
     private readonly RelogioPublicacao _relogio = new();
+    public ContextoTraceJornada? ContextoTrace { get; set; }
 
     public void ConferirRetomada(params string[] origens) => _falhas?.ConferirRetomada(origens);
 
@@ -147,6 +148,34 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
         await receber(scope.ServiceProvider);
     }
 
+    private async Task<Dictionary<string, string>> CapturarOutboxesAsync()
+    {
+        var corpos = new Dictionary<string, string>();
+        await using (var scope = os.CreateAsyncScope())
+        {
+            var registros = await scope.ServiceProvider.GetRequiredService<OficinaMecanicaDbContext>()
+                .Set<OsMensageria.RegistroOutboxSaga>().AsNoTracking().ToListAsync();
+            foreach (var registro in registros) corpos.Add("OS:" + registro.Id, registro.Corpo);
+        }
+        await using (var scope = orcamento.CreateAsyncScope())
+        {
+            var registros = await scope.ServiceProvider.GetRequiredService<OrcamentoPagamentoDbContext>()
+                .Set<OrcamentoMensageria.RegistroOutbox>().AsNoTracking().ToListAsync();
+            foreach (var registro in registros) corpos.Add("Orcamento:" + registro.Id, registro.Corpo);
+        }
+        await using (var scope = execucao.CreateAsyncScope())
+        {
+            var registro = await scope.ServiceProvider.GetRequiredService<IArmazenamentoExecucao>()
+                .ObterPrimeiraOutboxAsync(CancellationToken.None);
+            if (registro is not null)
+            {
+                var mensagem = registro.Ler<PendenciaOutbox>()!.Mensagem;
+                corpos.Add("Execucao:" + mensagem.MensagemId, JsonContrato.Serializar(mensagem));
+            }
+        }
+        return corpos;
+    }
+
     private async Task<bool> TransferirAsync(string destino, Func<string, Task> receber)
     {
         var entrada = Path.Combine(diretorio, destino, "entrada");
@@ -157,9 +186,14 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
             var corpo = await File.ReadAllTextAsync(arquivo);
             using var documento = JsonDocument.Parse(corpo);
             documento.RootElement.GetProperty("correlationId").GetString().Should().Be(correlacao);
-            // Cada recebimento usa um novo escopo; repetir o JSON testa a Inbox persistida.
+            ContextoTrace?.Conferir(corpo);
+            // Novo escopo em cada recebimento; o cenário de trace muda apenas metadados na reentrega.
             await receber(corpo);
-            await receber(corpo);
+            var anteriores = ContextoTrace is null ? null : await CapturarOutboxesAsync();
+            await receber(ContextoTrace is null ? corpo : ContextoTraceJornada.AlterarReentrega(corpo));
+            if (anteriores is not null)
+                (await CapturarOutboxesAsync()).Should().BeEquivalentTo(anteriores,
+                    "reentrega com outro trace não substitui o contexto ou o corpo persistido dos resultados");
             File.Delete(arquivo);
         }
         return arquivos.Length > 0;
