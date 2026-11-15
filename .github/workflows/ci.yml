@@ -395,6 +395,110 @@ jobs:
             TestResults/CoverageReport/**
           if-no-files-found: error
 
+  test_distributed_flow:
+    name: "🔗 04.1 · Validar jornada distribuída"
+    needs: detect_ci_scope
+    if: needs.detect_ci_scope.outputs.ci_required == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EXECUCAO_REF: d92db662ed90239e5f99bcb0116aa029731020a2
+      ORCAMENTO_PAGAMENTO_REF: c2983aae256c527c5a3d9fe0db7a4802224b718f
+      PROJETO_BDD: tests/OficinaMecanica.FluxoDistribuido.IntegrationTests/OficinaMecanica.FluxoDistribuido.IntegrationTests.csproj
+
+    steps:
+      - name: "📥 01 · Baixar código da OS"
+        uses: actions/checkout@v7
+
+      - name: "📥 02 · Baixar versão compatível do Execução"
+        uses: actions/checkout@v7
+        with:
+          repository: oficina-mecanica-soat/oficina-mecanica-execucao
+          ref: ${{ env.EXECUCAO_REF }}
+          path: .dependencias/execucao
+          persist-credentials: false
+
+      - name: "📥 03 · Baixar versão compatível de Orçamento/Pagamento"
+        uses: actions/checkout@v7
+        with:
+          repository: oficina-mecanica-soat/oficina-mecanica-orcamento-pagamento
+          ref: ${{ env.ORCAMENTO_PAGAMENTO_REF }}
+          path: .dependencias/orcamento-pagamento
+          persist-credentials: false
+
+      - name: "🛠️ 04 · Instalar SDK do .NET"
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: "📦 05 · Restaurar cache de pacotes NuGet"
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.sln', '**/*.csproj', '**/*.props', '**/*.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: "🔎 06 · Conferir versões e disponibilidade do Docker"
+        run: |
+          test "$(git -C .dependencias/execucao rev-parse HEAD)" = "$EXECUCAO_REF"
+          test "$(git -C .dependencias/orcamento-pagamento rev-parse HEAD)" = "$ORCAMENTO_PAGAMENTO_REF"
+          docker info > /dev/null
+          {
+            echo '## Jornada distribuída — versões verificadas'
+            echo "- OS: $(git rev-parse HEAD)"
+            echo "- Execução: $EXECUCAO_REF"
+            echo "- Orçamento/Pagamento: $ORCAMENTO_PAGAMENTO_REF"
+            echo '- SQL Server e DynamoDB Local; transporte por arquivos e provedor de pagamento de teste.'
+            echo '- Não comprova SQS, IAM, rede AWS, webhook ou Mercado Pago real.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "📚 07 · Resolver dependências do projeto"
+        run: >
+          dotnet restore "$PROJETO_BDD"
+          -p:RepositorioExecucao="$GITHUB_WORKSPACE/.dependencias/execucao"
+          -p:RepositorioOrcamentoPagamento="$GITHUB_WORKSPACE/.dependencias/orcamento-pagamento"
+
+      - name: "🎨 08 · Conferir padrão dos testes distribuídos"
+        run: >
+          dotnet format "$PROJETO_BDD" --verify-no-changes --no-restore
+          --include tests/OficinaMecanica.FluxoDistribuido.IntegrationTests
+        env:
+          RepositorioExecucao: ${{ github.workspace }}/.dependencias/execucao
+          RepositorioOrcamentoPagamento: ${{ github.workspace }}/.dependencias/orcamento-pagamento
+
+      - name: "🧪 09 · Executar cenários BDD dos três serviços"
+        run: >
+          dotnet test "$PROJETO_BDD" --configuration Release --no-restore
+          -p:RepositorioExecucao="$GITHUB_WORKSPACE/.dependencias/execucao"
+          -p:RepositorioOrcamentoPagamento="$GITHUB_WORKSPACE/.dependencias/orcamento-pagamento"
+          --results-directory "$RUNNER_TEMP/bdd-results" --logger trx
+
+      - name: "🔍 10 · Exigir cenários executados sem falhas ou ignorados"
+        shell: pwsh
+        run: |
+          $arquivos = @(Get-ChildItem -Path "$env:RUNNER_TEMP/bdd-results" -Filter '*.trx' -Recurse)
+          if ($arquivos.Count -eq 0) { throw 'Nenhum resultado BDD foi gerado.' }
+          $total = 0
+          foreach ($arquivo in $arquivos) {
+            [xml]$trx = Get-Content -LiteralPath $arquivo.FullName
+            $contadores = $trx.TestRun.ResultSummary.Counters
+            if ([int]$contadores.failed -ne 0 -or [int]$contadores.notExecuted -ne 0) {
+              throw 'O aceite local exige zero falhas e zero cenários ignorados.'
+            }
+            $total += [int]$contadores.passed
+          }
+          if ($total -lt 3) { throw 'Os três cenários BDD obrigatórios não foram executados.' }
+          Write-Host "Cenários BDD aprovados: $total"
+
+      - name: "⬆️ 11 · Publicar evidência dos testes distribuídos"
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: distributed-bdd-results
+          path: ${{ runner.temp }}/bdd-results/**/*.trx
+          if-no-files-found: error
+
   build_container_image:
     name: "🐳 05 · Build da imagem Docker"
     needs: detect_ci_scope
@@ -1061,6 +1165,7 @@ jobs:
       - build_application
       - verify_code_style
       - test_application
+      - test_distributed_flow
       - build_container_image
       - validate_kubernetes_manifests
       - validate_terraform
@@ -1088,6 +1193,7 @@ jobs:
             "${{ needs.build_application.result }}"
             "${{ needs.verify_code_style.result }}"
             "${{ needs.test_application.result }}"
+            "${{ needs.test_distributed_flow.result }}"
             "${{ needs.build_container_image.result }}"
             "${{ needs.validate_kubernetes_manifests.result }}"
             "${{ needs.validate_terraform.result }}"
