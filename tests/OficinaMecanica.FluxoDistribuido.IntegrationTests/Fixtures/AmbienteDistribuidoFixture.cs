@@ -28,7 +28,7 @@ public sealed class AmbienteDistribuidoFixture : IAsyncLifetime
         await Task.WhenAll(_sql.StartAsync(), _dynamo.StartAsync());
     }
 
-    internal async Task<JornadaDistribuida> CriarJornadaAsync()
+    internal async Task<JornadaDistribuida> CriarJornadaAsync(bool falharPublicacao = false)
     {
         var id = Guid.NewGuid().ToString("N");
         var diretorio = Path.Combine(Path.GetTempPath(), "oficina-bdd-" + id);
@@ -55,7 +55,7 @@ public sealed class AmbienteDistribuidoFixture : IAsyncLifetime
             new TransporteArquivos(Path.Combine(diretorio, "OrdemServico", "entrada")));
         var execucao = services.BuildServiceProvider();
 
-        var jornada = new JornadaDistribuida(os, orcamento, execucao, clienteDynamo, diretorio, provedor);
+        var jornada = new JornadaDistribuida(os, orcamento, execucao, clienteDynamo, diretorio, provedor, falharPublicacao);
         try
         {
             await DynamoDbLocal.PrepararTabelaAsync(clienteDynamo, tabela, CancellationToken.None);

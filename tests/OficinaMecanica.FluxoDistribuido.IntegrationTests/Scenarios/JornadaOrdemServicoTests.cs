@@ -61,11 +61,13 @@ public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture)
         jornada.Provedor.QuantidadeCriacoes.Should().Be(0);
     }
 
-    [Fact]
-    public async Task Dado_OrdemComSaldo_Quando_AprovarExecutarEPagar_Entao_EntregaSemDuplicarReservaOuCobranca()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dado_OrdemComSaldo_Quando_AprovarExecutarEPagar_Entao_EntregaSemDuplicarReservaOuCobranca(bool falharPublicacao)
     {
         // Arrange — três serviços reais, com dois bancos SQL e DynamoDB Local.
-        await using var jornada = await fixture.CriarJornadaAsync();
+        await using var jornada = await fixture.CriarJornadaAsync(falharPublicacao);
         await jornada.AbrirAsync();
 
         // Act — cada transporte reentrega o JSON e cada operação reabre seu escopo.
@@ -94,13 +96,16 @@ public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture)
         (await jornada.SaldoAsync()).Disponivel.Should().Be(7);
         (await jornada.SaldoAsync()).Reservada.Should().Be(0);
         jornada.Provedor.QuantidadeCriacoes.Should().Be(1);
+        await jornada.ConferirRecuperacaoAsync("OS", "Execucao", "Orcamento");
     }
 
-    [Fact]
-    public async Task Dado_OrdemPreparada_Quando_RecusarOrcamento_Entao_CompensaParticipantesERestauraSaldoUmaVez()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dado_OrdemPreparada_Quando_RecusarOrcamento_Entao_CompensaParticipantesERestauraSaldoUmaVez(bool falharPublicacao)
     {
         // Arrange
-        await using var jornada = await fixture.CriarJornadaAsync();
+        await using var jornada = await fixture.CriarJornadaAsync(falharPublicacao);
         await jornada.AbrirAsync();
         await jornada.ConvergirAsync();
         (await jornada.SaldoAsync()).Reservada.Should().Be(3);
@@ -119,13 +124,16 @@ public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture)
         (await jornada.SaldoAsync()).Disponivel.Should().Be(10);
         (await jornada.SaldoAsync()).Reservada.Should().Be(0);
         jornada.Provedor.QuantidadeCriacoes.Should().Be(0);
+        await jornada.ConferirRecuperacaoAsync("OS", "Execucao", "Orcamento");
     }
 
-    [Fact]
-    public async Task Dado_SaldoInsuficiente_Quando_AbrirOrdem_Entao_RecusaSemReservaParcialOuCobranca()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dado_SaldoInsuficiente_Quando_AbrirOrdem_Entao_RecusaSemReservaParcialOuCobranca(bool falharPublicacao)
     {
         // Arrange
-        await using var jornada = await fixture.CriarJornadaAsync();
+        await using var jornada = await fixture.CriarJornadaAsync(falharPublicacao);
         await jornada.AbrirAsync(quantidade: 11);
 
         // Act
@@ -137,5 +145,6 @@ public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture)
         (await jornada.SaldoAsync()).Reservada.Should().Be(0);
         (await jornada.AndamentoAsync()).OrcamentoId.Should().BeNull();
         jornada.Provedor.QuantidadeCriacoes.Should().Be(0);
+        await jornada.ConferirRecuperacaoAsync("OS", "Execucao");
     }
 }

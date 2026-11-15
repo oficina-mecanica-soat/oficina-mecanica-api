@@ -1,11 +1,13 @@
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoExecucao;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoOrcamento;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoPagamento;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoPreparacao;
 using OficinaMecanica.Execucao.Application.Mensagens;
+using OficinaMecanica.Execucao.Infrastructure.Persistencia;
 using OficinaMecanica.Infrastructure.Persistence;
 using OficinaMecanica.OrcamentoPagamento.Application.Orcamentos.OrcamentoUseCases.ProcessarMensagemOrcamento;
 using OficinaMecanica.OrcamentoPagamento.Application.Pagamentos.PagamentoUseCases.ProcessarMensagemPagamento;
@@ -16,20 +18,21 @@ using ExecucaoMensageria = OficinaMecanica.Execucao.Infrastructure.Mensagens;
 
 namespace OficinaMecanica.FluxoDistribuido.IntegrationTests.Fixtures;
 
-internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider orcamento, ServiceProvider execucao, string diretorio, string correlacao)
+internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider orcamento, ServiceProvider execucao,
+    string diretorio, string correlacao, bool falharPublicacao)
 {
+    private readonly FalhasPublicacao? _falhas = falharPublicacao ? new() : null;
+    private readonly RelogioPublicacao _relogio = new();
+
+    public void ConferirRetomada(params string[] origens) => _falhas?.ConferirRetomada(origens);
+
     public async Task ConvergirAsync()
     {
         for (var tentativa = 0; tentativa < 30; tentativa++)
         {
-            var houveAtividade = await PublicarAsync(os, async provider =>
-                await new OsMensageria.PublicadorOutbox(provider.GetRequiredService<OficinaMecanicaDbContext>(),
-                    new OsMensageria.TransporteArquivos(diretorio), TimeProvider.System).PublicarProximaAsync());
-            houveAtividade |= await PublicarAsync(orcamento, async provider =>
-                await new OrcamentoMensageria.PublicadorOutbox(provider.GetRequiredService<OrcamentoPagamentoDbContext>(),
-                    new OrcamentoMensageria.TransporteArquivos(diretorio), TimeProvider.System).PublicarProximaAsync());
-            houveAtividade |= await PublicarAsync(execucao, async provider =>
-                await provider.GetRequiredService<ExecucaoMensageria.PublicadorOutbox>().PublicarProximaAsync());
+            var houveAtividade = await PublicarOsAsync();
+            houveAtividade |= await PublicarOrcamentoAsync();
+            houveAtividade |= await PublicarExecucaoAsync();
 
             houveAtividade |= await TransferirAsync("Execucao", corpo => ReceberAsync(execucao, async provider =>
                 await provider.GetRequiredService<ProcessadorPreparacao>().ProcessarAsync(corpo)));
@@ -66,7 +69,9 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
                         throw new InvalidOperationException("Resultado sem consumidor no roteiro distribuído.");
                 }
             }));
-            if (!houveAtividade) return;
+            if (!houveAtividade && _falhas?.HaReenvioPendente != true) return;
+            // Avança apenas o relógio dos publicadores; não espera nem altera prazos de negócio.
+            if (falharPublicacao) _relogio.Avancar();
         }
         throw new InvalidOperationException("Fluxo distribuído não convergiu no limite do teste.");
     }
@@ -77,10 +82,63 @@ internal sealed class MensageriaDistribuida(ServiceProvider os, ServiceProvider 
         return documento.RootElement.GetProperty("tipo").GetString()!;
     }
 
-    private static async Task<bool> PublicarAsync(ServiceProvider servico, Func<IServiceProvider, Task<bool>> publicar)
+    private async Task<bool> PublicarOsAsync()
     {
-        await using var scope = servico.CreateAsyncScope();
-        return await publicar(scope.ServiceProvider);
+        await using var scope = os.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<OficinaMecanicaDbContext>();
+        var transporte = new TransporteComFalhaAposEnvio("OS", diretorio, _falhas);
+        var publicou = await new OsMensageria.PublicadorOutbox(db, transporte, _relogio).PublicarProximaAsync();
+        if (transporte.Interrompida is Guid id)
+        {
+            publicou.Should().BeFalse();
+            var pendente = await db.Set<OsMensageria.RegistroOutboxSaga>().AsNoTracking().SingleAsync(r => r.Id == id);
+            pendente.PublicadoEm.Should().BeNull();
+            pendente.Tentativas.Should().Be(1);
+            pendente.LeaseAte.Should().BeNull();
+            pendente.Responsavel.Should().BeNull();
+            pendente.ProximaTentativaEm.Should().BeAfter(_relogio.GetUtcNow());
+        }
+        return publicou;
+    }
+
+    private async Task<bool> PublicarOrcamentoAsync()
+    {
+        await using var scope = orcamento.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<OrcamentoPagamentoDbContext>();
+        var transporte = new TransporteComFalhaAposEnvio("Orcamento", diretorio, _falhas);
+        var publicou = await new OrcamentoMensageria.PublicadorOutbox(db, transporte, _relogio).PublicarProximaAsync();
+        if (transporte.Interrompida is Guid id)
+        {
+            publicou.Should().BeFalse();
+            var pendente = await db.Set<OrcamentoMensageria.RegistroOutbox>().AsNoTracking().SingleAsync(r => r.Id == id);
+            pendente.PublicadoEm.Should().BeNull();
+            pendente.Tentativas.Should().Be(1);
+            pendente.LeaseAte.Should().BeNull();
+            pendente.Responsavel.Should().BeNull();
+            pendente.ProximaTentativaEm.Should().BeAfter(_relogio.GetUtcNow());
+        }
+        return publicou;
+    }
+
+    private async Task<bool> PublicarExecucaoAsync()
+    {
+        await using var scope = execucao.CreateAsyncScope();
+        var armazenamento = scope.ServiceProvider.GetRequiredService<IArmazenamentoExecucao>();
+        var transporte = new TransporteComFalhaAposEnvio("Execucao", diretorio, _falhas);
+        var publicou = await new ExecucaoMensageria.PublicadorOutbox(armazenamento, transporte, _relogio).PublicarProximaAsync();
+        if (transporte.Interrompida is Guid id)
+        {
+            publicou.Should().BeFalse();
+            var registro = await armazenamento.ObterPrimeiraOutboxAsync(CancellationToken.None);
+            registro.Should().NotBeNull();
+            var pendente = registro!.Ler<PendenciaOutbox>()!;
+            pendente.Mensagem.MensagemId.Should().Be(id);
+            pendente.Tentativas.Should().Be(1);
+            pendente.LeaseAte.Should().BeNull();
+            pendente.Responsavel.Should().BeNull();
+            pendente.ProximaTentativaEm.Should().BeAfter(_relogio.GetUtcNow());
+        }
+        return publicou;
     }
 
     private static async Task ReceberAsync(ServiceProvider servico, Func<IServiceProvider, Task> receber)
