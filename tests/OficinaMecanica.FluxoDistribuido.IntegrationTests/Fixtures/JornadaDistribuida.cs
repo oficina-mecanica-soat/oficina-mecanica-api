@@ -37,6 +37,7 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
 
     public OrdemServicoResponse Ordem { get; private set; } = null!;
     public ProvedorPagamentoTeste Provedor { get; }
+    public string Correlacao { get; } = Guid.NewGuid().ToString("N");
 
     public JornadaDistribuida(ServiceProvider os, ServiceProvider orcamento, ServiceProvider execucao,
         AmazonDynamoDBClient clienteDynamo, string diretorio, ProvedorPagamentoTeste provedor)
@@ -47,7 +48,7 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
         _clienteDynamo = clienteDynamo;
         _diretorio = diretorio;
         Provedor = provedor;
-        _mensageria = new(os, orcamento, execucao, diretorio);
+        _mensageria = new(os, orcamento, execucao, diretorio, Correlacao);
     }
 
     public async Task AbrirAsync(int quantidade = 3)
@@ -59,7 +60,7 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
             await db.SaveChangesAsync();
             var resultado = await scope.ServiceProvider.GetRequiredService<AbrirOrdemServicoUseCase>().ExecuteDistribuidoAsync(
                 new(_dados.Cliente.Id, null, _dados.Veiculo.Id, _dados.Mecanico.Id,
-                    [_dados.Servico.Id], [new(_dados.Peca.Id, quantidade)], _dados.FilialId));
+                    [_dados.Servico.Id], [new(_dados.Peca.Id, quantidade)], _dados.FilialId), Correlacao, CancellationToken.None);
             resultado.Sucesso.Should().BeTrue();
             Ordem = resultado.Valor!;
         }
