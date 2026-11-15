@@ -43,6 +43,8 @@ Pré-requisitos consultados sem ler valores secretos: os oito repositórios mant
 
 ### Recuperação integrada dos publicadores — Gabriel, 15/11/2026
 
+Entrega no [PR API #416](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/416); CI e integração devem ser confirmados no PR antes de tratar a entrega como integrada.
+
 Suíte BDD ampliada de cinco para oito casos: aprovação/execução/pagamento/entrega, recusa compensada e estoque insuficiente executam também com erro após cada primeiro envio pelo adaptador local, antes da confirmação da Outbox. Publicadores reais dos três serviços são reconstruídos em novos escopos. SQL e DynamoDB Local confirmam tentativa persistida, lease/responsável liberados e próximo envio agendado; relógio controlado dos publicadores permite o reenvio. Cada mensagem deve ter exatamente duas tentativas com mesmo ID e JSON; outboxes SQL/DynamoDB drenadas ao final. Saldos, confirmações de compensação e cobrança única continuam verificados. Na falta de estoque, somente OS/Execução publicam; o orçamento não é acionado.
 
 Oito casos locais aprovados, zero falhas/ignorados, com formatação e actionlint aprovados. CI passa a exigir pelo menos oito; versões dos participantes permanecem fixadas, sem alteração em produção, contrato, infraestrutura, README ou pastas. As três classes auxiliares de teste ficam no diretório Fixtures existente. F4-10 avança na recuperação persistida entre participantes; não comprova kill/crash/reinício de processo, SQS/FIFO/DLQ/IAM, HTTP completo neste cenário, Mercado Pago ou trace exportado. Provedor financeiro e transporte continuam substitutos locais; F4-10/F4-11/F4-12 não estão encerradas.
