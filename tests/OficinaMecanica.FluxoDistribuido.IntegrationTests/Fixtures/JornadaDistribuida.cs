@@ -41,9 +41,10 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
     public OrdemServicoResponse Ordem { get; private set; } = null!;
     public ProvedorPagamentoTeste Provedor { get; }
     public string Correlacao { get; } = Guid.NewGuid().ToString("N");
+    public LogsJornada Logs { get; }
 
     public JornadaDistribuida(ServiceProvider os, ServiceProvider orcamento, ServiceProvider execucao,
-        AmazonDynamoDBClient clienteDynamo, string diretorio, ProvedorPagamentoTeste provedor, bool falharPublicacao)
+        AmazonDynamoDBClient clienteDynamo, string diretorio, ProvedorPagamentoTeste provedor, bool falharPublicacao, LogsJornada logs)
     {
         _os = os;
         _orcamento = orcamento;
@@ -51,6 +52,7 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
         _clienteDynamo = clienteDynamo;
         _diretorio = diretorio;
         Provedor = provedor;
+        Logs = logs;
         _mensageria = new(os, orcamento, execucao, diretorio, Correlacao, falharPublicacao);
     }
 

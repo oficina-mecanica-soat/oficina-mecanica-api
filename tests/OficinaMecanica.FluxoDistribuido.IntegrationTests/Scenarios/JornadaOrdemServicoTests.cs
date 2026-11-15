@@ -38,6 +38,7 @@ public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture)
         jornada.Provedor.QuantidadeCriacoes.Should().Be(1);
         await jornada.ConferirRecuperacaoAsync("OS", "Execucao", "Orcamento");
         contexto.ConferirJornada();
+        jornada.Logs.ConferirCarriersProibidos();
     }
 
     [Fact]

@@ -51,11 +51,15 @@ Oito casos locais aprovados, zero falhas/ignorados, com formatação e actionlin
 
 ### Contexto técnico na jornada distribuída — Gabriel, 15/11/2026
 
-Entrega no [PR API #417](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/417); acompanhar checks e estado de integração no PR.
+Entrega no [PR API #417](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/417), integrado em develop em 87916bf após dez checks aprovados; [CI com doze BDD](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43750991748).
 
 Quatro cenários adicionados à suíte existente: contexto ausente, válido, com baggage/tracestate/Authorization sintéticos proibidos e traceparent inválido. Fixture injeta somente o metadado técnico no primeiro comando persistido; o restante usa processadores, publicadores e bancos reais locais. Não representa captura de header HTTP, spans exportados ou uso de segredo real. Reentregas preservam mensagemId e mudam o contexto; compara-se o corpo das outboxes SQL e a primeira pendência DynamoDB antes/depois para impedir substituição de resultados já persistidos. Quando existe origem válida, o trace-id deve acompanhar a jornada; todo carrier publicado deve conter somente traceparent válido. Ausência/invalidade na origem não proíbe contexto nativo legítimo novo. Cenários retomam os publicadores após falha e verificam saldo 7/0, cobrança única e entrega após confirmação pelo provedor substituto.
 
 Doze casos locais aprovados, zero falhas/ignorados; formatação e actionlint conferidos. Gate BDD passa a exigir doze, preservando commits fixados dos participantes e cobertura por serviço. Alterações somente em testes, quantidade exigida pelo job e documentação existente; nenhuma nova pasta, README ou mudança de produção. Auditoria estática das 21 requisições da collection encontrou método/rota compatíveis com os OpenAPIs dos três serviços e POST /auth/documento do README Lambda; não equivale a execução da collection ou Gateway. F4-10/F4-11 avançam na prova local, mas captura HTTP/profiler e ingestão Datadog, SQS/IAM/Gateway, Mercado Pago e alertas reais seguem pendentes.
+
+### Logs dos carriers na jornada local — Gabriel, 15/11/2026
+
+Captura de ILogger em memória na suíte distribuída, com provider/escopos próprios por participante e coleta compartilhada somente na fixture. As quatro jornadas de contexto exigem registros de OS, Execução e Orçamento/Pagamento e verificam ausência dos marcadores sintéticos proibidos em texto, campos estruturados, escopos e exceções. Doze cenários locais aprovados, zero falhas/ignorados; formatação e diff aprovados. Sem exportação ou versionamento de logs brutos, alteração de produção, README ou pastas novas. A prova está limitada aos eventos e configuração de logging exercitados pela fixture; não certifica serialização Serilog, pipeline/indexação Datadog ou ausência de qualquer dado sensível em toda a aplicação. F4-11 continua aguardando aceite remoto.
 
 ### Conferência do enunciado e preparação do aceite — 15/11/2026
 
