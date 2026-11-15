@@ -60,15 +60,20 @@ public sealed class AbrirOrdemServicoUseCase
 
     public Task<Result<OrdemServicoResponse>> ExecuteAsync(AbrirOrdemServicoRequest request, CancellationToken cancellationToken = default)
     {
-        return ExecutarAsync(request, false, cancellationToken);
+        return ExecutarAsync(request, false, null, cancellationToken);
     }
 
     public Task<Result<OrdemServicoResponse>> ExecuteDistribuidoAsync(AbrirOrdemServicoRequest request, CancellationToken cancellationToken = default)
     {
-        return ExecutarAsync(request, true, cancellationToken);
+        return ExecutarAsync(request, true, null, cancellationToken);
     }
 
-    private async Task<Result<OrdemServicoResponse>> ExecutarAsync(AbrirOrdemServicoRequest request, bool distribuido, CancellationToken cancellationToken)
+    public Task<Result<OrdemServicoResponse>> ExecuteDistribuidoAsync(AbrirOrdemServicoRequest request, string? correlationId, CancellationToken cancellationToken)
+    {
+        return ExecutarAsync(request, true, correlationId, cancellationToken);
+    }
+
+    private async Task<Result<OrdemServicoResponse>> ExecutarAsync(AbrirOrdemServicoRequest request, bool distribuido, string? correlationId, CancellationToken cancellationToken)
     {
         var validationResult = await _validator.ValidateAsync(request, cancellationToken);
 
@@ -140,14 +145,14 @@ public sealed class AbrirOrdemServicoUseCase
         {
             Result<Guid>? preparacao = null;
             var operacaoId = Guid.CreateVersion7();
-            var correlationId = Guid.CreateVersion7().ToString();
+            var correlacao = correlationId ?? Guid.CreateVersion7().ToString();
             try
             {
                 await _unitOfWork.ExecutarEmTransacaoAsync(async transactionCancellationToken =>
                 {
                     await _ordemServicoRepository.AdicionarAsync(ordemServico, transactionCancellationToken);
                     preparacao = await _solicitarPreparacaoUseCase.ExecuteAsync(
-                        new(ordemServico.Id, request.FilialId!.Value, operacaoId, correlationId), transactionCancellationToken);
+                        new(ordemServico.Id, request.FilialId!.Value, operacaoId, correlacao), transactionCancellationToken);
                     if (!preparacao.Sucesso)
                     {
                         throw new PreparacaoNaoIniciadaException();

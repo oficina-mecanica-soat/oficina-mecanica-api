@@ -80,6 +80,10 @@ Reutilizar a plataforma e o [painel Saga versionado no Kubernetes](https://githu
 
 Tags de serviço: `oficina-mecanica-api`, `oficina-mecanica-execucao`, `oficina-mecanica-orcamento-pagamento`, `oficina-mecanica-auth-lambda`. Manter `env:development` e a versão real de cada imagem. Não criar dimensão de métrica por OS, Saga, cliente ou mensagem; esses IDs servem para investigação de logs/traces.
 
+O painel versionado também reúne CPU em nanocores, memória em bytes, contador de reinícios e p95 HTTP pela distribuição `trace.aspnet_core.request`. `hits/errors` medem requisições/erros por intervalo, não OS únicas. Os eventos de abertura e entrega já emitidos pela API podem ser investigados no stream de negócio; não substituem uma fonte validada para volume total ou tempo por status. Conferir ingestão e acesso às métricas na janela antes de usar esses gráficos como evidência.
+
+Na abertura distribuída, enviar `X-Correlation-Id` e conferir o mesmo valor na resposta HTTP, no comando persistido e nos resultados dos participantes. O middleware sanitiza o header; sem header válido, o ID seguro gerado deve ser o usado pela Outbox. Isso não substitui a comprovação do contexto de trace e dos IDs Datadog exportados.
+
 Sequência para fechar os alertas da RFC-0006:
 
 1. Conferir ingestão e parsing antes de escrever consultas ou concluir que faltam erros.

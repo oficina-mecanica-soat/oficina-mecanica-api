@@ -44,6 +44,8 @@ public sealed class OrdensServicoControllerTests : ApiIntegrationTestBase
         await using var antes = Fixture.CriarDbContext();
         var quantidadeDisponivel = (await antes.Estoques.Include(e => e.ItensEstoque).SingleAsync()).ItensEstoque.Single().QuantidadeDisponivel;
         using var client = CriarClienteDistribuido();
+        const string correlacao = "jornada-abertura-distribuida";
+        client.DefaultRequestHeaders.Add("X-Correlation-Id", correlacao);
 
         // Act
         var resposta = await client.PostAsJsonAsync("/api/v1/gestao-ordem-servico/ordens-servico/cadastrar", request);
@@ -60,6 +62,8 @@ public sealed class OrdensServicoControllerTests : ApiIntegrationTestBase
         registro.Tipo.Should().Be("PrepararExecucao");
         registro.Destino.Should().Be("Execucao");
         var mensagem = JsonContrato.LerEnvelope(registro.Corpo);
+        mensagem.CorrelationId.Should().Be(correlacao);
+        resposta.Headers.GetValues("X-Correlation-Id").Should().ContainSingle().Which.Should().Be(correlacao);
         var dados = JsonContrato.Ler<PrepararExecucaoDados>(mensagem.Dados.GetRawText());
         dados.FilialId.Should().Be(request.FilialId.Value);
         dados.Itens.Single().ItemId.Should().Be(pecaId);
@@ -68,6 +72,34 @@ public sealed class OrdensServicoControllerTests : ApiIntegrationTestBase
         var estoque = (await contexto.Estoques.Include(e => e.ItensEstoque).SingleAsync()).ItensEstoque.Single();
         estoque.QuantidadeReservada.Should().Be(0);
         estoque.QuantidadeDisponivel.Should().Be(quantidadeDisponivel);
+    }
+
+    [RequiresDockerFact]
+    public async Task Dado_CorrelacaoHttpInvalida_Quando_AbrirOrdemDistribuida_Entao_PersisteMesmoIdentificadorSeguroDaResposta()
+    {
+        // Arrange
+        var clienteId = await CadastrarClienteAsync();
+        var veiculoId = await CadastrarVeiculoAsync(clienteId, "COR-1001");
+        var mecanicoId = await CadastrarMecanicoAsync();
+        var servicoId = await CadastrarServicoCatalogoAsync();
+        var request = OrdemServicoRequestBuilder.Novo().ComClienteId(clienteId).ComVeiculoId(veiculoId)
+            .ComMecanicoId(mecanicoId).ComServicoCatalogoId(servicoId).BuildAbertura() with
+        { FilialId = Guid.NewGuid() };
+        using var client = CriarClienteDistribuido();
+        var correlacaoInvalida = new string('x', 129);
+        client.DefaultRequestHeaders.Add("X-Correlation-Id", correlacaoInvalida);
+
+        // Act
+        var resposta = await client.PostAsJsonAsync("/api/v1/gestao-ordem-servico/ordens-servico/cadastrar", request);
+
+        // Assert
+        resposta.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var correlacao = resposta.Headers.GetValues("X-Correlation-Id").Single();
+        correlacao.Should().NotBe(correlacaoInvalida);
+        Guid.TryParse(correlacao, out _).Should().BeTrue();
+        await using var contexto = Fixture.CriarDbContext();
+        var registro = await contexto.Set<RegistroOutboxSaga>().SingleAsync();
+        JsonContrato.LerEnvelope(registro.Corpo).CorrelationId.Should().Be(correlacao);
     }
 
     [RequiresDockerFact]
