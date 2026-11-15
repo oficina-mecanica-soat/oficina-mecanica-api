@@ -6,6 +6,8 @@ Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece par
 
 ### Prontidão da próxima janela AWS — revisão Gabriel, 15/11/2026
 
+[PR da revisão](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/421); conferir checks e integração no PR.
+
 Oito clones atualizados por fetch/pull em develop, sem novas entregas ou PRs da Geovanna desde a integração anterior. Referências consultadas: API 853f083, Execução ff47c6b, Orçamento/Pagamento c2983aa, Auth 1e72bd8, VPC a6de871, Kubernetes 4c99442, RDS 8bbf66f e Gateway 0dc270a. Atualizações futuras exigem nova conferência antes da janela; esta revisão não comprova recursos na conta do laboratório.
 
 | Verificação de configuração | Observado e preparo restante |
