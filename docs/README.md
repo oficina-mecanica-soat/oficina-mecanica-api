@@ -26,6 +26,7 @@ Este é o índice mestre da documentação do projeto. Use este arquivo para nav
 | OpenAPI | [`openapi/`](openapi/) | Consultar contrato versionado da API. |
 | C4 Model | [`architecture/diagrams/c4-model/README.md`](architecture/diagrams/c4-model/README.md) | Ver modelo C4 validado e arquivos Structurizr/SVG. |
 | Diagramas finais | [`architecture/diagrams/`](architecture/diagrams/) | Guardar diagramas de infraestrutura AWS e de fluxo CI/CD. |
+| Arquitetura distribuída | [SVG](architecture/diagrams/distributed-architecture.svg), [PNG](architecture/diagrams/distributed-architecture.png) e [draw.io](architecture/diagrams/distributed-architecture.drawio) | Visão geral dos serviços, dados próprios e comunicação para vídeo/PDF; não comprova implantação. |
 
 ## Índice de infraestrutura
 

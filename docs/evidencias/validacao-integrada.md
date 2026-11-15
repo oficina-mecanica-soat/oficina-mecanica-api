@@ -89,6 +89,8 @@ Preparar abas, IDs e evidências antes de gravar. Usar cortes para esperas assí
 
 ## Conferência do PDF e do envio
 
+Diagrama geral preparado: [SVG vetorial](../architecture/diagrams/distributed-architecture.svg), [PNG](../architecture/diagrams/distributed-architecture.png) e [fonte editável draw.io](../architecture/diagrams/distributed-architecture.drawio). Representa o fluxo distribuído definido pelos contratos vigentes; conferir a correspondência com a implantação observada antes da exportação final do PDF. Os modelos detalhados históricos C4/DDD não foram reescritos por este desenho geral.
+
 - Nome e identificação dos participantes, links públicos dos três microsserviços e infraestrutura relacionada.
 - Link YouTube/Vimeo público ou não listado, acessível em janela anônima e com duração de até 15 minutos.
 - Diagrama geral da arquitetura final com serviços, bancos próprios, filas, autenticação, Gateway, Kubernetes, Mercado Pago e observabilidade; não reutilizar desenho do monólito como arquitetura final.
