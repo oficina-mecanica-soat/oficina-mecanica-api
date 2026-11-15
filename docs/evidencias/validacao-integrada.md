@@ -29,6 +29,22 @@ Executar uma requisição por vez: a collection não faz polling nem espera auto
 
 ## Cenários de aceite
 
+### BDD automatizado local
+
+A suíte `tests/OficinaMecanica.FluxoDistribuido.IntegrationTests` executa preparação, orçamento/decisão, ações físicas, pagamento e entrega usando código real dos três participantes, dois bancos SQL isolados e DynamoDB Local. Outros cenários cobrem recusa compensada e estoque insuficiente. Cada mensagem é reapresentada com o mesmo JSON e os processadores usam novos escopos; ações manuais também são repetidas com o mesmo ID.
+
+O job `🔗 04.1 · Validar jornada distribuída` no CI da API fixa os commits de Execução e Orçamento/Pagamento e exige três cenários aprovados sem ignorados. Atualizar esses commits é uma alteração explícita da matriz de compatibilidade. Antes do aceite, comparar os SHAs da matriz com as versões implantadas; aprovação dessa combinação não comprova outra combinação de versões. As referências a outros projetos existem somente nessa suíte de aceitação; não são dependências de produção. Ela é executada separadamente da solution da OS para preservar a autonomia dos testes unitários, a cobertura por serviço e os builds independentes.
+
+Localmente, com Docker disponível e clones irmãos nas versões do job:
+
+```powershell
+dotnet test tests/OficinaMecanica.FluxoDistribuido.IntegrationTests/OficinaMecanica.FluxoDistribuido.IntegrationTests.csproj --logger trx
+```
+
+As propriedades MSBuild `RepositorioExecucao` e `RepositorioOrcamentoPagamento` permitem apontar os clones existentes em outro local. A fixture prepara dados sintéticos por jornada: cliente ativo, veículo, mecânico, serviço de R$ 150,00, peça de R$ 25,00, filial e saldo inicial de dez unidades; reserva três unidades ou solicita onze no caso de insuficiência. Dados, bancos, tabela e diretório temporário são exclusivos do teste. Não reutilizar essa fixture como carga direta da AWS.
+
+O transporte é o adaptador local por arquivos e o provedor financeiro é um substituto de teste. A suíte não valida HTTP/JWT integrado, assinatura de webhook, SQS/DLQ/IAM, crash de processo, rede AWS ou Mercado Pago real; essas provas continuam nos cenários abaixo. Reabrir escopos comprova releitura persistida, não reinício de processo. A cobertura de cada serviço continua sendo medida por sua própria esteira, sem somar esta suíte aos percentuais de produção.
+
 | Cenário | Ação e resultado esperado | Evidência mínima |
 | --- | --- | --- |
 | Autorização | Sem JWT: `401` em consulta protegida; JWT Cliente: `/me` permitido e rota administrativa `403`. Cliente diferente não consulta OS/orçamento/pagamento alheios. | Método, rota sem dados pessoais, status e perfil; nunca o JWT. |

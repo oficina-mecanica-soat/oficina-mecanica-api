@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RepositorioExecucao Condition="'$(RepositorioExecucao)' == ''">$(MSBuildThisFileDirectory)../../../oficina-mecanica-execucao</RepositorioExecucao>
+    <RepositorioOrcamentoPagamento Condition="'$(RepositorioOrcamentoPagamento)' == ''">$(MSBuildThisFileDirectory)../../../oficina-mecanica-orcamento-pagamento</RepositorioOrcamentoPagamento>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SSH.NET" Version="2026.0.0" />
+    <PackageReference Include="FluentAssertions" Version="8.9.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Testcontainers.MsSql" Version="4.11.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/OficinaMecanica.Infrastructure/OficinaMecanica.Infrastructure.csproj" />
+    <ProjectReference Include="$(RepositorioExecucao)/src/OficinaMecanica.Execucao.Infrastructure/OficinaMecanica.Execucao.Infrastructure.csproj" />
+    <ProjectReference Include="$(RepositorioOrcamentoPagamento)/src/OficinaMecanica.OrcamentoPagamento.Infrastructure/OficinaMecanica.OrcamentoPagamento.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
