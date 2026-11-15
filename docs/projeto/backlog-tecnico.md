@@ -48,6 +48,10 @@ Material preparado no [PR API #409](https://github.com/oficina-mecanica-soat/ofi
 
 ### Acompanhamento das frentes
 
+Contrato versionado de cobrança preparado no [Orçamento/Pagamento #10](https://github.com/oficina-mecanica-soat/oficina-mecanica-orcamento-pagamento/pull/10); publicação não depende de deploy nem contém credenciais. Swagger runtime do Execução e seus artefatos locais continuam sob a frente de Gabriel.
+
+**Contratos e arquitetura para demonstração — 15/11/2026:** diagrama geral preparado em SVG/PNG e draw.io editável, referenciado no índice e roteiro de aceite; detalhamento histórico C4/DDD permanece separado. OpenAPI da API regenerado do Swagger local (52 rotas), com abertura `201/202` e cancelamento `200/202`; a resposta de cancelamento agora possui DTO explícito com o mesmo JSON `{ sagaId }`, sem alterar transições ou autorização. Regressão Swagger adicionada; 659 testes locais aprovados (219 domínio, 247 aplicação e 193 integração SQL/HTTP), nenhum ignorado. O Docker estava desligado na primeira tentativa; após inicialização local, a suíte integral foi repetida com sucesso. Contrato de Orçamento/Pagamento também exportado do runtime (seis rotas) e ligado no README do serviço. Exportação usou configurações sintéticas, sem migrações, seed, workers, Datadog ou chamadas AWS/provedor. Contratos e referências locais verificados; implantação e evidência de ambiente continuam pendentes.
+
 | ID | Responsável | Dependências | Entrega e aceite | Acompanhamento em 14/11/2026 |
 | --- | --- | --- | --- | --- |
 | F4-01 | Gabriel | — | Validar ambiente atual via esteiras e Postman; registrar impedimentos e evidências, sem provisionamento direto. | Validações AWS anteriores registradas no README do Execução; endpoints/fluxos isolados não equivalem a aceite completo dos três serviços. Laboratório offline. |
