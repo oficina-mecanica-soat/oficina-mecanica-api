@@ -42,7 +42,7 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
     public string Correlacao { get; } = Guid.NewGuid().ToString("N");
 
     public JornadaDistribuida(ServiceProvider os, ServiceProvider orcamento, ServiceProvider execucao,
-        AmazonDynamoDBClient clienteDynamo, string diretorio, ProvedorPagamentoTeste provedor)
+        AmazonDynamoDBClient clienteDynamo, string diretorio, ProvedorPagamentoTeste provedor, bool falharPublicacao)
     {
         _os = os;
         _orcamento = orcamento;
@@ -50,7 +50,7 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
         _clienteDynamo = clienteDynamo;
         _diretorio = diretorio;
         Provedor = provedor;
-        _mensageria = new(os, orcamento, execucao, diretorio, Correlacao);
+        _mensageria = new(os, orcamento, execucao, diretorio, Correlacao, falharPublicacao);
     }
 
     public async Task AbrirAsync(int quantidade = 3)
@@ -75,6 +75,22 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
     }
 
     public Task ConvergirAsync() => _mensageria.ConvergirAsync();
+
+    public async Task ConferirRecuperacaoAsync(params string[] origens)
+    {
+        _mensageria.ConferirRetomada(origens);
+        await using (var scope = _os.CreateAsyncScope())
+            (await scope.ServiceProvider.GetRequiredService<OficinaMecanicaDbContext>()
+                .Set<OficinaMecanica.Infrastructure.GestaoOrdemServico.Mensagens.RegistroOutboxSaga>()
+                .CountAsync(registro => registro.PublicadoEm == null)).Should().Be(0);
+        await using (var scope = _orcamento.CreateAsyncScope())
+            (await scope.ServiceProvider.GetRequiredService<OrcamentoPagamentoDbContext>()
+                .Set<OficinaMecanica.OrcamentoPagamento.Infrastructure.Mensagens.RegistroOutbox>()
+                .CountAsync(registro => registro.PublicadoEm == null)).Should().Be(0);
+        await using (var scope = _execucao.CreateAsyncScope())
+            (await scope.ServiceProvider.GetRequiredService<IArmazenamentoExecucao>()
+                .ObterPrimeiraOutboxAsync(CancellationToken.None)).Should().BeNull();
+    }
 
     public async Task SolicitarCancelamentoAsync()
     {
