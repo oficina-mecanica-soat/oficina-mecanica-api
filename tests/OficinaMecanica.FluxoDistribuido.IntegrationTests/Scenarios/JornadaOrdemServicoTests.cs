@@ -9,6 +9,59 @@ namespace OficinaMecanica.FluxoDistribuido.IntegrationTests.Scenarios;
 public sealed class JornadaOrdemServicoTests(AmbienteDistribuidoFixture fixture) : IClassFixture<AmbienteDistribuidoFixture>
 {
     [Fact]
+    public async Task Dado_OrdemPreparada_Quando_RepetirCancelamento_Entao_CompensaAmbosSemDuplicarLiberacao()
+    {
+        await using var jornada = await fixture.CriarJornadaAsync();
+        await jornada.AbrirAsync();
+        await jornada.ConvergirAsync();
+        (await jornada.SaldoAsync()).Reservada.Should().Be(3);
+
+        await jornada.SolicitarCancelamentoAsync();
+        await jornada.SolicitarCancelamentoAsync();
+        var pendente = await jornada.SagaAsync();
+        pendente.Estado.Should().Be(EstadoSagaOrdemServico.CompensacaoPendente);
+        pendente.PreparacaoCancelada.Should().BeFalse();
+        pendente.OrcamentoCancelado.Should().BeFalse();
+        await jornada.ConvergirAsync();
+        await jornada.ConvergirAsync();
+
+        var compensada = await jornada.SagaAsync();
+        compensada.Estado.Should().Be(EstadoSagaOrdemServico.Compensada);
+        compensada.PreparacaoCancelada.Should().BeTrue();
+        compensada.OrcamentoCancelado.Should().BeTrue();
+        (await jornada.StatusOrcamentoAsync()).Should().Be(StatusOrcamento.Cancelado);
+        (await jornada.SaldoAsync()).Disponivel.Should().Be(10);
+        (await jornada.SaldoAsync()).Reservada.Should().Be(0);
+        jornada.Provedor.QuantidadeCriacoes.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Dado_InicioFisicoConfirmado_Quando_Cancelar_Entao_RecusaEPreservaReservaEOrcamento()
+    {
+        await using var jornada = await fixture.CriarJornadaAsync();
+        await jornada.AbrirAsync();
+        await jornada.ConvergirAsync();
+        await jornada.DecidirAsync(DecisaoOrcamento.Aprovado);
+        await jornada.ConvergirAsync();
+        await jornada.IniciarServicoAsync();
+        await jornada.ConvergirAsync();
+
+        await Assert.ThrowsAsync<Domain.Shared.Exceptions.DomainException>(() => jornada.SolicitarCancelamentoAsync());
+        await Assert.ThrowsAsync<Domain.Shared.Exceptions.DomainException>(() => jornada.SolicitarCancelamentoAsync());
+        await jornada.ConvergirAsync();
+
+        var saga = await jornada.SagaAsync();
+        saga.Estado.Should().Be(EstadoSagaOrdemServico.EmExecucao);
+        saga.InicioFisicoConfirmado.Should().BeTrue();
+        saga.PreparacaoCancelada.Should().BeFalse();
+        saga.OrcamentoCancelado.Should().BeFalse();
+        (await jornada.StatusOrcamentoAsync()).Should().Be(StatusOrcamento.Aprovado);
+        (await jornada.SaldoAsync()).Disponivel.Should().Be(7);
+        (await jornada.SaldoAsync()).Reservada.Should().Be(3);
+        jornada.Provedor.QuantidadeCriacoes.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Dado_OrdemComSaldo_Quando_AprovarExecutarEPagar_Entao_EntregaSemDuplicarReservaOuCobranca()
     {
         // Arrange — três serviços reais, com dois bancos SQL e DynamoDB Local.
