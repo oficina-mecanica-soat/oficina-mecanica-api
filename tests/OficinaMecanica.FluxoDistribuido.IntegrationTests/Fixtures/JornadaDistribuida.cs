@@ -155,9 +155,14 @@ internal sealed class JornadaDistribuida : IAsyncDisposable
 
     public async Task ConfirmarPagamentoAsync()
     {
+        (await ConferirPagamentoAsync()).Should().BeTrue();
+    }
+
+    public async Task<bool> ConferirPagamentoAsync()
+    {
         await using var scope = _orcamento.CreateAsyncScope();
         var resultado = await scope.ServiceProvider.GetRequiredService<ConferirPagamentoUseCase>().ExecuteAsync(new("123456", Guid.NewGuid()));
-        resultado.Sucesso.Should().BeTrue();
+        return resultado.Sucesso;
     }
 
     public async Task<OrdemServicoResponse> EntregarAsync()
