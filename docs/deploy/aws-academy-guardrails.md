@@ -1,57 +1,37 @@
 # 🛡️ Guardrails AWS Academy
 
-## ⚠️ Regra obrigatória
+## Autorização e execução
 
-O ambiente AWS Academy possui orçamento limitado. Nenhum recurso AWS deve ser criado sem aprovação explícita antes do comando ou merge que dispara CD, e todo `terraform apply` deve ter um `terraform destroy` planejado para o fim da sessão.
+Toda criação, alteração ou destruição de recursos reais ocorre exclusivamente pela esteira oficial do owner. A autorização da janela precede o merge que dispara o CD; merge, flag funcional ou CI aprovada não autorizam uma janela por conta própria. Não executar apply/destroy local, publicação manual de imagem ou aplicação manual de manifests.
 
-## 💰 Recursos com maior risco de custo
+O laboratório tem orçamento limitado. Planejar o encerramento pela esteira antes de iniciar a janela, preservando dados e evidências necessários. Fim de sessão e reset do Academy não substituem destroy verificado: o state pode sobreviver a recursos removidos pelo laboratório.
 
-- EKS Cluster
-- EC2/Managed Node Group
-- NAT Gateway
-- RDS SQL Server
-- Load Balancer criado indiretamente por `kubernetes_service_v1.oficina_mecanica_api` com `type = "LoadBalancer"` em `infra/terraform/environments/dev/api-service.tf`
-- ECR com imagens armazenadas
+## Antes da janela
 
-## ✅ Antes de aplicar
+1. Conferir laboratório ativo, conta, região e validade das credenciais temporárias.
+2. Configurar os três secrets AWS nos Environments dos oito repositórios, sem versionar valores ou copiá-los para Pods.
+3. Conferir roles existentes do EKS, JWT compartilhado, token técnico privado, Datadog e configuração de pagamento nos respectivos owners. RDS gerencia sua senha administrativa; o bootstrap prepara a credencial exclusiva de Orçamento/Pagamento. Não existe setup por `TF_VAR_db_password` local.
+4. Conferir `AWS_DEPLOY_ENABLED`, `AUTO_PR_ENABLED` e o controle versionado `TERRAFORM_ACTION` conforme a autorização vigente. Esses controles têm finalidades distintas.
+5. Seguir a ordem única de [deploy AWS](deploy-aws.md), com dependências e contratos SSM validados. A API usa Service NodePort e NLB interno de ownership Kubernetes; não criar Load Balancer público no serviço.
+6. Revisar o plano salvo da esteira, os guardrails e os checks antes de aplicar. Erros de acesso, credencial ou rede não provam ausência de recurso.
 
-1. Confirmar que o Learner Lab está iniciado.
-2. Configurar credenciais temporárias da AWS Academy.
-3. Configurar a senha fora do repositório:
+Validações locais sem aplicação continuam permitidas:
 
 ```powershell
-$env:TF_VAR_db_password = "<senha-forte>"
-```
-
-4. Configurar as roles EKS existentes do lab fora do repositório:
-
-```powershell
-$env:TF_VAR_eks_cluster_role_name = "<LabEksClusterRole-...>"
-$env:TF_VAR_eks_node_role_name = "<LabEksNodeRole-...>"
-```
-
-5. Rodar somente validações locais:
-
-```powershell
-terraform fmt -check -recursive infra
-terraform -chdir=infra/terraform/environments/dev init -backend=false
+terraform fmt -check -recursive infra/terraform
+terraform -chdir=infra/terraform/environments/dev init -backend=false -input=false
 terraform -chdir=infra/terraform/environments/dev validate
 ```
 
-6. Para planejar/aplicar, inicializar normalmente (backend `local`, mesmo state file `terraform.tfstate` usado pela esteira via cache do GitHub Actions):
+## Custos e encerramento
 
-```powershell
-terraform -chdir=infra/terraform/environments/dev init
-terraform -chdir=infra/terraform/environments/dev plan
-```
+Conferir EKS/nodes, NAT Gateway, RDS SQL Server, NLB, ECR, armazenamento, filas, tabelas, secrets e logs, sem presumir custo zero por ausência de tráfego. O serviço responsável mantém o ownership de seus recursos.
 
-7. Conferir no plano se serão criados apenas os recursos esperados.
+Executar o procedimento de encerramento em [deploy AWS](deploy-aws.md), pela ordem inversa das dependências e com quiescência da Saga/outboxes/filas antes do destroy. Não fazer purge, excluir caches ou alterar state como atalho. Inventário vazio permite somente a recuperação especificamente prevista e autorizada pelos guardrails; não libera adoção de recursos desconhecidos.
 
-## 🧹 Depois de testar
+Depois do destroy, confirmar por consultas read-only ausência dos recursos, limpeza dos contratos/status SSM e state sem recursos gerenciados. Falha de consulta não equivale a limpeza concluída. Não restaurar `apply` apenas para deixar o controle bonito: essa mudança pode iniciar novo provisionamento.
 
-Procedimento completo de destroy (branch, `terraform-action.env`, PR, acompanhamento da esteira): ver a seção "Encerramento obrigatório pela esteira" em [`deploy-aws.md`](deploy-aws.md).
-
-Depois do destroy, conferir se não restou recurso cobrável:
+Consultas iniciais, sem equivaler a inventário completo:
 
 ```powershell
 aws eks list-clusters --region us-east-1
@@ -59,7 +39,3 @@ aws rds describe-db-instances --region us-east-1
 aws elbv2 describe-load-balancers --region us-east-1
 aws ec2 describe-nat-gateways --region us-east-1
 ```
-
-## 📌 Observação importante
-
-O fim da sessão do Learner Lab pode encerrar instâncias EC2, mas outros recursos como RDS, Load Balancer e NAT Gateway podem continuar existindo e consumindo crédito. Por isso, o destroy via esteira é obrigatório.
