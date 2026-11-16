@@ -269,7 +269,56 @@
       ]
     },
     {
-      "name": "02 · Abrir e acompanhar OS",
+      "name": "02 · Preparar estoque no Execução",
+      "item": [
+        {
+          "name": "Registrar entrada de peças na filial",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('operacaoEntradaEstoqueId')) pm.environment.set('operacaoEntradaEstoqueId', pm.variables.replaceIn('{{$guid}}')); "
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"operacaoId\": \"{{operacaoEntradaEstoqueId}}\",\n  \"filialId\": \"{{filialId}}\",\n  \"pecaInsumoCatalogoId\": \"{{pecaInsumoCatalogoId}}\",\n  \"quantidade\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{execucaoBaseUrl}}/api/v1/execucoes/estoque/registrar-entrada",
+            "description": "Administrador ou Atendente. Reutilize operacaoEntradaEstoqueId para conferir idempotência; use outro UUID apenas para uma nova entrada real. O saldo pertence ao Execução, sem escrita direta no DynamoDB."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 · Abrir e acompanhar OS",
       "item": [
         {
           "name": "Abrir nova OS distribuída",
@@ -477,7 +526,7 @@
       ]
     },
     {
-      "name": "03 · Aprovar e executar manualmente",
+      "name": "04 · Aprovar e executar manualmente",
       "item": [
         {
           "name": "Aprovar orçamento",
@@ -718,7 +767,7 @@
       ]
     },
     {
-      "name": "04 · Pagamento e entrega",
+      "name": "05 · Pagamento e entrega",
       "item": [
         {
           "name": "Consultar pagamento e checkout sandbox",
@@ -838,7 +887,7 @@
       ]
     },
     {
-      "name": "05 · Compensação — outra OS antes do trabalho físico",
+      "name": "06 · Compensação — outra OS antes do trabalho físico",
       "item": [
         {
           "name": "Recusar orçamento — caminho alternativo à aprovação",

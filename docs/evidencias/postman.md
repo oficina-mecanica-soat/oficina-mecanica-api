@@ -33,3 +33,5 @@ O [roteiro integrado](validacao-integrada.md) define pré-condições, cenários
 Os environments versionados têm tokens, senhas, documentos e IDs vazios. O tipo `secret` ajuda a ocultar valores na interface, mas não garante remoção em uma exportação: revisar o arquivo antes de compartilhar. Limpar valores locais, cabeçalhos Authorization, cookies, assinaturas e respostas sensíveis de prints/relatórios.
 
 A [evidência de HPA](kubernetes-hpa.md) refere-se ao teste histórico com a collection da API e ao ambiente daquela execução. Ela permanece histórica; não demonstra implantação ou desempenho dos três serviços atuais.
+
+Antes de abrir uma OS com peças, executar a entrada de estoque no Execução com filial/item válidos e perfil Administrador ou Atendente. A collection mantém `operacaoEntradaEstoqueId` entre repetições: repetir o mesmo conteúdo não soma novamente; para outra entrada, escolher outro UUID. A quantidade do exemplo é dez unidades e deve ser adequada ao cenário, sem abastecer o estoque legado de OS.
