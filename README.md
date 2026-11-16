@@ -626,25 +626,15 @@ As chaves de cache incluem o ID da conta retornado pela autenticação AWS, ante
 
 Sem cache no escopo atual, a esteira bloqueia apply. Um destroy dedicado só pode iniciar state novo depois de consultas read-only confirmarem que não existem recursos ou contratos do projeto na conta atual. Recursos internos do laboratório são preservados. Depois disso, o plano exclusivo de destroy e a validação de state vazio produzem o cache usado pelas próximas execuções da mesma conta. Em laboratório com recursos existentes e cache ausente, é necessário recuperar o state correto; o bootstrap não libera provisionamento automático.
 
-## Mensageria de OS — preparação da Fase 4
+## Mensageria e implantação da OS
 
-A infraestrutura da entrada FIFO de resultados da OS e de sua DLQ está preparada neste repositório, conforme ADR-0025/RFC-0007. Os nomes propostos, quatro contratos SSM sob `/oficina-mecanica/{ambiente}/api/`, status de infraestrutura, validações e recuperação estão em [Mensageria de OS](docs/deploy/mensageria-os.md). O contrato `entrada_queue_url` é o futuro destino dos resultados de Execução e Orçamento/Pagamento.
+A API é responsável pela entrada FIFO de resultados da OS e por sua DLQ, conforme ADR-0025/RFC-0007. Os contratos SSM, parâmetros operacionais e ownership estão em [Mensageria de OS](docs/deploy/mensageria-os.md). Execução e Orçamento/Pagamento publicam resultados nessa entrada; cada participante mantém sua própria fila de comandos.
 
-Este incremento não implementa nem ativa Saga, consumidor ou outbox SQL; essa parte continua com Geovanna na F4-06. Não altera rotas ou regras de negócio .NET. `status/api=ready` indica somente infraestrutura de mensageria, sem afirmar prontidão da aplicação ou da Saga.
+A Saga, a outbox SQL, o consumidor SQS e o publicador estão implementados. O worker é registrado quando `PROCESSAMENTO_REMOTO_ENABLED=true`; o corte das mutações legadas é controlado por `FLUXO_DISTRIBUIDO_ENABLED`. A sequência de implantação acima distingue o bootstrap da API da configuração distribuída final. `status/api=ready` confirma somente a infraestrutura das filas; `status/api-aplicacao=ready` depende da validação do workload.
 
-**AWS continua desabilitada.** A variável de repositório `AWS_DEPLOY_ENABLED=false` impede provisionamento pelo CD e promoção de alteração implantável como se tivesse ocorrido deploy; o workflow reutilizável exige habilitação explícita. `terraform-action.env` permanece inalterado. Nenhum recurso foi criado nesta preparação. Antes de precisar do laboratório, avisar Gabriel para criá-lo e atualizar os environments.
+O CD exige autorização por `AWS_DEPLOY_ENABLED`, ação válida no controle versionado e branch `develop`. Consome os contratos de Kubernetes/ECR e RDS, restaura o state cifrado da conta e gera um plano salvo. Publica a imagem validada pela CI do PR integrado e aplica o plano da mesma tentativa. O apply inclui o workload da API e suas filas; não transfere ownership de VPC, EKS, ECR ou RDS. Migrations e seed demo são executados na inicialização conforme a configuração existente.
 
-Validações locais: Terraform 1.15.8 com três testes simulados, formatação/validate e nove testes Node aprovados; workflows conferidos com actionlint. O CI repete os gates existentes. Não confundir mocks com prova de acesso SQS pelo workload.
-
-## Preparação da subida da API — F4-04
-
-O controle da API retorna para `TERRAFORM_ACTION=apply`, mantendo `AWS_DEPLOY_ENABLED=false` até a janela autorizada. O workflow reutilizável exige habilitação explícita e a branch `develop`; arquivo de controle ausente, ação vazia ou inválida bloqueiam a operação, sem assumir `apply`. Destroy continua exigindo alteração dedicada no controle.
-
-Na futura execução autorizada, a esteira consome os contratos de Kubernetes/ECR e RDS, restaura e valida o state da conta e gera um plano salvo. Publica a mesma imagem produzida pela CI do PR integrado, conferindo a árvore de código, e aplica o plano da mesma tentativa, sem replanejar no job de aplicação. Mantém a validação de ownership, as verificações de filas/SSM e o rollout existente.
-
-O apply previsto inclui namespace, ConfigMap, Secret, Deployment, Service NodePort e HPA da API, além da entrada FIFO/DLQ de OS, redrive e contratos SSM já definidos. Não recria VPC, EKS, ECR ou RDS. A configuração atual aplica migrations e seed demo ao iniciar a API; isso faz parte da futura implantação, não desta preparação. `/status/api=ready` confirma a infraestrutura de mensageria, não a saúde HTTP ou a integração da Saga.
-
-Esta preparação não ativa o Execução remoto, não provisiona Lambda/Gateway e não altera contratos ou regras de negócio. A prova real de acesso DynamoDB/SQS pelo Pod do Execução permanece pendente da F4-04. Nenhum recurso AWS é criado por este PR enquanto o bloqueio permanecer ativo.
+Testes locais e CI não comprovam IAM, FIFO/DLQ ou a jornada na AWS. As evidências e pendências atuais ficam no [backlog](docs/projeto/backlog-tecnico.md); o procedimento de aceite está no [roteiro integrado](docs/evidencias/validacao-integrada.md).
 
 ## Estrutura obrigatória dos PRs
 
@@ -654,13 +644,13 @@ O job obrigatório de Git Flow verifica essa estrutura em todos os PRs, inclusiv
 
 ## Orientações para trabalho com Codex
 
-### Integração local entre OS e Orçamento
+### Integração entre OS e Orçamento
 
 A Saga já possui processamento local de resultados de orçamento, recebimentos idempotentes e comandos na outbox SQL. Após uma preparação registrada, `SolicitarOrcamentoSagaUseCase` recebe o snapshot congelado e persiste `GerarOrcamento`; `ProcessadorResultadoOrcamento` confere geração/decisão/cancelamento e grava os próximos comandos atomicamente. Aprovação autoriza o Execução sem iniciar o reparo físico; recusa aguarda confirmações de cancelamento do orçamento e da preparação.
 
 Os contratos e limites estão no [RFC de microsserviços](docs/architecture/rfcs/rfc-0007-evolucao-para-microsservicos.md). `SolicitarOrcamentoDaOrdemServicoUseCase` constrói o snapshot pela OS e pelo catálogo próprios: cliente vem do veículo e valores vêm das instâncias da OS, sem reprecificar pelo catálogo. Linhas repetidas de peças preservam quantidade e preço de cada lançamento. Reentrega reutiliza o comando persistido, mesmo após alteração do catálogo.
 
-O publicador aceita um transporte explícito; o substituto por arquivos foi usado com bancos SQL separados para validar o conteúdo real das mensagens. Não existe worker novo ativo no host, adaptador SQS ou chamada desses casos de uso pelas rotas antigas neste incremento. O recebimento de preparação, a ligação desse produtor ao fluxo, o corte das rotas e a implantação continuam na integração seguinte.
+O publicador usa um contrato de transporte implementado pelo adaptador SQS em Infrastructure. O worker executa consumo e publicação em escopos de DI separados, com cancelamento e retomada; o processamento remoto permanece condicionado à configuração validada na inicialização. O transporte por arquivos pertence aos testes da jornada distribuída e não substitui SQS no ambiente real.
 
 As suítes `MensagensSagaTests`, `PublicacaoOutboxTests` e `ContratoMensagemTests` verificam persistência, reentrega, validação estrita e retomada. Uma tentativa que falha deve descartar seu escopo de DI antes da reentrega; testes locais não comprovam FIFO/DLQ, acesso AWS ou execução física de estoque.
 
@@ -674,4 +664,4 @@ Antes de abrir/manter o PR automático de `develop` para `release`, o CD compara
 
 Se houver conteúdo implantável diferente, exige sucesso da operação atual ou do CD do último commit implantável na linha principal de develop, com o job de apply/destroy confirmado na tentativa atual. CD documental com deploy pulado, execução falha/em andamento, histórico ausente ou erro de consulta bloqueiam a abertura. Documentação após operação comprovada continua permitida. A guarda é conservadora: se a evidência do commit exigido não estiver disponível, é necessário concluir/reconciliar o CD antes de promover; não presume deploy a partir do CI ou de uma execução antiga de outro conteúdo. Não consulta AWS.
 
-Mantém os bloqueios `AWS_DEPLOY_ENABLED`/`AUTO_PR_ENABLED`, os environments, o plano salvo e o merge manual. Não altera ancestralidade (PIPE-005), reabre PR fechado ou executa promoção/implantação por conta própria. PRs já existentes continuam sujeitos à revisão humana; este controle protege sua abertura/manutenção pelo CD. Nesta rodada, integrar somente em `develop`, sem promoção para release/main e sem laboratório. A uniformização dos outros repositórios permanece pendente e não é declarada concluída por este ajuste da API/Execução.
+Mantém os bloqueios `AWS_DEPLOY_ENABLED`/`AUTO_PR_ENABLED`, os environments, o plano salvo e o merge manual. Não altera ancestralidade (PIPE-005), reabre PR fechado ou executa promoção/implantação por conta própria. PRs já existentes continuam sujeitos à revisão humana; este controle protege sua abertura/manutenção pelo CD. Durante a janela de validação, `AUTO_PR_ENABLED=false` retém as promoções para release/main, mesmo com implantação autorizada em development. A uniformização dos outros repositórios permanece pendente e não é declarada concluída por este ajuste da API/Execução.
