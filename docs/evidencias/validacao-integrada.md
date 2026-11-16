@@ -44,18 +44,37 @@ Cada linha depende de comprovação da anterior. Interromper diante de falha de 
 
 Ao retomar ambiente existente, inventariar filas/outboxes e jornadas em curso antes de ativar modos. Esta sequência não autoriza purge ou descarte de mensagens/Sagas; reconciliar as pendências pelo mecanismo aprovado.
 
-| Fase | Owner e configuração | Critério para avançar |
+| Etapa | Owner e configuração | Critério para avançar |
 | --- | --- | --- |
 | 1 | VPC | Contratos e `status/vpc` confirmados na conta/região da janela. |
 | 2 | Kubernetes/ECR/ingressos privados | EKS/nodes, três registries, NLB interno/listeners e contratos conferidos. Verificar IMDSv2 obrigatório/hop limit 2 nos nodes efetivos pela etapa acadêmica existente. Conferir execução do workflow Datadog e seus resultados. |
 | 3 | RDS com banco de Orçamento habilitado | RDS e bootstrap do banco/login próprios confirmados. A versão atual do workflow exige Kubernetes antes desta fase. |
 | 4 | Primeiro apply da API: worker/corte false, clientes privados true | Publicar a entrada FIFO/DLQ OS e o workload. `status/api` confirma mensageria; `status/api-aplicacao`, rollout, imagem e health privado confirmam o workload. Esta passagem não anuncia fluxo distribuído ativo. |
 | 5 | Auth com clientes privados true | API privada já disponível; validação pela própria Lambda, JWT novo e ausência de acesso SQL no modo privado. |
-| 6 | Gateway inicial com corte false | Publicar o Gateway base pelos contratos de VPC/Kubernetes/Auth e obter sua URL real. Esta passagem permite configurar a URL do webhook antes do corte dos microsserviços. Não executar a jornada distribuída ainda. |
-| 7 | Execução com processamento remoto true | Sua tabela/filas e workload prontos; resultado aponta para a fila OS da fase 4. Provar LabRole/conta dentro do Pod, acesso DynamoDB/SQS e saúde privada. `status/execucao` é de infraestrutura e não substitui essa prova. |
-| 8 | Orçamento/Pagamento com worker e fluxo distribuído true | Consumir banco/credencial próprios e fila OS. Configurar Mercado Pago com a URL real da fase 6 e `MERCADO_PAGO_ATIVO=true` após configuração completa. Exigir `status/orcamento-pagamento-aplicacao`, rollout/imagem/health privados e contratos aplicados; não iniciar cobrança antes de o callback estar roteado na fase 10. |
-| 9 | Reaplicar API com worker/corte true e clientes privados true | Entradas dos dois participantes já publicadas. Conferir FIFO/ARN/conta/região, configuração aplicada, rollout e estado do workload. |
-| 10 | Reaplicar Gateway com corte true | Guardrails aprovam flags API/Orçamento, status, Lambda privada sem SQL e listeners 8081/8082 com targets saudáveis. Confirmar roteamento público e callback; então iniciar os cenários de aceite. |
+| 6 | Execução com processamento remoto true | Sua tabela/filas e workload prontos; resultado aponta para a fila OS da etapa 4. Provar LabRole/conta dentro do Pod, acesso DynamoDB/SQS e saúde privada. `status/execucao` é de infraestrutura e não substitui essa prova. |
+| 7 | Orçamento/Pagamento com worker/corte true e Mercado Pago false | Consumir banco/credencial próprios e fila OS. Exigir `status/orcamento-pagamento-aplicacao`, rollout/imagem/health privados e contratos aplicados. Não iniciar jornadas financeiras: pagamento permanece desativado até a configuração da etapa 10. |
+| 8 | Reaplicar API com worker/corte true e clientes privados true | Entradas dos dois participantes já publicadas. Conferir FIFO/ARN/conta/região, configuração aplicada, rollout e estado do workload. |
+| 9 | API Gateway com corte true, depois dos três serviços | Uma única implantação inicial do Gateway, já com todas as rotas. Guardrails aprovam flags API/Orçamento, status, Lambda privada sem SQL e listeners 8081/8082 com targets saudáveis. Conferir a URL pública real e o roteamento do callback. |
+| 10 | Configurar Webhook e reaplicar Orçamento/Pagamento com Mercado Pago true | Usar a URL pública da etapa 9 e o segredo de assinatura do provedor. Conferir token/recebedor de teste, configuração completa, rollout e health. Só então executar checkout, notificação assinada, confirmação financeira e entrega. Não exige segunda aplicação do Gateway. |
+
+Na primeira subida, as duas aplicações da API resolvem a dependência entre a fila OS e as filas dos participantes. A segunda aplicação de Orçamento/Pagamento habilita o pagamento depois de existir URL pública. São execuções das mesmas esteiras, não novos componentes; não publicar cobranças durante a preparação. Mudanças posteriores de configuração também passam pelo CI/CD.
+
+### Flags e configuração final
+
+Controles de operação não são feature toggles de negócio: `AWS_DEPLOY_ENABLED` autoriza a janela, `TERRAFORM_ACTION` escolhe apply/destroy e `AUTO_PR_ENABLED` controla somente a abertura de promoções. Manter esses controles separados; habilitar uma funcionalidade não autoriza infraestrutura.
+
+| Configuração funcional | Estado final do fluxo distribuído | Motivo |
+| --- | --- | --- |
+| API: `CLIENTES_API_ENABLED` | true | Consulta privada usada pela Auth, com credencial técnica exclusiva. |
+| Auth: `CLIENTES_API_ENABLED` | true | Consulta HTTP privada; sem conexão SQL na função. |
+| API e Orçamento/Pagamento: `FLUXO_DISTRIBUIDO_ENABLED` | true | Preserva ownership e bloqueia mutações legadas concorrentes. |
+| Gateway: `FLUXO_DISTRIBUIDO_ENABLED` | true | Encaminha as rotas para os responsáveis após conferir seus contratos e saúde. |
+| API e Orçamento/Pagamento: `PROCESSAMENTO_REMOTO_ENABLED` | true | Consumo/publicação SQS; depende das filas reais dos participantes. |
+| Execução: `PROCESSAMENTO_REMOTO_HABILITADO` | true | Mesmo propósito, com o nome já adotado pelo serviço. Não criar alias concorrente. |
+| RDS: `ORCAMENTO_PAGAMENTO_DB_ENABLED` | true | Prepara banco e login exclusivos antes do workload. |
+| Orçamento/Pagamento: `MERCADO_PAGO_ATIVO` | true após Webhook completo | Controle do provedor externo, separado do processamento da Saga. |
+
+Essas opções têm responsabilidades distintas. Não remover guardrails nem trocar flags isoladamente para contornar uma dependência. Retornar ao modo legado com jornadas distribuídas em andamento não é um rollback automático seguro. O estado final não exige que a pessoa operadora fique alternando essas opções a cada teste; a preparação em etapas ocorre na primeira implantação.
 
 Antes da primeira OS, preparar dados sintéticos pelos mecanismos suportados e autorizados para cada owner. O seed da API não abastece a tabela do Execução: registrar explicitamente filial, IDs de catálogo/instâncias e saldo inicial no serviço correto. Os fixtures locais não autorizam escrita remota. Se a janela exigir novamente o verificador local com escrita, sua exceção deve ser explicitamente autorizada; a regra padrão da ADR-0025 mantém operações locais apenas de consulta.
 

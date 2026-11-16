@@ -14,7 +14,7 @@ Os recursos executáveis ficam fora de `docs/`: Docker Compose local em [`../../
 
 ## 🔐 Regras de segurança
 
-- Não executar `terraform apply` sem aprovação explícita; no CD, essa aprovação é o merge revisado para `develop`.
+- Executar provisionamento e destroy exclusivamente pelas esteiras oficiais, em janela explicitamente autorizada. O merge revisado para `develop` não autoriza uma janela por conta própria.
 - Planejar e executar `terraform destroy` ao final de qualquer teste AWS temporário, via PR alterando `infra/terraform/environments/dev/terraform-action.env` para `TERRAFORM_ACTION=destroy`.
 - Não versionar kubeconfig, tokens, senhas ou secrets reais.
 - Deploy em PR não executa: PR valida qualidade, build, imagem e manifests.

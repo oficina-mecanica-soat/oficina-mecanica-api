@@ -1,128 +1,61 @@
 # ☁️ Deploy na AWS
 
-Este guia descreve como preparar a infraestrutura AWS real do environment `development` e como a esteira Git Flow executa deploy lógico para `homologation` e `production`.
+O ambiente físico é `development`. Homologation e production continuam promoções lógicas do Git Flow. Toda criação, atualização e destruição de recursos reais ocorre exclusivamente nas esteiras oficiais; comandos locais são somente de consulta, validação e planejamento.
 
-## 🏆 Regra de ouro
+## 🧭 Ordem das esteiras
 
-Ambientes temporários devem ser destruídos após a demonstração. Antes de qualquer criação de recurso, tenha um plano claro de `terraform destroy`.
+A [sequência canônica no README](../../README.md#deploy-aws) e o [roteiro integrado](../evidencias/validacao-integrada.md#ordem-de-ativação-coordenada) descrevem os dez passos das oito esteiras. Este guia não mantém uma ordem concorrente.
 
-## 🏗️ Provisionamento da infraestrutura
+VPC precede Kubernetes; RDS depende de Kubernetes para preparar seu banco próprio. A API publica primeiro sua fila e consulta privada. Execução e Orçamento/Pagamento publicam suas entradas e usam a fila OS. A API então recebe as filas dos participantes. Auth usa a consulta privada, e o Gateway sobe uma única vez após os três serviços estarem saudáveis. A URL pública permite completar o Webhook e atualizar somente a configuração do pagamento.
 
-O provisionamento do ambiente `development` acontece no workflow `CD Development`, após merge/push na branch `develop`.
+As passagens adicionais da API e de Orçamento/Pagamento são dependências da implementação atual. Não exigem destroy, criação de novos serviços ou troca de arquitetura. Não iniciar jornadas antes da configuração final.
 
-O CD executa:
+## 🔑 Configuração da janela
 
-1. restaura o Terraform state do cache do GitHub Actions (chave `tfstate-development-*`);
-2. executa `terraform init` e `validate`;
-3. valida os contratos SSM do ECR, Kubernetes e RDS antes do build;
-4. publica a imagem Docker validada pela CI no ECR existente;
-5. executa `terraform plan` e `apply` com guardrail contra infraestrutura compartilhada;
-6. cria ou atualiza somente os recursos Kubernetes da API;
-7. valida o rollout do Deployment no EKS e imprime o endpoint do Load Balancer;
-8. salva o Terraform state atualizado de volta no cache do GitHub Actions, mesmo se algum passo posterior falhar.
+- Usar credenciais temporárias da mesma conta/região nos oito Environments `development`.
+- Preservar a chave JWT compartilhada e o contrato de issuer/audience dos três serviços e Auth.
+- Manter secrets no GitHub Environment ou Secrets Manager; nunca imprimir valores, state, connection strings, JWT ou assinatura de Webhook.
+- Configurar flags e dependências conforme o roteiro canônico. `AWS_DEPLOY_ENABLED` autoriza a operação, `TERRAFORM_ACTION` escolhe apply/destroy e `AUTO_PR_ENABLED` controla promoções; não são opções equivalentes.
+- Durante o aceite, reter promoções para release/main. A configuração de uma Variable não dispara sozinha o deploy.
 
-O ambiente publicado na AWS roda com `ASPNETCORE_ENVIRONMENT=Staging`. Swagger e usuários demo são habilitados explicitamente via `appsettings.Staging.json` para permitir a avaliação do Tech Challenge; nunca replicar este padrão, com credenciais fixas e Swagger público, em um ambiente de produção real.
+## 🚀 Execução pela esteira
 
-Execução local equivalente para diagnóstico (usa o state local em `infra/terraform/environments/dev/terraform.tfstate` — não é o mesmo state da esteira, que fica no cache do GitHub Actions):
+1. Inventariar conta, recursos, contratos SSM e state com consultas read-only. Reset do laboratório não comprova limpeza.
+2. Confirmar janela autorizada e dependências reais prontas.
+3. Abrir branch de trabalho a partir de develop e PR com a ação operacional explícita no controle `infra/terraform/environments/dev/terraform-action.env`.
+4. Exigir CI e quality gate aprovados antes do merge.
+5. Acompanhar o CD: restore de state, validação, plano salvo, publicação da imagem validada quando aplicável, aplicação desse mesmo plano e verificação real.
+6. Conferir conta/região, outputs SSM, imagem, rollout e health. Status de fila não substitui status da aplicação.
 
-```powershell
-terraform -chdir=infra/terraform/environments/dev init
-terraform -chdir=infra/terraform/environments/dev validate
-terraform -chdir=infra/terraform/environments/dev plan
-terraform -chdir=infra/terraform/environments/dev apply
-```
+Quando uma configuração depender de recursos publicados pela passagem anterior, usar nova execução completa do CD autorizado, com plano da nova tentativa. Não repetir somente o job que aplica um plano antigo.
 
-## 🔑 GitHub Environments
+## 💾 States e planos
 
-Criar para o deploy real:
+Cada owner mantém state separado por conta e ambiente. API, Execução, Auth e Orçamento/Pagamento cifram states e planos com AES-256-GCM e chave exclusiva do Environment. Contexto de repositório, conta e ambiente é autenticado; o plano também vincula commit, ação e tentativa. Os workflows determinam os prefixos de cache efetivos; não restaurar manualmente caches de outra conta ou material legado sem proteção.
 
-- `development`
+Ausência ou corrupção de cache não autoriza esquecer recursos. Sem cache, o bootstrap existente exige recuperação dedicada com inventário vazio comprovado, plano exclusivo de destroy e state final sem recursos gerenciados. Se houver recursos, recuperar o state correto antes de prosseguir. Preservar caches, chaves e evidências; não usar state rm/import/mv como atalho.
 
-Lista completa dos secrets e repository variables do environment `development` (nomes, origem, tipos): ver as seções "Environments" e "Repository variables" em [`github-actions.md`](github-actions.md).
+O backend protegido e durável é evolução do projeto. A solução atual de cache continua sujeita às limitações documentadas no backlog e não deve ser apresentada como backend remoto definitivo.
 
-Os valores reais devem ser cadastrados somente no GitHub ou no ambiente local seguro. Não adicionar esses valores em `.env`, YAML, Terraform ou Markdown.
+## 🏗️ Ownership de rede e dados
 
-## 💾 Terraform state entre execuções
+O NLB interno e os listeners privados pertencem à esteira Kubernetes. As aplicações possuem Services NodePort privados: API 30080, Execução 30081 e Orçamento/Pagamento 30082. O Gateway usa VPC Link e encaminha as rotas ao responsável; não há Load Balancer público criado pelo Service da API.
 
-O Terraform usa backend `local` (arquivo `terraform.tfstate` dentro de `infra/terraform/environments/dev/`). Esse arquivo não é versionado no repositório; para lembrar o que foi criado entre uma execução e outra da esteira, o `CD Development` guarda e recupera o state usando o cache do GitHub Actions (`actions/cache`, chave `tfstate-development-*`).
-
-Motivo da escolha: um bucket S3 dedicado ao state não é exigido pelo enunciado da Fase 2, e o AWS Academy Learner Lab às vezes nega `s3:CreateBucket` por política de conta (`voc-cancel-cred`), o que travava a esteira sem necessidade real de S3.
-
-Se o cache expirar, a esteira perde a referência apenas dos recursos Kubernetes da API. Recursos compartilhados não devem ser importados neste repositório.
-
-## 🔮 Evolução futura: Secrets Manager e Parameter Store
-
-Para este Tech Challenge, os segredos são injetados no Kubernetes Secret pelo Terraform a partir do GitHub Environment. Isso é suficiente para demonstrar CI/CD, deploy em EKS e uso seguro de secrets sem versionar valores sensíveis.
-
-Em uma evolução mais próxima de produção, é válido mover:
-
-| Tipo de configuração | Serviço AWS recomendado | Exemplos |
-| --- | --- | --- |
-| Segredos sensíveis | AWS Secrets Manager | Senha do banco, `JWT_SECRET`, `WEBHOOK_TOKEN`. |
-| Configurações não sensíveis | AWS Systems Manager Parameter Store | Região, nome de recursos, flags de ambiente. |
-
-Nesse modelo futuro, a aplicação ou o cluster buscariam os valores em runtime usando integração como External Secrets Operator, AWS Secrets Store CSI Driver ou permissões IAM específicas. Isso reduz a dependência de secrets longos no GitHub, mas adiciona complexidade de IAM e operação.
-
-## 🚀 Deploy pela esteira
-
-| Branch | Ambiente | Próximo passo automático |
-| --- | --- | --- |
-| `develop` | `development` | Executa Terraform apply/deploy AWS real quando houver mudança deployable e abre PR para `release`. |
-| `release` ou `release/**` | `homologation` | Registra deploy lógico e abre PR para `main`. |
-| `main` | `production` | Registra deploy lógico final após PR aprovado. |
-
-O deploy AWS real gerencia os recursos Kubernetes da API pelo Terraform, aguarda rollout e imprime o endpoint do Load Balancer. Os estágios `homologation` e `production` não provisionam AWS enquanto não existirem ambientes físicos separados.
-
-## ⚖️ Onde o Load Balancer é criado
-
-Não existe um recurso `aws_lb` explícito no Terraform porque o Load Balancer da API é criado pelo cloud provider da AWS quando o Kubernetes Service da API é criado com `type = "LoadBalancer"`.
-
-Fonte de verdade:
-
-```text
-infra/terraform/environments/dev/api-service.tf
-```
-
-Recurso responsável:
-
-```text
-kubernetes_service_v1.oficina_mecanica_api
-```
-
-O Terraform mantém o Service no state; por consequência, o `terraform destroy` remove o Service Kubernetes e a AWS remove o Load Balancer associado.
+RDS publica endpoint e metadados dos secrets. Orçamento/Pagamento usa somente seu banco/login e secret exclusivos; Execução usa sua tabela DynamoDB. Nenhum serviço deve acessar o banco de outro. Contratos não secretos ficam no SSM, com prontidão separada para filas e aplicações.
 
 ## ✅ Validação
 
-- [ ] Validar rollout da API.
-- [ ] Validar `kubectl get pods -n oficina-mecanica`.
-- [ ] Validar `kubectl get svc oficina-mecanica-api -n oficina-mecanica`.
-- [ ] Validar `/api/health`.
-- [ ] Validar Swagger.
+- Conferir recursos, identidade e contratos reais na conta/região da janela.
+- Validar rollout e imagem dos três workloads, HTTP/JWT e consulta privada da Auth.
+- Executar o fluxo de negócio, compensação, idempotência e entrega condicionada ao pagamento.
+- Comprovar checkout de teste, assinatura do Webhook e consulta financeira ao Mercado Pago; mocks não substituem esse aceite.
+- Conferir ingestão Datadog, correlação, dashboards e alertas com recuperação. Ausência de dados não significa ausência de falha.
+- Registrar os resultados reais no backlog e nas evidências, sem dados sensíveis.
 
-## 🧹 Encerramento obrigatório pela esteira
+## 🧹 Encerramento pela esteira
 
-Ao final da demonstração, executar o destroy explícito pela própria esteira de CD, usando o mesmo backend/state do deploy.
+Destroy exige autorização e PR dedicado. Interromper entradas/produtores, reconciliar mensagens/outboxes/Sagas e respeitar os guardrails de cada owner. Remover Gateway, API/OS e Auth antes dos participantes e bancos; RDS precede Kubernetes na remoção e VPC fica por último. Confirmar cada dependência antes do passo seguinte.
 
-Arquivo de controle:
+Aplicar exclusivamente o plano destrutivo salvo e verificar ausência real, contratos SSM e state final. Não limpar filas com purge nem descartar evidências para passar no gate. Após destroy, preservar o controle; retornar para apply somente em nova janela autorizada, porque essa mudança pode provisionar novamente.
 
-```text
-infra/terraform/environments/dev/terraform-action.env
-```
-
-Para destruir os recursos AWS:
-
-```env
-TERRAFORM_ACTION=destroy
-```
-
-Passo a passo:
-
-1. Criar uma branch a partir da `develop`.
-2. Alterar `infra/terraform/environments/dev/terraform-action.env` para `TERRAFORM_ACTION=destroy`.
-3. Abrir PR para `develop`.
-4. Fazer merge do PR.
-5. Acompanhar o workflow `CD Development` no GitHub Actions.
-6. Confirmar que a etapa `Terraform destroy` terminou com sucesso.
-7. Abrir novo PR voltando o arquivo para `TERRAFORM_ACTION=apply` antes do próximo deploy.
-
-Como os recursos Kubernetes da API estão no state, o `terraform destroy` remove Service/Load Balancer, Deployment, Secret, ConfigMap e Namespace. VPC, EKS, RDS e ECR são destruídos exclusivamente pelas esteiras donas.
+A validação detalhada e as limitações de cada cenário ficam no [roteiro integrado](../evidencias/validacao-integrada.md).
