@@ -26,8 +26,12 @@ data "aws_ssm_parameter" "rds_endpoint" {
   name = "${local.ssm_base_path}/rds/endpoint"
 }
 
-data "aws_ssm_parameter" "rds_master_secret_arn" {
-  name = "${local.ssm_base_path}/rds/master_secret_arn"
+data "aws_ssm_parameter" "rds_os_secret_arn" {
+  name = "${local.ssm_base_path}/rds/os/secret_arn"
+}
+
+data "aws_ssm_parameter" "rds_os_status" {
+  name = "${local.ssm_base_path}/status/rds-os"
 }
 
 resource "terraform_data" "kubernetes_ready" {
@@ -42,8 +46,8 @@ resource "terraform_data" "kubernetes_ready" {
 resource "terraform_data" "rds_ready" {
   lifecycle {
     precondition {
-      condition     = data.aws_ssm_parameter.rds_status.value == "ready" && trimspace(data.aws_ssm_parameter.rds_endpoint.value) != "" && trimspace(data.aws_ssm_parameter.rds_master_secret_arn.value) != ""
-      error_message = "RDS compartilhado não está ready ou publicou um contrato SSM incompleto."
+      condition     = data.aws_ssm_parameter.rds_status.value == "ready" && data.aws_ssm_parameter.rds_os_status.value == "ready" && trimspace(data.aws_ssm_parameter.rds_endpoint.value) != "" && trimspace(data.aws_ssm_parameter.rds_os_secret_arn.value) != ""
+      error_message = "RDS ou banco exclusivo de OS não estão ready ou publicaram contrato incompleto."
     }
   }
 }
