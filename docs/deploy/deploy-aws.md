@@ -33,7 +33,7 @@ Quando uma configuração depender de recursos publicados pela passagem anterior
 
 Cada owner mantém state separado por conta e ambiente. API, Execução, Auth e Orçamento/Pagamento cifram states e planos com AES-256-GCM e chave exclusiva do Environment. Contexto de repositório, conta e ambiente é autenticado; o plano também vincula commit, ação e tentativa. Os workflows determinam os prefixos de cache efetivos; não restaurar manualmente caches de outra conta ou material legado sem proteção.
 
-Ausência ou corrupção de cache não autoriza esquecer recursos. Sem cache, o bootstrap existente exige recuperação dedicada com inventário vazio comprovado, plano exclusivo de destroy e state final sem recursos gerenciados. Se houver recursos, recuperar o state correto antes de prosseguir. Preservar caches, chaves e evidências; não usar state rm/import/mv como atalho.
+Ausência ou corrupção de cache não autoriza esquecer recursos. Sem cache, a recuperação inicial existente exige recuperação dedicada com inventário vazio comprovado, plano exclusivo de destroy e state final sem recursos gerenciados. Se houver recursos, recuperar o state correto antes de prosseguir. Preservar caches, chaves e evidências; não usar state rm/import/mv como atalho.
 
 O backend protegido e durável é evolução do projeto. A solução atual de cache continua sujeita às limitações documentadas no backlog e não deve ser apresentada como backend remoto definitivo.
 
