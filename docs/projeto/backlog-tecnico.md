@@ -4,7 +4,23 @@
 
 Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece para o escopo atual; itens históricos abaixo não viram trabalho automático. Responsável indica quem conduz a tarefa com seu Codex. Contratos são compartilhados; alterações incompatíveis devem ser alinhadas antes de implementação.
 
-### Prontidão da próxima janela AWS — revisão Gabriel, 15/11/2026
+### Janela AWS autorizada e revisão operacional — 15/11/2026
+
+Este registro atualiza o retrato de prontidão abaixo. A usuária autorizou implantação pelas esteiras e recuperação dedicada dos oito states após reset do laboratório, somente com inventário vazio. Consultas read-only comprovaram ausência dos recursos do projeto, filas e tabelas antes da recuperação; caches de outras contas foram preservados.
+
+As oito recuperações terminaram com sucesso: [VPC](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-vpc/actions/runs/43778101874), [Kubernetes](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-kubernetes/actions/runs/43778232898), [RDS](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-rds/actions/runs/43778240775), [API](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43779214274), [Auth](https://github.com/oficina-mecanica-soat/oficina-mecanica-auth-lambda/actions/runs/43778890829), [Execução](https://github.com/oficina-mecanica-soat/oficina-mecanica-execucao/actions/runs/43778482744), [Orçamento/Pagamento](https://github.com/oficina-mecanica-soat/oficina-mecanica-orcamento-pagamento/actions/runs/43778493009) e [Gateway](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-api-gateway/actions/runs/43778502797). As esteiras verificaram state sem recursos gerenciados; os metadados confirmam caches criados no escopo da conta atual. Material sensível dos serviços permanece cifrado.
+
+Falhas encontradas antes do plano foram corrigidas pelos PRs [Auth #50](https://github.com/oficina-mecanica-soat/oficina-mecanica-auth-lambda/pull/50), que fornece o ambiente exigido pela proteção criptográfica, e [API #424](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/424), que aceita stdout vazio somente em list-queues bem-sucedido. Regressões e CIs completos aprovados; erros de permissão/token, respostas inválidas e recursos presentes continuam bloqueando. Nenhuma chave foi trocada ou guarda removida.
+
+Credenciais temporárias sincronizadas nos oito Environments development; AUTO_PR_ENABLED=false para reter release/main. Auditoria de referências/nome/escopo não encontrou duplicidades Environment/repositório nem secrets obrigatórios ausentes, exceto o segredo de Webhook ainda pendente antes da ativação do pagamento. Valores de JWT/Datadog não são recuperáveis do GitHub e não foram apresentados como comparados; validade integrada depende dos testes reais.
+
+Mercado Pago: aplicação Checkout Pro criada pelo MCP, com vendedor/comprador e aplicação do vendedor de teste. Token sandbox e identificador do recebedor configurados somente em Orçamento/Pagamento/development; backup local cifrado. MERCADO_PAGO_ATIVO=false até Webhook, assinatura e URL pública completos. Nenhum pagamento real ou de teste foi comprovado nesta preparação.
+
+O [apply da VPC](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-vpc/actions/runs/43779498812) terminou com sucesso; VPC available e contratos/status SSM conferidos por consulta. O [apply Kubernetes](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-kubernetes/actions/runs/43780210944) está em execução, ainda sem aceite de nodes/Datadog. RDS, workloads, Auth, Gateway, pagamento e observabilidade integrada permanecem pendentes de implantação/validação.
+
+A ordem revisada fica no README e no roteiro integrado: VPC → Kubernetes → RDS → API inicial → Auth → Execução → Orçamento/Pagamento sem pagamento → atualização distribuída da API → Gateway único com todas as rotas → configuração final de pagamento. A dependência da URL pública atualiza somente Orçamento/Pagamento, não exige um Gateway parcial. Flags existentes foram classificadas por finalidade e estado final, sem acrescentar toggles ou remover proteções. READMEs/guia AWS estão sendo alinhados ao fluxo real; documentação não comprova implantação ou aceite.
+
+### Prontidão da próxima janela AWS — retrato anterior de Gabriel, 15/11/2026
 
 [PR da revisão](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/421); conferir checks e integração no PR.
 
