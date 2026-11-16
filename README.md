@@ -468,14 +468,9 @@ dotnet test OficinaMecanica.sln `
   --logger "trx"
 ```
 
-Evidência atual:
+Na [CI de referência do código entregue](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43806755277), a cobertura global de linhas foi **93,06%**. O artefato `test-and-coverage-results` reúne relatórios de testes e cobertura. O gate bloqueia testes ignorados e cobertura abaixo de **90%**; uma CI somente documental não gera uma nova medição.
 
-- **424 testes aprovados**
-- **0 testes ignorados**
-- **91.2% de cobertura global de linhas**
-- CI configurado para bloquear cobertura abaixo de **90%**
-
-Arquivos de evidência:
+Os arquivos abaixo preservam evidências das fases anteriores e procedimentos complementares; não representam reexecução de SonarQube/ZAP na janela atual:
 
 | Evidência | Caminho |
 | --- | --- |
