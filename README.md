@@ -365,17 +365,21 @@ Environment secrets:
 | `AWS_ACCESS_KEY_ID` | Copiar de `AWS Details` / credenciais CLI do AWS Academy. |
 | `AWS_SECRET_ACCESS_KEY` | Copiar de `AWS Details` / credenciais CLI do AWS Academy. |
 | `AWS_SESSION_TOKEN` | Copiar de `AWS Details` / credenciais CLI do AWS Academy. Expira a cada sessão. |
-| `DB_PASSWORD` | Criar uma senha forte para o RDS SQL Server. |
-| `JWT_SECRET` | Criar uma string aleatória com pelo menos 32 caracteres. |
-| `WEBHOOK_TOKEN` | Criar uma string aleatória com pelo menos 32 caracteres. |
+| `TERRAFORM_STATE_KEY` | Chave de proteção dos planos/states, com 64 caracteres hexadecimais; preservar cópia segura de recuperação. |
+| `JWT_SECRET` | Mesma chave compartilhada por API, Auth Lambda, Execução e Orçamento/Pagamento no ambiente; não gerar uma chave diferente para cada serviço. |
+| `WEBHOOK_TOKEN` | Token do contrato legado de decisão de orçamento; não é a assinatura do Webhook Mercado Pago. |
+| `CLIENTES_INTERNOS_TOKEN` | Token compartilhado com Auth Lambda para consulta privada de clientes; distinto de JWT_SECRET e WEBHOOK_TOKEN. |
 
 Environment variables:
 
 | Nome | Valor esperado |
 | --- | --- |
 | `AWS_REGION` | `us-east-1` |
-| `EKS_CLUSTER_ROLE_NAME` | `LabRole`, salvo se o AWS Academy informar outro nome. |
-| `EKS_NODE_ROLE_NAME` | `LabRole`, salvo se o AWS Academy informar outro nome. |
+| `CLIENTES_API_ENABLED` | Habilita a consulta privada usada pela Auth Lambda; requer CLIENTES_INTERNOS_TOKEN. |
+| `PROCESSAMENTO_REMOTO_ENABLED` | Habilita consumidor/publicador SQS após os contratos dos participantes estarem disponíveis. |
+| `FLUXO_DISTRIBUIDO_ENABLED` | Ativa o corte distribuído; seguir a ordem de apply acima e os guardrails da esteira. |
+
+O CD obtém a conexão SQL do Secret exclusivo da OS publicado pela esteira RDS; não recebe `DB_PASSWORD` no Environment da API nem utiliza a credencial administrativa do banco. Configuração das roles do cluster e dos nós pertence ao repositório Kubernetes. `AWS_DEPLOY_ENABLED` controla a janela real; `AUTO_PR_ENABLED` controla a criação dos PRs de promoção, sem autorizar seus merges. Nenhuma flag substitui a autorização operacional da janela.
 
 > Nunca versionar esses valores em `.env`, YAML, Terraform ou README. O repositório documenta os nomes, mas os valores ficam somente no GitHub Environment.
 
@@ -464,14 +468,9 @@ dotnet test OficinaMecanica.sln `
   --logger "trx"
 ```
 
-Evidência atual:
+Na [CI de referência do código entregue](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43806755277), a cobertura global de linhas foi **93,06%**. O artefato `test-and-coverage-results` reúne relatórios de testes e cobertura. O gate bloqueia testes ignorados e cobertura abaixo de **90%**; uma CI somente documental não gera uma nova medição.
 
-- **424 testes aprovados**
-- **0 testes ignorados**
-- **91.2% de cobertura global de linhas**
-- CI configurado para bloquear cobertura abaixo de **90%**
-
-Arquivos de evidência:
+Os arquivos abaixo preservam evidências das fases anteriores e procedimentos complementares; não representam reexecução de SonarQube/ZAP na janela atual:
 
 | Evidência | Caminho |
 | --- | --- |

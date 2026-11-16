@@ -157,6 +157,8 @@ O painel versionado também reúne CPU em nanocores, memória em bytes, contador
 
 Na abertura distribuída, enviar `X-Correlation-Id` e conferir o mesmo valor na resposta HTTP, no comando persistido e nos resultados dos participantes. O middleware sanitiza o header; sem header válido, o ID seguro gerado deve ser o usado pela Outbox. Isso não substitui a comprovação do contexto de trace e dos IDs Datadog exportados.
 
+No Trace Explorer, filtrar a janela da demonstração por `env:development @ordem_servico_id:<UUID da OS>`. Abrir um trace com spans dos três serviços e conferir o mesmo `trace_id`, `saga_id` e a relação entre spans pais e filhos nas operações de mensageria. Ações HTTP independentes podem iniciar traces distintos para a mesma Saga; não exigir um trace único para toda a vida da OS. A busca retorna spans indexados, sem representar o total de requisições. Registrar a prova e seus limites no backlog.
+
 Sequência para fechar os alertas da RFC-0006:
 
 1. Conferir ingestão e parsing antes de escrever consultas ou concluir que faltam erros.
