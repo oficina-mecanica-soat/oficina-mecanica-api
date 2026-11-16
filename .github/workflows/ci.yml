@@ -592,13 +592,15 @@ jobs:
               casos = [('destroy', 'true', '', False), ('apply', 'false', '', False), ('apply', 'true', 'token-ficticio-exclusivo-de-testes-2026', False), ('apply', 'TRUE', '', True), ('apply', 'true', '', True), ('apply', 'true', 'jwt-ficticio-exclusivo-de-testes-2026', True)]
               if auth:
                   casos += [('apply', 'true', 'token-ficticio-exclusivo-de-testes-2026', 'publico'), ('apply', 'true', 'token-ficticio-exclusivo-de-testes-2026', 'outra-vpc')]
+              else:
+                  casos += [('apply', 'false', '', motivo) for motivo in ('sql-pendente', 'secret-alheio', 'secret-master', 'banco-alheio')]
               for acao, flag, token, falha in casos:
                   chamadas = []
                   def consultar(args, **kwargs):
                       chamadas.append(args)
                       if args[1:3] == ['ssm', 'get-parameter']:
                           nome = args[args.index('--name') + 1]
-                          valor = {'endpoint': 'sql.test.local', 'master_secret_arn': 'arn-teste', 'internal_nlb_listener_arn': 'arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/net/teste/abc/def', 'internal_nlb_security_group_id': 'sg-teste', 'vpc_id': 'vpc-teste'}.get(nome.rsplit('/', 1)[-1], 'ready')
+                          valor = {'endpoint': 'sql.test.local', 'secret_arn': 'arn:aws:secretsmanager:us-east-1:'+('999999999999' if falha == 'secret-alheio' else '123456789012')+':secret:oficina-mecanica/development/rds/os-Ab123Z', 'database_name': 'OficinaMecanicaDb', 'rds-os': 'pendente' if falha == 'sql-pendente' else 'ready', 'internal_nlb_listener_arn': 'arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/net/teste/abc/def', 'internal_nlb_security_group_id': 'sg-teste', 'vpc_id': 'vpc-teste'}.get(nome.rsplit('/', 1)[-1], 'ready')
                       elif args[1:3] == ['sts', 'get-caller-identity']:
                           valor = '123456789012'
                       elif args[1:3] == ['elbv2', 'describe-listeners']:
@@ -606,7 +608,7 @@ jobs:
                       elif args[1:3] == ['elbv2', 'describe-load-balancers']:
                           valor = json.dumps({'LoadBalancers': [{'Type': 'network', 'Scheme': 'internet-facing' if falha == 'publico' else 'internal', 'VpcId': 'vpc-outra' if falha == 'outra-vpc' else 'vpc-teste', 'SecurityGroups': ['sg-teste'], 'DNSName': 'internal-teste.elb.us-east-1.amazonaws.com'}]})
                       elif args[1:3] == ['secretsmanager', 'get-secret-value']:
-                          valor = json.dumps({'username': 'usuario-teste', 'password': 'senha-ficticia'})
+                          valor = json.dumps({'username': 'master' if falha == 'secret-master' else 'oficina_os', 'password': 'senha-ficticia', 'database': 'OutroBanco' if falha == 'banco-alheio' else 'OficinaMecanicaDb'})
                       else:
                           raise AssertionError('Comando inesperado no teste: ' + repr(args))
                       return subprocess.CompletedProcess(args, 0, stdout=valor)
@@ -624,6 +626,9 @@ jobs:
                           assert values['clientes_api_habilitada' if auth else 'clientes_internos_habilitado'] == habilitado
                           if acao == 'destroy':
                               assert not chamadas, 'Destroy não pode depender de novos contratos ou secrets.'
+                          if not auth and acao == 'apply':
+                              assert not any('master_secret_arn' in str(a) for a in chamadas), 'API não pode consultar a credencial administrativa.'
+                              assert 'User Id=oficina_os;' in values['db_connection_string']
                           if auth and habilitado:
                               assert values['connection_string'] == ''
                               assert values['clientes_api_endereco_base'] == 'http://internal-teste.elb.us-east-1.amazonaws.com'

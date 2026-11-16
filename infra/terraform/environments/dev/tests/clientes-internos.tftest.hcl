@@ -102,3 +102,21 @@ run "modo_e_workers_publicam_contratos_consistentes" {
     error_message = "Modo, workers, checksum e disponibilidade devem refletir a configuração aplicada."
   }
 }
+
+run "banco_os_pendente_bloqueia_workload" {
+  command = plan
+  override_data {
+    target = data.aws_ssm_parameter.rds_os_status
+    values = { value = "bootstrap-pendente" }
+  }
+  expect_failures = [terraform_data.rds_ready]
+}
+
+run "credencial_os_ausente_bloqueia_workload" {
+  command = plan
+  override_data {
+    target = data.aws_ssm_parameter.rds_os_secret_arn
+    values = { value = "" }
+  }
+  expect_failures = [terraform_data.rds_ready]
+}
