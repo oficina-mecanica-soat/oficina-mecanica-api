@@ -395,7 +395,14 @@ jobs:
               webhook_token = "destroy-only-placeholder"
           else:
               endpoint = aws_output("ssm", "get-parameter", "--name", f"{os.environ['SSM_RDS_PREFIX']}/endpoint", "--query", "Parameter.Value", "--output", "text")
-              secret_arn = aws_output("ssm", "get-parameter", "--name", f"{os.environ['SSM_RDS_PREFIX']}/master_secret_arn", "--query", "Parameter.Value", "--output", "text")
+              status_sql = aws_output("ssm", "get-parameter", "--name", f"/oficina-mecanica/{os.environ['SSM_ENVIRONMENT_NAME']}/status/rds-os", "--query", "Parameter.Value", "--output", "text")
+              database_name = aws_output("ssm", "get-parameter", "--name", f"{os.environ['SSM_RDS_PREFIX']}/os/database_name", "--query", "Parameter.Value", "--output", "text")
+              secret_arn = aws_output("ssm", "get-parameter", "--name", f"{os.environ['SSM_RDS_PREFIX']}/os/secret_arn", "--query", "Parameter.Value", "--output", "text")
+              conta_sql = aws_output("sts", "get-caller-identity", "--query", "Account", "--output", "text")
+              prefixo_secret = f"arn:aws:secretsmanager:{os.environ['AWS_REGION']}:{conta_sql}:secret:oficina-mecanica/{os.environ['SSM_ENVIRONMENT_NAME']}/rds/os-"
+              sufixo_secret = secret_arn.removeprefix(prefixo_secret)
+              if status_sql != "ready" or database_name != "OficinaMecanicaDb" or not secret_arn.startswith(prefixo_secret) or len(sufixo_secret) != 6 or not sufixo_secret.isascii() or not sufixo_secret.isalnum():
+                  raise ValueError("Banco ou credencial exclusiva de OS não estão prontos no escopo esperado.")
               if not endpoint or not secret_arn:
                   raise ValueError("RDS endpoint ou ARN do segredo não foi publicado.")
               secret_string = aws_output("secretsmanager", "get-secret-value", "--secret-id", secret_arn, "--query", "SecretString", "--output", "text")
@@ -405,8 +412,8 @@ jobs:
                   raise ValueError("SecretString do RDS não contém JSON válido.") from error
               username = secret.get("username")
               password = secret.get("password")
-              if not username or not password:
-                  raise ValueError("SecretString do RDS não contém username e password.")
+              if username != "oficina_os" or secret.get("database") != database_name or not isinstance(password, str) or not password or any(c in password for c in ';\r\n"'):
+                  raise ValueError("Credencial SQL não pertence ao banco e login exclusivos de OS.")
               db_connection_string = f"Server=tcp:{endpoint},1433;Database=OficinaMecanicaDb;User Id={username};Password={password};TrustServerCertificate=True;"
               print(f"::add-mask::{username}")
               print(f"::add-mask::{password}")
