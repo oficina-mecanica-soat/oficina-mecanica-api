@@ -44,7 +44,7 @@ public sealed class OrdensServicoController : ControllerBase
             var distribuido = await useCase.ExecuteDistribuidoAsync(request,
                 HttpContext.Items[CorrelationIdMiddleware.ItemName] as string, cancellationToken);
             return distribuido.Sucesso
-                ? AcceptedAtAction(nameof(ConsultarAndamento), new { ordemServicoId = distribuido.Valor!.Id }, distribuido.Valor)
+                ? Accepted(Url.Action(nameof(ConsultarAndamento), new { ordemServicoId = distribuido.Valor!.Id }), distribuido.Valor)
                 : this.ToActionResult(distribuido);
         }
 
@@ -216,7 +216,7 @@ public sealed class OrdensServicoController : ControllerBase
         {
             var distribuido = await solicitarCancelamento.ExecuteAsync(request with { OrdemServicoId = ordemServicoId }, cancellationToken);
             return distribuido.Sucesso
-                ? AcceptedAtAction(nameof(ConsultarAndamento), new { ordemServicoId }, new CancelamentoOrdemServicoResponse(distribuido.Valor))
+                ? Accepted(Url.Action(nameof(ConsultarAndamento), new { ordemServicoId }), new CancelamentoOrdemServicoResponse(distribuido.Valor))
                 : this.ToActionResult(distribuido);
         }
 

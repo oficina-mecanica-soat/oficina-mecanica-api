@@ -53,6 +53,7 @@ public sealed class OrdensServicoControllerTests : ApiIntegrationTestBase
         // Assert
         resposta.StatusCode.Should().Be(HttpStatusCode.Accepted);
         resposta.Headers.Location.Should().NotBeNull();
+        resposta.Headers.Location!.IsAbsoluteUri.Should().BeFalse();
         await using var contexto = Fixture.CriarDbContext();
         var ordem = await contexto.OrdensServico.SingleAsync();
         var saga = await contexto.SagasOrdemServico.SingleAsync();
