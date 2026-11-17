@@ -179,7 +179,7 @@ Preparar abas, IDs e evidências antes de gravar. Usar cortes para esperas assí
 | 02:30–06:30 | Fluxo feliz real: autenticar, abrir OS, orçamento/aprovação, ação manual do mecânico, finalização, checkout de teste Mercado Pago, pagamento verificado e entrega. Mostrar consultas dos três responsáveis e IDs da mesma jornada. |
 | 06:30–08:30 | Nova OS recusada: mostrar saldo reservado, recusa, compensação dos dois participantes e saldo restaurado. Demonstrar reentrega/idempotência por evidência real, sem afirmar rollback instantâneo de operação física. |
 | 08:30–10:30 | CI/CD: abrir execução real de pelo menos um serviço, mostrar build, testes, cobertura >=80%, qualidade e deploy Kubernetes da mesma versão; mostrar PR/checks e proteção. Deploy lógico ou job ignorado não atende à demonstração de implantação real. |
-| 10:30–13:30 | Datadog: jornada nos três serviços, correlação, falha/recuperação, latência/erros, saúde Kubernetes e filas/DLQ. Mostrar alerta testado e explicar limites acadêmicos com transparência. |
+| 10:30–13:30 | Datadog: abrir Aplicações e Infraestrutura, mostrar correlação nos três serviços, logs próprios/bibliotecas separados, latência e saúde Kubernetes. Usar uma consulta sem JWT para mostrar 401/Warning sem interromper workloads. Mostrar eventos de alerta/recuperação de infraestrutura realmente observados; não afirmar teste de alerta funcional novo. Filas/DLQs sem integração Datadog devem ser conferidas por leitura AWS, sem gráfico fictício nem tratar ausência de dados como zero. |
 | 13:30–14:30 | Encerrar com links dos três repositórios, documentação, evidências e justificativas. Conferir áudio, legibilidade e duração total menor que 15 minutos. |
 
 ## Conferência do PDF e do envio
@@ -193,3 +193,5 @@ Diagrama geral preparado: [SVG vetorial](../architecture/diagrams/distributed-ar
 - Em cada repositório: fonte, Dockerfile/manifests, CI/CD, arquitetura, cobertura real no README e Swagger ou Postman atualizado. A atualização final do README da API é uma etapa de fechamento, não parte deste roteiro.
 - Conferir BDD completo, cobertura e qualidade de cada serviço, branch main protegida e links dos runs. Teste de agregado isolado com nome Given/When/Then não substitui fluxo completo entre serviços.
 - Guardar o PDF final e comprovante de envio até **17/11/2026 às 23h59 (America/Sao_Paulo)**. Não marcar entrega concluída antes do upload e conferência de acesso.
+
+O PDF preparado tem três páginas: participantes e links para a branch de entrega `develop`, arquitetura geral e justificativas. O campo `video_url` da primeira página é editável; inserir o endereço após publicar o vídeo, salvar uma cópia e conferir o acesso. A gravação/publicação, o preenchimento dessa URL e a submissão no portal continuam pendentes até execução humana. Não precisa fazer novo deploy para gravar uma esteira já concluída: pode mostrar o run real e seu SHA, identificando-o como evidência da implantação.

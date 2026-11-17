@@ -7843,6 +7843,14 @@
               "$ref": "#/components/schemas/ServicoStatusResponse"
             },
             "nullable": true
+          },
+          "execucaoDistribuida": {
+            "type": "boolean"
+          },
+          "preparacaoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": false
