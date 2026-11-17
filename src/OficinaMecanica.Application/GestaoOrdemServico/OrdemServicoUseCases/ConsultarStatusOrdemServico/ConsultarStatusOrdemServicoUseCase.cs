@@ -9,12 +9,18 @@ namespace OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.Co
 public sealed class ConsultarStatusOrdemServicoUseCase
 {
     private readonly IOrdemServicoRepository _ordemServicoRepository;
+    private readonly ISagaOrdemServicoRepository _sagaOrdemServicoRepository;
     private readonly IValidator<ConsultarStatusOrdemServicoRequest> _validator;
     private readonly IMapper _mapper;
 
-    public ConsultarStatusOrdemServicoUseCase(IOrdemServicoRepository ordemServicoRepository, IValidator<ConsultarStatusOrdemServicoRequest> validator, IMapper mapper)
+    public ConsultarStatusOrdemServicoUseCase(
+        IOrdemServicoRepository ordemServicoRepository,
+        ISagaOrdemServicoRepository sagaOrdemServicoRepository,
+        IValidator<ConsultarStatusOrdemServicoRequest> validator,
+        IMapper mapper)
     {
         _ordemServicoRepository = ordemServicoRepository;
+        _sagaOrdemServicoRepository = sagaOrdemServicoRepository;
         _validator = validator;
         _mapper = mapper;
     }
@@ -35,7 +41,13 @@ public sealed class ConsultarStatusOrdemServicoUseCase
             return Result<ConsultarStatusOrdemServicoResponse>.Falha(OrdemServicoErrorMessages.OrdemServicoNaoEncontrada, TipoErro.NaoEncontrado);
         }
 
-        return Result<ConsultarStatusOrdemServicoResponse>.Ok(_mapper.Map<ConsultarStatusOrdemServicoResponse>(ordemServico));
+        var saga = await _sagaOrdemServicoRepository.ObterPorOrdemAsync(ordemServico.Id, cancellationToken);
+        var resposta = saga is null
+            ? _mapper.Map<ConsultarStatusOrdemServicoResponse>(ordemServico)
+            : new ConsultarStatusOrdemServicoResponse(ordemServico.Id, ordemServico.Numero,
+                ordemServico.Status.ToString(), [], true, saga.PreparacaoId);
+
+        return Result<ConsultarStatusOrdemServicoResponse>.Ok(resposta);
     }
 }
 
