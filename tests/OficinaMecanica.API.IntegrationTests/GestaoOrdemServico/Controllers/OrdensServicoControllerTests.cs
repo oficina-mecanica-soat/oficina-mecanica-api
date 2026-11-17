@@ -496,6 +496,9 @@ public sealed class OrdensServicoControllerTests : ApiIntegrationTestBase
         // Assert
         resposta.StatusCode.Should().Be(confirmado ? HttpStatusCode.OK : HttpStatusCode.UnprocessableEntity);
         ObterString(status, "status").Should().Be(confirmado ? "Entregue" : "Finalizada");
+        status.GetProperty("execucaoDistribuida").GetBoolean().Should().BeTrue();
+        status.GetProperty("preparacaoId").GetGuid().Should().Be(saga.PreparacaoId!.Value);
+        status.GetProperty("servicos").GetArrayLength().Should().Be(0);
         if (!confirmado)
         {
             using var corpo = JsonDocument.Parse(await resposta.Content.ReadAsStringAsync());
