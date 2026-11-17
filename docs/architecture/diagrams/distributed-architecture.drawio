@@ -174,7 +174,7 @@
         <mxCell id="text35" parent="1" vertex="1" value="SQL: bancos lógicos isolados no RDS compartilhado. Nenhum serviço acessa o banco de outro." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=19;fontStyle=0;fontColor=#24354b;">
           <mxGeometry as="geometry" x="80" y="1030" width="810" height="29" />
         </mxCell>
-        <mxCell id="dd" parent="1" vertex="1" value="Datadog • plataforma existente&#10;Logs, APM, correlação, Kubernetes e integrações AWS&#10;Ingestão, alertas e jornada real precisam ser evidenciados" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#f3edfc;strokeColor=#b6a0d3;fontFamily=Segoe UI;fontSize=19;align=left;verticalAlign=middle;spacingLeft=20;">
+        <mxCell id="dd" parent="1" vertex="1" value="Datadog • plataforma existente&#10;Logs, APM, correlação e métricas de Kubernetes&#10;Painéis de Aplicações e Infraestrutura, separados por serviço" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#f3edfc;strokeColor=#b6a0d3;fontFamily=Segoe UI;fontSize=19;align=left;verticalAlign=middle;spacingLeft=20;">
           <mxGeometry as="geometry" x="80" y="1120" width="980" height="125" />
         </mxCell>
         <mxCell id="mp" parent="1" vertex="1" value="Mercado Pago • sandbox&#10;Checkout HTTPS e consulta ao provedor&#10;Webhook assinado não basta sozinho" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff3e4;strokeColor=#d7b486;fontFamily=Segoe UI;fontSize=19;align=left;verticalAlign=middle;spacingLeft=20;">
@@ -207,8 +207,8 @@
         <mxCell id="text41" parent="1" vertex="1" value="Cada serviço mantém Clean Architecture. Setas tracejadas: mensageria/integração. Semântica: contratos da RFC-0007." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=17;fontStyle=0;fontColor=#24354b;">
           <mxGeometry as="geometry" x="80" y="1270" width="916" height="27" />
         </mxCell>
-        <mxCell id="text42" parent="1" vertex="1" value="Arquitetura preparada em código; não é evidência de implantação. AWS Academy: LabRole compartilhada, sem isolamento IAM por Pod." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=17;fontStyle=0;fontColor=#24354b;">
-          <mxGeometry as="geometry" x="80" y="1300" width="1061" height="27" />
+        <mxCell id="text42" parent="1" vertex="1" value="AWS Academy: LabRole compartilhada, sem isolamento IAM por Pod. Integrações AWS/Lambda no Datadog têm limites documentados." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=17;fontStyle=0;fontColor=#24354b;">
+          <mxGeometry as="geometry" x="80" y="1300" width="1056" height="27" />
         </mxCell>
         <mxCell id="text43" parent="1" vertex="1" value="Entrada via VPC Link / NLB privado: OS 80 • Execução 8081 • Orçamento/Pagamento 8082." style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontFamily=Segoe UI;fontSize=17;fontStyle=0;fontColor=#24354b;">
           <mxGeometry as="geometry" x="80" y="1330" width="708" height="27" />

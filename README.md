@@ -468,7 +468,7 @@ dotnet test OficinaMecanica.sln `
   --logger "trx"
 ```
 
-Na [CI de referência do código entregue](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43806755277), a cobertura global de linhas foi **93,06%**. O artefato `test-and-coverage-results` reúne relatórios de testes e cobertura. O gate bloqueia testes ignorados e cobertura abaixo de **90%**; uma CI somente documental não gera uma nova medição.
+Na [CI de referência do código entregue](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43998606352), foram aprovados **669 testes**, sem ignorados, com **93,07% de cobertura global de linhas** (5.253 de 5.644 linhas). O artefato `test-and-coverage-results` reúne relatórios de testes e cobertura. O gate bloqueia testes ignorados e cobertura abaixo de **90%**; uma CI somente documental não gera uma nova medição.
 
 Os arquivos abaixo preservam evidências das fases anteriores e procedimentos complementares; não representam reexecução de SonarQube/ZAP na janela atual:
 
@@ -536,6 +536,8 @@ A observabilidade da aplicação e do cluster usa Datadog:
 - latência P95, error rate e healthcheck;
 - logs ao vivo e dashboard da entrega.
 
+Os painéis são separados por assunto e agrupados por serviço: [Aplicações](https://app.datadoghq.com/dashboard/2g5-62n-jci) reúne HTTP, logs próprios, diagnóstico de bibliotecas e correlação da Saga; [Infraestrutura](https://app.datadoghq.com/dashboard/axy-gix-3kr) reúne réplicas, CPU, memória e reinícios Kubernetes. Mensagens das bibliotecas são preservadas com sua origem; SQL rotineiro e healthcheck saudável não ocupam o nível normal. A [RFC-0006](docs/architecture/rfcs/rfc-0006-observabilidade-centralizada-com-datadog.md) define a convenção. Métrica ausente não significa zero nem disponibilidade comprovada.
+
 A Auth Lambda possui layers e variáveis de instrumentação Datadog e armazena a API key no AWS Secrets Manager. Entretanto, a ingestão de logs e traces da Lambda não foi evidenciada de ponta a ponta no ambiente acadêmico; essa lacuna permanece registrada como evolução pós-entrega. O API Gateway publica access logs no CloudWatch, sem afirmar a existência de um Datadog Forwarder que não foi validado.
 
 ---
@@ -549,11 +551,12 @@ A Auth Lambda possui layers e variáveis de instrumentação Datadog e armazena 
 | Swagger local | `http://localhost:5093/swagger` |
 | OpenAPI local | `http://localhost:5093/swagger/v1/swagger.json` |
 | OpenAPI versionado da API | [`docs/openapi/oficina-mecanica-openapi.json`](docs/openapi/oficina-mecanica-openapi.json) |
+| Collection final da solução | [`docs/postman/oficina-mecanica-completa.postman_collection.json`](docs/postman/oficina-mecanica-completa.postman_collection.json) — OS, Execução, Orçamento/Pagamento, Auth e demonstração |
 | Collection do fluxo distribuído | [`docs/postman/oficina-mecanica-distribuida.postman_collection.json`](docs/postman/oficina-mecanica-distribuida.postman_collection.json) |
 | Collection Postman (referência da Fase 2) | [`docs/postman/oficina-mecanica-api.postman_collection.json`](docs/postman/oficina-mecanica-api.postman_collection.json) |
 | Environments Postman | [`local`](docs/postman/oficina-mecanica-local.postman_environment.json) · [`AWS dev`](docs/postman/oficina-mecanica-aws-dev.postman_environment.json) |
 
-O Swagger runtime é gerado pela aplicação. A collection distribuída orienta as ações dos três responsáveis e as consultas assíncronas; a collection legada continua como referência histórica. Os serviços de Execução e Orçamento/Pagamento também publicam seus contratos nos próprios repositórios. Não exportar tokens e senhas junto dos environments; preencher a URL real do Gateway após o deploy.
+O Swagger runtime é gerado pela aplicação. A collection final consolida os contratos por aplicação e mantém um roteiro guiado separado do catálogo completo; os ambientes **Local** e **Development** usam as mesmas requisições. O [guia do Postman](docs/evidencias/postman.md) explica URLs, perfis, parâmetros, captura de IDs e demonstração. As collections anteriores continuam como referência histórica. Execução e Orçamento/Pagamento também publicam seus contratos nos próprios repositórios. Não exportar tokens e senhas junto dos environments; preencher a URL real do Gateway após o deploy.
 
 ---
 

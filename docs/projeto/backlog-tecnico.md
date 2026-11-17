@@ -4,6 +4,21 @@
 
 Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece para o escopo atual; itens históricos abaixo não viram trabalho automático. Responsável indica quem conduz a tarefa com seu Codex. Contratos são compartilhados; alterações incompatíveis devem ser alinhadas antes de implementação.
 
+### Fechamento técnico — 16/11/2026, última retomada
+
+Este quadro prevalece sobre o acompanhamento histórico de 14/11. Não equivale a envio da entrega nem comprova disponibilidade depois de encerrada a sessão do laboratório.
+
+| Frente | Estado comprovado e fechamento restante |
+| --- | --- |
+| Arquitetura, três serviços e dados | ADR-0024/25/26 e RFC-0007 implementadas; repositórios, workloads e pipelines próprios. SQL próprio por OS/Orçamento e DynamoDB no Execução. Isolamento SQL por banco/login comprovado; instância RDS e plataforma EKS compartilhadas são limites explícitos, não isolamento físico. |
+| Saga e negócio | Aprovação, início manual, finalização física, cobrança, confirmação e entrega exercitados pelo Gateway/SQS. OS 9008 compensada e OS 9010 entregue; estoque insuficiente sem reserva parcial também comprovado. Pagamento de teste 188873300295 teve confirmação automática; não confundir com o primeiro pagamento, que exigiu reentrega assinada pelo painel. |
+| Recuperação e versão atual | Nova sessão Academy iniciada sem Reset e credenciais renovadas nos oito Environments. [CD Kubernetes 43947269953](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-kubernetes/actions/runs/43947269953), nova tentativa integral, concluiu a recuperação: dois nós Ready, API 2/2, Execução 1/1 e Orçamento 2/2; os cinco Pods com instrumentação .NET. Sem escrita AWS local nem promoção para release/main. |
+| Consulta pública coerente | [API #432](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/pull/432) integrado após dez checks; [CD 43999171226](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43999171226) aprovado, SHA 288e5ee. Leitura pública real da OS 9010: Entregue, execucaoDistribuida=true, preparação correta e serviços locais vazios. Estado físico pertence ao Execução. Sem alterar snapshot, entidades ou eventos. 669 testes locais aprovados, zero ignorados; BDD também aprovado na CI. |
+| Segurança e observabilidade | Leituras atuais dos três serviços: 200 com JWT, 401 sem JWT e correlação presente. Datadog confirmou séries APM e logs HTTP de cada serviço, versões implantadas, SourceContext oficial e IDs de trace como strings. Aplicações e Infraestrutura separados por assunto/serviço; métricas sem integração não são apresentadas como zero. Limites de alertas funcionais, baseline e integração AWS/Lambda permanecem dívidas explícitas. |
+| Postman final | Collection consolidada preparada com 63 operações OpenAPI atuais e 93 requisições incluindo demonstração, saúde e contratos técnicos. Ambientes Local/Development sem segredos; 120 scripts compilados, cobertura de rotas/variáveis/tipos e guardrails conferidos. Workspace Oficina Mecânica criado e arquivos importados; conferir execução demonstrativa e concluir publicação documental. |
+| Documentação e artefato | Diagrama geral e roteiro de 14min30 existentes. Guia do Postman/README/OpenAPI em revisão final; atualizar PDF com as provas reais e manter o campo do vídeo explicitamente pendente. Não reabrir a revisão completa dos modelos históricos DDD/C4 nesta entrega. |
+| Vídeo e submissão | Gravar até 15 minutos, publicar em YouTube/Vimeo, inserir URL no PDF, conferir acesso e enviar no portal até 17/11 23h59. Permanecem ações humanas; não marcar 100% da entrega antes delas. |
+
 
 ### Convenção de logs dos três serviços — 16/11/2026
 
@@ -13,7 +28,7 @@ Código integrado e implantado: [API #431](https://github.com/oficina-mecanica-s
 
 [Kubernetes #96](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-kubernetes/pull/96) integrado após quatro checks; painel Aplicações importado com eventos próprios, avisos/erros próprios e diagnóstico de bibliotecas separados por serviço, usando SourceContext. Não reescreve mensagens de terceiros nem transforma falta de dados em zero. Consultas após os CDs confirmaram nos três SHAs implantados mensagens HTTP em português, operation=http.request, rota parametrizada, duração numérica, contexto, correlação e IDs de trace/span como strings não vazias, com mapeamento reservado no Datadog. Na janela consultada dessas versões, contagem de SQL rotineiro e healthcheck saudável em Information foi zero, com eventos HTTP efetivamente presentes. Isso não certifica ausência geral de erros nem substitui teste de alerta.
 
-Consultas públicas de leitura confirmaram 200 com JWT e 401 sem JWT nas três rotas protegidas; consultar-status da OS permaneceu público conforme contrato. OS 9010 continuava Entregue e pagamento Confirmado. A revisão encontrou serviços do snapshot local ainda Pendente na consulta pública: a RFC proíbe inferir conclusão física no snapshot. Ajuste em validação separa explicitamente a consulta distribuída dos detalhes físicos mantidos pelo Execução, sem alterar entidades, eventos ou bancos. Registrar o PR e a prova remota após implantação antes de encerrar esse ajuste.
+Consultas públicas de leitura confirmaram 200 com JWT e 401 sem JWT nas três rotas protegidas; consultar-status da OS permaneceu público conforme contrato. OS 9010 continuava Entregue e pagamento Confirmado. A revisão encontrou serviços do snapshot local ainda Pendente na consulta pública: a RFC proíbe inferir conclusão física no snapshot. O API #432/CD 43999171226 corrigiu a apresentação da consulta distribuída e teve prova remota aprovada, sem alterar entidades, eventos ou bancos; detalhes físicos continuam no Execução.
 
 ### Observabilidade por assunto — 16/11/2026
 
