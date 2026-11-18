@@ -1,3 +1,13 @@
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarPreparacaoOrdemServico;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoDaOrdemServico;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.SolicitarOrcamentoSaga;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoPreparacao;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoOrcamento;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoExecucao;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarResultadoPagamento;
+using OficinaMecanica.Application.GestaoOrdemServico.Interfaces;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ProcessarMensagemSaga;
+using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.ConsultarAndamentoOrdemServico;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using OficinaMecanica.Application.GestaoOrdemServico.OrdemServicoUseCases.AbrirOrdemServico;
@@ -54,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<FinalizarServicoUseCase>();
         services.AddScoped<FinalizarOrdemServicoUseCase>();
         services.AddScoped<CancelarOrdemServicoUseCase>();
+        services.AddScoped<SolicitarCancelamentoOrdemServicoUseCase>();
         services.AddScoped<EntregarOrdemServicoUseCase>();
         services.AddScoped<DetalharOrdemServicoUseCase>();
         services.AddScoped<ListarOrdensServicoUseCase>();
@@ -61,6 +72,20 @@ public static class DependencyInjection
         services.AddScoped<ConsultarStatusOrdemServicoUseCase>();
         services.AddScoped<ConsultarTempoMedioExecucaoServicoUseCase>();
         services.AddScoped<ListarTempoMedioExecucaoServicosUseCase>();
+
+        services.AddScoped<ProcessarResultadoOrcamentoUseCase>();
+        services.AddScoped<ProcessarResultadoExecucaoUseCase>();
+        services.AddScoped<ProcessarResultadoPagamentoUseCase>();
+        services.AddScoped<IProcessadorMensagem, ProcessarMensagemSagaUseCase>();
+        services.AddScoped<ConsultarAndamentoOrdemServicoUseCase>();
+        services.AddScoped<IValidator<ConsultarAndamentoOrdemServicoRequest>, ConsultarAndamentoOrdemServicoValidator>();
+        services.AddScoped<ProcessarResultadoPreparacaoUseCase>();
+        services.AddScoped<SolicitarPreparacaoOrdemServicoUseCase>();
+        services.AddScoped<IValidator<SolicitarPreparacaoOrdemServicoRequest>, SolicitarPreparacaoOrdemServicoValidator>();
+        services.AddScoped<SolicitarOrcamentoSagaUseCase>();
+        services.AddScoped<IValidator<SolicitarOrcamentoSagaRequest>, SolicitarOrcamentoSagaValidator>();
+        services.AddScoped<SolicitarOrcamentoDaOrdemServicoUseCase>();
+        services.AddScoped<IValidator<SolicitarOrcamentoDaOrdemServicoRequest>, SolicitarOrcamentoDaOrdemServicoValidator>();
 
         return services;
     }

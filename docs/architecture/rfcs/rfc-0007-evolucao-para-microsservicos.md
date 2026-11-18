@@ -27,6 +27,36 @@ O enunciado da Fase 4 exige ao menos três microsserviços independentes, reposi
 - Fronteiras, decisões, contratos e critérios de falha revisados e acordados; ADRs necessárias registradas sem apagar o histórico.
 - Backlog dividido por dependências e responsáveis; cada serviço com CI/CD independente, testes, cobertura, documentação e evidências exigidas pelo enunciado.
 
+## Organização da integração e padrões de mensageria
+
+Mensageria é um mecanismo de integração entre os contextos existentes. `Mensagens` não é outro bounded context, agregado ou entidade de negócio. A separação em serviços preserva a organização interna por Domain, Application, Infrastructure e API.
+
+Os padrões adotados são **Transactional Outbox** e **consumidor idempotente**. Neste projeto, **Inbox** nomeia a persistência dos recebimentos usada na idempotência; não é uma fila adicional nem um novo serviço. Essas referências definem responsabilidades e garantias, não uma estrutura universal de diretórios.
+
+| Componente | Responsabilidade e localização |
+| --- | --- |
+| Repository de agregado | Interface no **Domain/Interfaces** do contexto; implementação na **Infrastructure/Repositories** correspondente. `ISagaOrdemServicoRepository` persiste/consulta a Saga; não serializa mensagens nem publica eventos. `IOrcamentoRepository` permanece no Domain de Orçamento/Pagamento. |
+| Caso de uso | Em **Application/...UseCases**, conforme a organização existente. Coordena a operação, chama o domínio e registra os efeitos necessários; não acessa SQS, banco de outro serviço ou SDK de provedor. |
+| Inbox | Contrato técnico `IInbox` na Application e implementação SQL `SqlInbox` na Infrastructure/Mensagens. Confere mensagem/operação/hash, registra recebimentos e delimita a transação local de processamento. Não contém regra de aprovação, estoque ou estado da Saga. |
+| Outbox | Contrato técnico `IOutbox` na Application e implementação `SqlOutbox` na Infrastructure/Mensagens. Grava mensagens pendentes junto dos efeitos locais. A publicação é responsabilidade separada de `PublicadorOutbox`, por uma abstração de transporte. |
+| Contratos de mensagens | DTOs do envelope e dos comandos/eventos em **Application/Mensagens** — dentro do contexto na API — com payloads em **Mensagens/Contratos**. Representam o protocolo v1, sem virar entidades do Domain ou compartilhar assemblies entre serviços. Leitura JSON, hash e filtragem de trace são suporte técnico do contrato, sem regras de negócio. |
+| Snapshots e correlação | Consulta do snapshot da própria OS, armazenamento do snapshot congelado e armazenamento do contexto de integração são portas técnicas específicas da Application, com implementações na Infrastructure. Não são repositories de agregados e não compartilham a interface da Outbox. |
+| Mapeamentos EF | Em **Infrastructure/.../Configurations**, separados dos registros persistidos e dos repositories. Os registros SQL de Inbox/Outbox são metadados técnicos, sem classificação como novas entidades DDD. |
+
+### Fluxo e limite da transação
+
+1. Validar envelope, tipo, versão e dados pelo contrato v1. Contexto técnico não determina a regra de negócio.
+2. Na transação local, conferir a Inbox; uma repetição compatível não repete os efeitos, e uma divergência não sobrescreve o processamento anterior.
+3. Executar o caso de uso, consultar o repository do próprio agregado e aplicar suas regras de domínio.
+4. Persistir **estado local + recebimento na Inbox + mensagens na Outbox** no mesmo banco/transação. Falha reverte os três; recebimento não equivale a confirmação antecipada da mensagem na fila.
+5. Após o commit, o publicador envia a mensagem persistida pela abstração de transporte. Falha ou resposta incerta preserva a mensagem para repetição com o mesmo identificador e conteúdo.
+
+A Outbox não promete entrega exatamente uma vez: reentregas são previstas, por isso o destinatário também precisa de idempotência. No consumidor SQS, a exclusão/confirmação só pode ocorrer após o processamento confirmado. Snapshot congelado, causação, correlação e versões de negócio permanecem sujeitos às regras abaixo.
+
+Esta organização não comprova implantação ou funcionamento do transporte SQS. A implementação e o aceite distribuído são acompanhados no backlog; validação por arquivos locais não substitui essas provas.
+
+Referências: [AWS — Transactional outbox pattern](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html), [Microsoft — Infrastructure persistence layer](https://learn.microsoft.com/dotnet/architecture/microservices/microservice-ddd-cqrs-patterns/infrastructure-persistence-layer-design) e [Microsoft — DDD-oriented microservice](https://learn.microsoft.com/dotnet/standard/microservices-architecture/microservice-ddd-cqrs-patterns/ddd-oriented-microservice).
+
 ## Contrato de mensagens v1
 
 Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServicoId`, `correlationId`, `causationId`, `ocorridoEm` (UTC ISO-8601) e `dados`. IDs de domínio são UUIDs; valores monetários usam decimal BRL, nunca float. Não transportar JWT, CPF/CNPJ ou credenciais. Propagar também o contexto de trace suportado pelo Datadog. A chave de idempotência de negócio é operação + OS + versão de negócio, além de `mensagemId`; a versão do envelope não compõe essa versão de negócio.
@@ -43,7 +73,87 @@ Envelope JSON: `mensagemId` (UUID), `tipo`, `versao` (1), `sagaId`, `ordemServic
 
 Publicações de resultado usam a fila de OS; comandos usam a fila do destinatário. Cada handler valida tipo/versão e dados; mensagem desconhecida vai para investigação via DLQ, sem processamento permissivo.
 
+### Cobrança e confirmação financeira
+
+`CriarCobranca.dados = { orcamentoId, versao }` é emitido pela OS somente após processar `ExecucaoFinalizada`. Não é uma operação HTTP pública. O serviço Orçamento/Pagamento obtém cliente e valor do orçamento aprovado em seu próprio banco; não aceita esses valores no comando.
+
+Os resultados `CobrancaCriada`, `PagamentoConfirmado` e `PagamentoRecusado` usam `dados = { pagamentoId, orcamentoId, versao, valor }`. `pagamentoId` é o UUID do agregado local, diferente do identificador numérico do provedor. O valor é decimal em BRL, congelado na cobrança. OS verifica o comando original, Saga, correlação, orçamento, versão e valor. `CobrancaCriada` preserva a causação do comando; os resultados financeiros usam a operação de conferência como causação. A criação do checkout não confirma pagamento, e uma recusa não compensa o trabalho físico nem impede uma aprovação posterior.
+
+Antes de criar a preferência externa, Orçamento/Pagamento confirma a intenção local e o estado `CriacaoEmAndamento`. A chamada HTTP acontece fora da transação SQL. A preferência utiliza o UUID local como `external_reference`; repetições pesquisam essa referência. Como a API de preferências não oferece neste contrato uma garantia documentada de idempotência por header, uma criação incerta não autoriza outro POST automático. Consulta sem resultado, resultado ambíguo ou falha após a intenção exigem conciliação; não se inventa confirmação nem se libera uma segunda cobrança. Uma falha anterior à tentativa, como configuração ausente na consulta inicial, mantém a intenção `Solicitado`, permitindo retomada após corrigir a configuração.
+
+A notificação HTTP exige assinatura HMAC e coerência do identificador entre query e corpo. Ela não é prova de pagamento: o caso de uso consulta o recurso no provedor e confere identidade, referência, moeda e valor. Somente o estado aprovado confirma o agregado; autorização, pendência e cancelamento não significam pagamento. Confirmação, deduplicação e Outbox são atômicas. Recusas e pendências tardias não regridem um pagamento confirmado; estorno, contestação e estado desconhecido exigem conciliação manual, sem rollback automático da execução física.
+
+`GET /api/v1/pagamentos/{pagamentoId}` consulta somente o banco próprio e aplica JWT e restrição ao cliente proprietário. `POST /api/v1/pagamentos/notificacoes/mercado-pago` dispensa JWT, mas exige a assinatura do provedor; responde 200 somente após a conferência e o commit locais. Indisponibilidade externa responde 503 para permitir reentrega. Segue a [documentação de notificações do Checkout Pro](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro-preferences/payment-notifications). Testes locais usam um provedor substituto e não comprovam recebimento real de Webhooks, credenciais ou implantação.
+
+OS preserva `pagamentoId` ao receber `CobrancaCriada` ou `PagamentoRecusado`, após validar o comando e o orçamento. Esse UUID identifica o agregado de pagamento; sua presença não significa quitação. Somente `PagamentoConfirmado` avança o estado da Saga. Uma identidade diferente da já associada é divergência, mesmo com orçamento/valor iguais. Confirmação anterior ao resultado de criação continua válida; criação tardia compatível não regride o estado.
+
+`GET /api/v1/gestao-ordem-servico/ordens-servico/{ordemServicoId}/consultar-andamento` consulta a Saga no banco de OS, com JWT. Administrador, atendente e mecânico seguem os perfis existentes; cliente precisa de `cliente_id` válido e vínculo com o veículo da OS. Recurso de outro cliente é ocultado com 404. A resposta inclui `estado`, `orcamentoId`, `versaoOrcamento`, `valorOrcamento`, `pagamentoId` e `pagamentoConfirmado`, sem consultar serviços/bancos externos. O cliente usa os identificadores para consultar orçamento e checkout no serviço proprietário. A rota é aditiva, não substitui o status HTTP legado nem ativa o corte do fluxo distribuído.
+
+### Snapshot e compensação de orçamento
+
+Detalhamento dos dados mínimos para os produtores e consumidores de OS e Orçamento/Pagamento:
+
+- `GerarOrcamento.dados = { versao, clienteId, servicos: [{ servicoId, servicoCatalogoId, descricao, valor }], itens: [{ itemId, descricao, quantidade, valorUnitario }] }`. `itemId` é a referência ao catálogo de peças/insumos; o consumidor a mapeia para `PecaInsumoCatalogoId`. Cada serviço representa uma instância da OS, com quantidade implícita de um. Preservar os preços congelados, sem consultar ou recalcular preços no catálogo de outro serviço.
+- A OS permite lançamentos distintos da mesma peça, inclusive com preços diferentes. O snapshot de orçamento preserva essas linhas e seus valores, sem média, agrupamento ou nova consulta de preço. O consumidor não usa `itemId` como chave única das linhas do orçamento. A identidade técnica de persistência dessas linhas não altera os identificadores do catálogo ou o contrato de transporte.
+- `CancelarOrcamento.dados` contém `motivo` e `orcamentoId`, ou `versao` quando endereçado por OS do envelope. Pode conter ambos; nesse caso devem identificar o mesmo orçamento/versão e a mesma OS/Saga.
+- `OrcamentoCancelado.dados = { orcamentoId, versao }`. O identificador é nulo se o cancelamento precedeu a geração. O consumidor confirma a proibição de gerar essa OS/versão, sem inventar orçamento ou excluir histórico. Geração tardia compatível é recebida sem reabrir a versão cancelada.
+- Repetir operação + OS + versão exige o mesmo conteúdo de negócio e Saga. Reutilizar `mensagemId` com outra operação/conteúdo é conflito; outro ID de transporte não permite alterar a operação. Contexto de trace e tentativa de entrega não geram novo efeito.
+- O resultado de geração preserva a causação do comando original; OS também confere o total contra o snapshot que solicitou. Recebimento, transição e novas mensagens são confirmados em uma transação local. Falha antes do commit não confirma processamento.
+
+O transporte por arquivos utilizado nas provas locais não emula FIFO, DLQ, IAM ou visibilidade do SQS. Publicação/consumo em AWS, ativação nas rotas de OS e corte do ownership continuam sujeitos à integração e à janela autorizada; estes testes não concluem o fluxo distribuído implantado.
+
+### Implantação e ingresso privado dos serviços
+
+A API principal é a referência de código, organização e estilo. Infraestrutura e CI/CD seguem as esteiras maduras das fases anteriores. O Execução é consultado como produtor/consumidor de contratos, sem substituir essas referências de implementação.
+
+Orçamento/Pagamento implanta namespace, ConfigMap, Secret, Deployment, Service NodePort e HPA próprios pelo CD, usando a mesma imagem validada pela CI e o plano salvo da tentativa. Migrations permanecem no startup conforme a API, usando somente o login do banco próprio. Probes e admissão do Datadog seguem a API. Workers SQS e Mercado Pago iniciam desligados; ativação exige configuração explícita.
+
+A infraestrutura Kubernetes estende o NLB privado existente com listeners/target groups independentes, sem outro balanceador nem renomear o ingresso da API. Contratos String sob o prefixo Kubernetes:
+
+| Serviço | NodePort | Listener TCP | Contratos SSM novos |
+| --- | --- | --- | --- |
+| Execução | 30081 | 8081 | execucao_internal_node_port; execucao_internal_nlb_listener_arn |
+| Orçamento/Pagamento | 30082 | 8082 | orcamento_pagamento_internal_node_port; orcamento_pagamento_internal_nlb_listener_arn |
+
+O Gateway encaminha as famílias /api/v1/execucoes, /api/v1/orcamentos e /api/v1/pagamentos aos listeners dos owners, preservando caminho, Authorization e os headers assinados do Mercado Pago. A consulta privada de clientes permanece fora das rotas públicas. Regras de rede restringem ingresso ao security group do VPC Link, como na API; nenhum NodePort é liberado à internet. O corte coordenado é explícito e inicia desligado, sem duas implementações ativas da mesma mutação de negócio.
+
+O status /oficina-mecanica/development/status/orcamento-pagamento-aplicacao fica implantacao-pendente antes do apply e só recebe ready após rollout da imagem esperada, conferência de Service e health privado. Status de fila, banco e plataforma não substituem essa prova nem comprovam consumo, pagamento ou traces.
+
+Plano e state da aplicação contêm Secret Kubernetes e são publicados somente cifrados/autenticados, com chave exclusiva no Environment development restrito a develop. A restauração confere repositório, conta, ambiente e, no plano, execução/tentativa/commit. Não trocar a chave sem migração e cópia de recuperação. Caches antigos não são adotados ou descartados automaticamente; a evolução do backend e a contenção dos outros repositórios continuam no backlog.
+
+### Registry próprio de Orçamento/Pagamento
+
+O registry permanece sob ownership da infraestrutura Kubernetes, conforme a ADR-0023. Orçamento/Pagamento consome `orcamento_pagamento_ecr_repository_name` e `orcamento_pagamento_ecr_repository_url` sob `/oficina-mecanica/development/kubernetes`. O nome padrão é `oficina-mecanica-orcamento-pagamento`; tags imutáveis e varredura seguem o módulo existente. Plataforma gerencia criação/remoção e valida contratos; a esteira da aplicação é responsável pela imagem e pelo workload. A disponibilidade da plataforma não comprova aplicação implantada.
+
+### Banco isolado e disponibilidade de Orçamento/Pagamento
+
+Conforme a ADR-0025, a instância RDS permanece compartilhada, com banco lógico `OficinaMecanicaOrcamentoPagamento` e login `oficina_orcamento_pagamento` exclusivos. O repositório RDS prepara o banco e a credencial pela própria esteira; o serviço conserva o ownership do schema e das migrations. A aplicação não utiliza a credencial master. A opção `ORCAMENTO_PAGAMENTO_DB_ENABLED` inicia desabilitada e não autoriza deploy.
+
+O Terraform publica `database_name` e `secret_arn` sob `/oficina-mecanica/development/rds/orcamento-pagamento`, sem material sensível no state. A versão da credencial é gerada/persistida pela esteira e reutilizada sem rotação implícita. O bootstrap autentica esse login antes de conceder db_owner exclusivamente no banco próprio, verifica escrita/leitura com rollback e ausência de acesso ao banco de OS. Banco desconhecido, SID ou senha divergentes e privilégio de servidor bloqueiam a operação.
+
+`/oficina-mecanica/development/status/rds-orcamento-pagamento` fica `bootstrap-pendente` antes de um apply que afete o preparo existente; só recebe `ready` após confirmação SQL e remoção do Job/Secret temporários. O endpoint físico continua no contrato RDS existente. O status geral da instância e o status das filas não substituem essa prova. O consumidor deve exigir os contratos próprios, sem fallback para banco ou credencial da API. Administradores da instância permanecem fora da barreira de isolamento. Testes SQL locais não comprovam execução ou permissões no laboratório.
+
+### Composição dos workers SQS
+
+A API e Orçamento/Pagamento recebem `PROCESSAMENTO_REMOTO_ENABLED` e `FLUXO_DISTRIBUIDO_ENABLED` como variables explícitas do Environment, false por padrão. No Execução, preservar o nome vigente `PROCESSAMENTO_REMOTO_HABILITADO`. Habilitar o corte da API exige workers e consulta privada de clientes; no Orçamento exige workers. A composição confere conta/região, owner, ARN e fila FIFO real, sem converter erros de acesso em ausência.
+
+O modo aplicado é publicado em `api/fluxo_distribuido_habilitado` e `orcamento-pagamento/fluxo_distribuido_habilitado`. Consumir essas flags junto de `status/api-aplicacao` e `status/orcamento-pagamento-aplicacao`: o Terraform começa em `implantacao-pendente`, a esteira invalida disponibilidade anterior antes de aplicar e publica `ready` somente após rollout, imagem esperada e health privado. O checksum do ConfigMap provoca novo rollout quando o modo/configuração muda. Ready do workload não substitui prova funcional de SQS, pagamento ou Saga.
+
+Na janela autorizada, implantar primeiro as bases e entradas de mensageria com workers/corte desligados; os consumidores dependem dos contratos das filas dos outros serviços. Depois conferir as identidades e permissões reais, configurar as ativações e executar novamente as esteiras dos workloads. A Auth Lambda deve usar consulta privada sem conexão SQL. Somente habilitar o roteamento distribuído do Gateway quando todos os workloads estiverem ready e as flags aplicadas confirmarem o corte. A preparação do código não autoriza ativar AWS nem elimina a validação IAM/Academy e a contenção de segredos/artefatos pendentes.
+
+A infraestrutura própria de Orçamento/Pagamento publica `entrada_queue_url`, `entrada_queue_arn`, `dlq_url` e `dlq_arn` sob `/oficina-mecanica/{ambiente}/orcamento-pagamento`. O parâmetro `/oficina-mecanica/{ambiente}/status/orcamento-pagamento=ready` atesta somente a mensageria. Não equivale a banco disponível, workload implantado, consumidor ativo ou pagamento. A política da DLQ autoriza somente a entrada própria; o CD dessa infraestrutura não promove código da aplicação. Na destruição, a guarda exige ausência do contrato do produtor OS e nenhuma mensagem observada na entrada/DLQ, repetindo a conferência antes do plano salvo ser aplicado; não verifica nem drena Outbox SQL.
+
+
+OS e Orçamento/Pagamento mantêm `ProcessamentoRemoto:Habilitado=false` por padrão. O host somente cria clientes e workers quando a implantação oficial habilita o modo remoto. A conta (`ContaEsperada`), a `Regiao` e as URLs FIFO são injetadas pela esteira, a partir dos contratos publicados pelos owners da infraestrutura. OS recebe `FilaEntradaUrl`, `FilaExecucaoUrl` e `FilaOrcamentoPagamentoUrl`; Orçamento/Pagamento recebe `FilaEntradaUrl` e `FilaResultadosOsUrl`. As filas de cada composição são distintas, da mesma conta e região. A fonte de credenciais e a verificação STS da `LabRole` seguem a implementação acadêmica do Execução, sem fallback para credenciais locais.
+
+`IProcessadorMensagem` é uma porta técnica da Application. O caso de uso de entrada valida o envelope e encaminha somente os tipos conhecidos aos casos de uso existentes; não decide transições, valores ou compensações. O consumidor SQS fica na Infrastructure, confere `MessageGroupId=ordemServicoId` e `MessageDeduplicationId=mensagemId`, e exclui a entrada somente após a conclusão do processamento. Processamento pendente de conciliação não confirma a entrada.
+
+Os loops de consumo e publicação usam escopos de DI independentes por operação, sem reusar contexto SQL após falha. Long polling de 20 segundos não bloqueia a Outbox. A visibilidade inicial é de 60 segundos, com renovação a cada 20; uma falha de renovação cancela o processamento e não confirma a entrada. O cliente SQS usa timeout de 30 segundos e nenhuma repetição interna do SDK, preservando o controle de falhas e novas tentativas no worker/Outbox. Respostas sem confirmação HTTP válida não equivalem a fila vazia, envio concluído ou exclusão bem-sucedida. Esses controles seguem as referências de [visibilidade](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/working-with-visibility-timeouts.html) e [recebimento/exclusão](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/step-receive-delete-message.html) do SQS; a configuração de redrive/DLQ e a prova operacional pertencem à implantação.
+
 ### Contexto técnico de rastreamento — F4-11
+
+Em OS e Orçamento/Pagamento, a Infrastructure restaura o contexto validado ao processar uma mensagem e retoma o carrier persistido ao publicar a Outbox. `SqlOutbox` captura o span nativo ativo antes de persistir; sem tracer disponível, conserva somente a origem validada. Escopos registram IDs, correlação, resultado e duração, sem corpo, credenciais ou dados pessoais. Sucesso do consumo corresponde ao commit do processador; sucesso da publicação exige confirmação persistida na Outbox. Falha de telemetria não altera a transação, e reenvios mantêm o corpo já persistido. Nenhum SDK Datadog entra em Domain/Application. Testes locais sem profiler conferem logs, encerramento de escopos e isolamento, mas não comprovam a criação/exportação dos spans nem ingestão no Agent.
+
 
 Alinhamento explícito com Gabriel em 10/11/2026: o envelope v1 pode incluir `traceContext` opcional, fora de `dados`. Neste incremento, sua única chave permitida é `traceparent`, no formato W3C versão `00`, com trace-id hexadecimal minúsculo de 32 caracteres, parent-id de 16, flags de 2 e IDs não nulos. Exemplo: `{ "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" }`. Campo ausente/nulo mantém o contrato anterior. Não incluir baggage, tracestate, JWT, documento, credenciais ou cabeçalhos livres.
 
@@ -64,6 +174,20 @@ Alinhamento explícito com Gabriel em 10/11/2026: preservar as duas identidades 
 Este ajuste explicita um campo obrigatório no contrato v1 antes da integração real; produtor OS e consumidores precisam ser atualizados de forma coordenada na F4-06/F4-10. Não há compatibilidade permissiva para snapshots sem `servicoCatalogoId`, nem substituição por `servicoId`. Preparações antigas persistidas sem esse campo exigem reconciliação antes de autorizar, sem fabricar vínculo de catálogo; o ajuste não executa migração ou descarte de dados. O merge do documento não comprova implantação dos consumidores.
 
 Os resultados do ciclo físico usam `ExecucaoIniciada.dados = { preparacaoId, versaoOrcamento }` e `ExecucaoFinalizada.dados = { preparacaoId, versaoOrcamento, finalizadoEm }`, além do envelope v1 com OS/Saga/correlação. `finalizadoEm` é UTC. As ações manuais mantêm um identificador de operação estável nas repetições, usado como `causationId` do evento que produzirem; não são novos tipos de comando SQS. Contrato HTTP e autenticação dessas ações permanecem na integração correspondente.
+
+### Proposta AUD-007 — snapshot persistível e rejeição técnica
+
+Proposta para revisão de Gabriel e Geovanna, anterior à implementação. O tamanho do envelope recebido não comprova que o snapshot cabe na persistência: a serialização JSON dos documentos pode expandir caracteres Unicode e repetir dados nos registros de preparação, resultado e outbox. O [limite físico do DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Constraints.html) é 400 KiB por item, incluindo nomes e valores de atributos; não apenas o campo de conteúdo.
+
+O Execução deve validar a representação final dos itens antes de submeter qualquer escrita da transação, usando a mesma serialização da persistência e contabilizando chaves, revisão e conteúdo. Também deve verificar os documentos derivados do snapshot na preparação e sua utilização no ciclo, evitando aceitar uma preparação cujo crescimento previsível impeça autorização/finalização. A guarda no ponto de commit permanece para todas as transições. O detalhamento deve reutilizar os documentos/casos de uso existentes, sem nova biblioteca compartilhada ou consulta a banco alheio.
+
+Não truncar descrições, remover serviços/itens, arredondar valores ou modificar o hash para fazer um documento caber. Esta proposta não escolhe um novo máximo arbitrário de caracteres, serviços ou bytes do envelope; qualquer restrição adicional de entrada precisa ser alinhada com o produtor OS antes do corte. Preservar limites transacionais já existentes. A OS continua dona da construção/correção do snapshot; o Execução, dos documentos e da verificação de persistibilidade.
+
+Documento não persistível deve ser classificado como rejeição técnica permanente, distinta de indisponibilidade/concorrência. Proposta de código interno: `SNAPSHOT_NAO_PERSISTIVEL`, sem novo campo/tipo de evento no envelope v1. Não tratar como estoque insuficiente, não emitir `PreparacaoRecusada` ou compensação fictícia e não gravar reserva, recebimento ou outbox parcial. Não repetir a mesma transação em loop interno para esse erro. Falhas transitórias continuam com o tratamento existente.
+
+Sem commit, o consumidor não confirma nem apaga a mensagem. Mantém a política FIFO/redrive existente, com tentativas limitadas pelo `maxReceiveCount` e encaminhamento à DLQ; não altera a fila nem cria repetição ilimitada. A ocorrência deve ser identificável por código/IDs, sem registrar o corpo. Corrigir o conteúdo é responsabilidade do produtor, respeitando nova identidade quando o payload mudar e as regras de versão/idempotência. O procedimento de reenvio da DLQ não corrige mensagens e continua exigindo contrato válido e commit compatível antes da remoção. Não confundir o código interno com um contrato de erro público HTTP já aprovado.
+
+Aceite da implementação: reproduzir o caso Unicode do AUD-007; testar itens finais imediatamente abaixo/acima do limite e crescimento dos documentos do ciclo; demonstrar rejeição antes de qualquer escrita/alteração de saldo, ausência de ACK e classificação permanente; preservar mensagens pequenas, hashes, estoque e repetição transitória. Testes locais não comprovam IAM/SQS reais. O PR deste texto não implementa a guarda, altera API/Execução ou encerra AUD-007; implementação e integração permanecem em PRs próprios, somente para `develop` nesta rodada, com promoções pendentes de confirmação de Gabriel.
 
 ### Versão de contrato e versão da preparação
 
@@ -96,7 +220,7 @@ Este esclarecimento não cria outro comando SQS, não muda o envelope v1 e não 
 2. Execução realiza diagnóstico e reserva atômica; sem saldo, retorna recusa sem reserva parcial.
 3. OS solicita orçamento; ao recebê-lo, aguarda decisão. Recusa aciona CancelarPreparacao e CancelarOrcamento. Só registra Saga Compensada após ambas as confirmações.
 4. Aprovação da versão atual libera execução. Conclusão registra Finalizada e solicita cobrança.
-5. Pagamento confirmado pelo provedor libera Entregar OS; consulta de pagamento é local ao serviço de cobrança, nunca ao banco dele por OS.
+5. Pagamento confirmado pelo provedor libera Entregar OS; consulta de pagamento é local ao serviço de cobrança, nunca ao banco dele por OS. A entrega consulta a Saga no banco próprio de OS e exige PagamentoConfirmado antes de alterar o agregado; conhecer pagamentoId não basta. Falha de persistência não equivale a ausência de Saga. Ordens históricas sem Saga preservam a transição legada, até o corte coordenado.
 6. Falha permanente anterior à execução física aciona compensação. Falha de compensação permanece CompensacaoPendente, com repetição e alerta; não anunciar rollback concluído sem confirmação.
 
 Estado da Saga e versão são persistidos separadamente do enum legado. Aplicar comparação de versão na transição; mensagens antigas/duplicadas não regridem estado. Resultado recebido após cancelamento não reabre execução e deve ser reconciliado.
@@ -126,6 +250,18 @@ Auditar somente ação, conta/ambiente, execução da esteira, IDs, digests e re
 
 ## HTTP, segurança e pagamentos
 
+### Entrada pública de OS no fluxo distribuído
+
+Com `Integracoes:FluxoDistribuido:Habilitado=true`, a rota de abertura existente exige `filialId`, mantém a validação de cliente/veículo/mecânico e congela os serviços/peças do catálogo. OS, Saga, snapshot e comando `PrepararExecucao` são persistidos na mesma transação SQL; uma falha impede resposta de sucesso e desfaz a abertura. Retorna `202 Accepted` com `Location` para consultar andamento. A reserva física pertence exclusivamente ao Execução: a abertura distribuída não lê nem altera o estoque legado. Sem a flag, o contrato anterior permanece (`201 Created`).
+
+As mutações legadas de diagnóstico, definição de serviços, reserva, decisão de orçamento, início/finalização física e o controlador de estoque respondem `409 Conflict` quando o fluxo distribuído está habilitado. Autenticação e perfis existentes continuam obrigatórios. Consultas físicas devem usar Execução; consultas/decisão/cobrança usam Orçamento/Pagamento. A retirada das rotas não autoriza habilitar a flag isoladamente: depende dos workers, contratos de infraestrutura e corte coordenado do Gateway/Auth.
+
+Cancelar OS no novo fluxo solicita compensação pela Saga e retorna `202`, sem estorno local ou declaração antecipada de cancelamento. Usa os dois motivos já existentes e os comandos atuais `CancelarPreparacao`/`CancelarOrcamento`; repetições preservam os comandos e motivos divergentes são recusados. A máquina de estados vigente exige preparação confirmada e recusa o cancelamento antes disso ou após início físico. Confirmação da preparação e confirmação do orçamento são ambas necessárias para concluir a compensação. Falha ou demora mantém a consulta de andamento pendente.
+
+Resultados aceitos pela Saga projetam o status da OS no mesmo commit do recebimento: orçamento gerado → `AguardandoAprovacao`, início físico confirmado → `EmExecucao`, finalização física → `Finalizada`. Não executam nem finalizam artificialmente os serviços do snapshot local. Cancelamento confirmado por ambos os serviços projeta `Cancelada` com o motivo do comando; registros históricos sem esse comando não recebem motivo inferido. Recusa explícita por estoque insuficiente projeta esse motivo existente. `Entregue` continua exigindo `PagamentoConfirmado` na Saga; finalização física ou conhecimento do identificador da cobrança não substituem confirmação financeira.
+
+A consulta pública `consultar-status` mantém o status projetado da OS. Quando existe Saga, retorna `execucaoDistribuida=true`, `preparacaoId` (nulo enquanto a preparação não foi confirmada) e `servicos=[]`: o snapshot local não comprova o estado físico atual. O detalhe dos serviços deve ser consultado no GET autenticado do Execução usando OS/preparação. Isso não significa ausência de serviços na execução nem conclusão física inferida. Ordens legadas sem Saga preservam os detalhes locais e retornam `execucaoDistribuida=false`. A consulta não depende de uma feature flag global, não chama outro serviço nem altera entidades.
+
 Preservar rotas públicas existentes da OS e autorização por papel/cliente. APIs novas usam /api/v1/orcamentos e /api/v1/pagamentos no serviço de cobrança e /api/v1/execucoes no serviço de execução. Atualizar Gateway, OpenAPI e Postman na mesma tarefa de integração. Operações assíncronas retornam 202 com identificador e endpoint de consulta; não devolver sucesso de negócio antes da confirmação.
 
 ### Ações manuais HTTP do Execução
@@ -151,13 +287,35 @@ O host preserva o modo local como padrão: sem modo remoto configurado, estas ro
 
 Gabriel prepara as entradas do Execução, testes e seus contratos OpenAPI/Postman locais. Integração de emissores/audiences/chaves JWT, autorização compartilhada, produtor OS, roteamento Gateway e retirada/encaminhamento das rotas antigas permanecem coordenados com Geovanna na F4-06/F4-09/F4-10. Não ampliar emissores confiáveis nem presumir que o JWT de Cliente autorize ações do mecânico. Não alterar ou publicar o Gateway como efeito deste preparo; o contrato público legado permanece até o corte integrado. AWS continua bloqueada, sem deploy por aprovação de código.
 
-Decisão de orçamento exige identidade autorizada e versão atual. Consulta de cliente para a Lambda é privada, autenticada por identidade técnica segregada, e não pode ficar acessível por rota pública do Gateway. Mantém o contrato público do RFC-0001.
+Decisão de orçamento exige identidade autorizada e versão atual. Consulta de cliente para a Lambda é privada, autenticada por identidade técnica segregada, e não pode ficar acessível por rota pública do Gateway. Mantém o contrato público do RFC-0001. A implementação usa `POST /internal/v1/clientes/consultar-autenticacao`, header técnico `X-Clientes-Internos-Token` e documento somente no corpo. Para documento válido, retorna `200` com `{ clienteId, ativo }`; inexistente usa `clienteId=null` e `ativo=false`. Nenhum outro dado pessoal é retornado. `404`, `401` técnico, `503`, timeout e JSON incompatível são falhas da dependência, nunca ausência de cliente. O modo privado da Lambda retira a credencial e o acesso SQL; não há fallback automático. A implantação coordenada usa `CLIENTES_API_ENABLED=false` por padrão e credencial própria `CLIENTES_INTERNOS_TOKEN`, distinta de JWT e orçamento, nos dois Environments. O endereço privado é resolvido pelo listener NLB já publicado pelo Kubernetes, sem novo contrato SSM ou rota pública.
 
-Mercado Pago será integrado em ambiente de teste com credenciais próprias. Criar cobrança vinculada à OS e versão, persistir referência do provedor e chave idempotente antes da chamada; em resposta incerta consultar o provedor antes de repetir. Notificação não é prova de pagamento: validar autenticidade conforme API escolhida, consultar o pagamento no provedor e conferir referência, valor, moeda e estado. Duplicatas não confirmam duas vezes. Escolher e validar o produto de checkout no primeiro spike de integração, mantendo o contrato interno acima. Nenhuma cobrança real faz parte do teste.
+Mercado Pago será integrado em ambiente de teste com credenciais próprias. Criar cobrança vinculada à OS e versão, persistir intenção, referência local e chave idempotente antes da chamada; o identificador retornado pelo provedor só é vinculado após validar a resposta. Em resposta incerta consultar o provedor antes de repetir. Notificação não é prova de pagamento: validar autenticidade conforme API escolhida, consultar o pagamento no provedor e conferir referência, valor, moeda e estado. Duplicatas não confirmam duas vezes. Escolher e validar o produto de checkout no primeiro spike de integração, mantendo o contrato interno acima. Nenhuma cobrança real faz parte do teste.
+
+### Adaptador Mercado Pago — spike de Checkout Pro
+
+O spike de 14/11 usa Checkout Pro pela API de Preferências; aceite do produto exige prova posterior com contas/credenciais de teste. O adaptador fica na Infrastructure/Pagamentos, atrás de `IProvedorPagamento` na Application. Os DTOs do provedor e seus nomes JSON permanecem na Infrastructure; respostas da porta usam contratos próprios. `Pagamentos` agrupa essa funcionalidade dentro do serviço Orçamento/Pagamento e não declara outro bounded context. A composição fica desabilitada por padrão.
+
+| Operação do adaptador | API externa e limite |
+| --- | --- |
+| Criar checkout | `POST /checkout/preferences`, com referência local UUID em `external_reference`, valor BRL e `notification_url` HTTPS. Retornar somente endereço sandbox. Não assumir suporte a `X-Idempotency-Key` nesse endpoint: a garantia documentada para Payments não se transfere automaticamente a Preferências. |
+| Reconciliar criação | `GET /checkout/preferences/search` pela referência e consulta do detalhe por ID. Ausência não dispara novo POST; múltiplos resultados são ambiguidade, sem escolha arbitrária. A política de recuperação pertence ao caso de uso que possui a intenção persistida. |
+| Consultar pagamento | `GET /v1/payments/{id}`. Exigir o ID solicitado, recebedor configurado, referência UUID, valor válido, BRL e `live_mode` explícito. Com false, validar o pagamento de teste normalmente. Com true, exigir também `GET /users/me` autenticado pelo mesmo token, com ID igual ao recebedor configurado e tag exata `test_user`; conta real, tag ausente, identidade divergente ou falha na consulta bloqueiam a confirmação. A resposta não confirma o estado local: o caso de uso ainda precisa confrontá-la com o valor e a versão da cobrança persistida. Autorizado, pendente e estados desconhecidos não equivalem a aprovado. |
+
+O transporte usa destino HTTPS fixo, timeout finito e não segue redirecionamentos ou repete automaticamente a criação. Falha de rede, timeout ou resposta inválida de criação permanecem resultados incertos; não representam recusa financeira. Cancelamento do chamador também não prova ausência de criação remota. Não colocar a chamada HTTP dentro de uma transação SQL aberta.
+
+O validador de notificações usa `HMAC-SHA256` com a chave de Webhooks e o manifesto `id:{data.id};request-id:{x-request-id};ts:{ts};`, comparando os hashes em tempo constante. Exige os campos necessários ao evento de pagamento. A entrada HTTP confere consistência entre os IDs de query/body e tipo de evento antes de consultar o recurso; não confia em valor/status enviados no webhook. Autenticidade e idempotência são verificações distintas: o validador não registra recebimento, não altera cobrança e não emite `PagamentoConfirmado`. Timestamp integra o manifesto; não foi adotada janela de expiração neste adaptador.
+
+O adaptador não possui persistência de cobrança nem decide transições financeiras. Essas responsabilidades pertencem ao Domain, repository de agregado no Domain, casos de uso e Inbox/Outbox conforme a organização definida acima; as entradas HTTP permanecem finas. Testes HTTP com handler local e vetor HMAC não substituem o sandbox ou o aceite integrado. Progresso e credenciais pendentes ficam no backlog canônico.
+
+Referências: [criação de preferências](https://www.mercadopago.com.br/developers/en/reference/online-payments/checkout-pro-preferences/create-preference/post), [pesquisa de preferências](https://www.mercadopago.com.br/developers/en/reference/online-payments/checkout-pro-preferences/search-preferences/get), [referência Checkout Pro](https://www.mercadopago.com.br/developers/pt/reference/online-payments/checkout-pro-preferences/overview) e [assinatura das notificações](https://www.mercadopago.com.br/developers/en/docs/checkout-pro-preferences/additional-settings/optional-notifications).
 
 ## Infraestrutura, execução local e CI/CD
 
-Alinhamento com Gabriel em 11/11/2026: a identidade do Execução no AWS Academy segue a exceção acadêmica da ADR-0025, utilizando explicitamente a identidade existente dos nodes (`LabRole`), sem isolamento IAM por aplicação. A configuração e o acesso real dentro do Pod ainda precisam de implementação e validação; simulação de permissões não comprova o runtime. Não copiar credenciais do runner para o workload ou ativar fallback silencioso. A concessão não muda contratos de mensagens/HTTP, ownership de bancos/filas ou permissões das outras frentes e não autoriza deploy por merge.
+States e planos de API, Execução, Auth Lambda e Orçamento/Pagamento devem ser cifrados antes de cache/artifact. A chave exclusiva de cada Environment (`TERRAFORM_STATE_KEY`) fica no GitHub Secrets, com cópia local protegida por DPAPI; não reutilizar JWT nem credencial de aplicação. A cifra autenticada vincula state a repositório/conta/ambiente e nome do arquivo; planos incluem também região, commit, execução, tentativa e ação. Falha de autenticação bloqueia o fluxo, sem fallback para state plaintext ou vazio. Novos caches usam prefixo separado dos legados. Referências: [restrições e riscos de cache do GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching) e [cifra autenticada do Node.js](https://nodejs.org/api/crypto.html).
+
+A migração de legados roda em workflow próprio, sem AWS/Terraform/kubectl, somente após merge em develop e com deploy AWS bloqueado. Inventaria metadados; preserva cada snapshot integral em artifact cifrado de 90 dias e prova sua restauração antes de remover a cópia em claro. Somente o snapshot mais recente com conta identificada pode alimentar o cache operacional cifrado; snapshots antigos ou sem conta ficam arquivados, sem adoção automática. A recuperação durável com backend/locking continua sendo evolução separada. Prova de migração não equivale a prova de incidente nem dispensa avaliar rotação de credenciais possivelmente expostas anteriormente.
+
+Alinhamento com Gabriel em 11/11/2026: a identidade do Execução no AWS Academy segue a exceção acadêmica da ADR-0025, utilizando explicitamente a identidade existente dos nodes (`LabRole`), sem isolamento IAM por aplicação. A configuração e o acesso real dentro do Pod ainda precisam de implementação e validação; simulação de permissões não comprova o runtime. Não copiar credenciais do runner para o workload ou ativar fallback silencioso. A extensão expressamente autorizada em 14/11/2026 na ADR-0025 abrange também os workers de OS e Orçamento/Pagamento, com os mesmos limites acadêmicos e sem isolamento IAM. Não muda contratos de mensagens/HTTP, ownership de bancos/filas nem autoriza alteração de IAM ou deploy por merge.
 
 Cada serviço mantém Dockerfile, manifests, workload Terraform, CI/CD e README próprios; dados e filas seguem ADR-0025. Workloads no EKS existente, com validação JWT, health checks, requests/limits e observabilidade conforme API. Nenhum serviço acessa banco alheio. Recursos reais somente por esteira.
 

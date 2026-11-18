@@ -2,6 +2,8 @@ namespace OficinaMecanica.Application.GestaoOrdemServico.ValidationMessages;
 
 public static class OrdemServicoValidationMessages
 {
+    public const string RequestConsultarAndamentoObrigatorio = "Request para consultar andamento da ordem de serviço é obrigatório.";
+    public const string ClienteIdInvalido = "Identificador do cliente inválido.";
     public const string RequestNotificarDecisaoOrcamentoObrigatorio = "Request para notificar decisão do orçamento é obrigatório.";
     public const string DecisaoOrcamentoObrigatoria = "Decisão do orçamento é obrigatória.";
     public const string RequestAberturaOrdemServicoObrigatorio = "Request de abertura de ordem de serviço é obrigatório.";

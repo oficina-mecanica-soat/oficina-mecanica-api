@@ -1,14 +1,14 @@
-# Fila de resultados da OS — preparação da Fase 4
+# Fila de resultados da OS
 
 ## Escopo e decisões
 
 A [ADR-0025](../architecture/adrs/adr-0025-bancos-e-mensageria-aws.md) atribui a cada consumidor sua entrada e DLQ; a [RFC-0007](../architecture/rfcs/rfc-0007-evolucao-para-microsservicos.md) define resultados de Execução e Orçamento/Pagamento destinados à fila de OS. O serviço de OS permanece no repositório `oficina-mecanica-api`; esta entrega não cria outro serviço ou repositório.
 
-Gabriel prepara a infraestrutura/contrato neste PR, conforme alinhamento com o responsável pelo projeto. Saga SQL, outbox, consumidor de resultados e transições de OS continuam na F4-06 de Geovanna. Não altera código .NET, rotas, eventos, banco ou comportamento público atual. Não ativa consumidor nem concede acesso IAM.
+A infraestrutura das filas pertence à API. Saga SQL, outbox, consumidor de resultados e transições de OS pertencem às camadas da aplicação; o worker SQS é composto em Infrastructure quando o processamento remoto está habilitado. O contrato das filas não concede, isoladamente, acesso IAM.
 
-## Nomes propostos e ownership
+## Nomes e ownership
 
-Os nomes abaixo são a proposta deste PR, derivados do componente existente e do ambiente. A RFC define os parâmetros operacionais, não esses nomes físicos. Aprovar o PR aprova o contrato antes de provisionar.
+Os nomes abaixo são derivados do componente existente e do ambiente. A RFC define os parâmetros operacionais; o Terraform deste repositório define os nomes físicos.
 
 | Recurso em development | Nome | Configuração |
 | --- | --- | --- |
@@ -32,25 +32,25 @@ Parâmetros SSM `String`, sem credenciais, sob `/oficina-mecanica/{ambiente}/api
 
 Output Terraform `os_messaging_contracts` publica o mesmo mapa; `os_messaging_ssm_prefix` publica o prefixo. `/oficina-mecanica/{ambiente}/status/api=ready` depende dos quatro contratos e da política de redrive. Esse marcador indica somente disponibilidade da infraestrutura de mensageria: não comprova saúde HTTP, consumo, estado da Saga ou identidade IAM do workload.
 
-Os produtores só poderão consumir os contratos após um apply autorizado publicar os recursos. Não apontar resultados à fila de entrada do Execução e não usar sua DLQ como destino normal. Configuração e identidade dos workloads serão tratadas no incremento de integração; não se presume que a role dos nodes ou a credencial do runner sejam adequadas para os Pods.
+Os produtores consomem os contratos após o apply autorizado publicar os recursos. Não apontar resultados à fila de entrada do Execução nem usar sua DLQ como destino normal. A identidade efetiva de cada workload deve ser comprovada dentro do Pod, respeitando a exceção acadêmica da ADR-0025; credenciais temporárias do runner não são injetadas nos Pods.
 
 ## CI/CD e laboratório
 
 Preserva Git Flow, nomes dos jobs/checks, Quality gate, imagem validada no CI, plano salvo e state isolado por conta/ambiente. Acrescenta três testes Terraform com providers simulados no job já existente, sem nova esteira paralela. O deploy real permanece somente pelo workflow AWS.
 
-`AWS_DEPLOY_ENABLED=false`, definido no repositório, bloqueia a chamada do deploy pelo CD; o workflow reutilizável também exige habilitação explícita. Mudança implantável sem deploy não abre promoção como se estivesse aplicada. Alterações apenas documentais preservam o fluxo existente. O controle `terraform-action.env` permanece inalterado e destroy continua exigindo alteração dedicada.
+`AWS_DEPLOY_ENABLED=false`, definido no repositório, bloqueia a chamada do deploy pelo CD; o workflow reutilizável também exige habilitação explícita. Mudança implantável sem deploy não abre promoção como se estivesse aplicada. Alterações apenas documentais preservam o fluxo existente. O controle versionado `terraform-action.env` define a operação; destroy exige alteração dedicada.
 
 A restauração do state no job de aplicação agora precede sua validação e a preparação de destroy, como no Execução. Isso corrige a ordem anterior, que consultava o arquivo antes de restaurá-lo. Artefato de plano e caches gerados incluem a tentativa da execução, evitando colisão em reruns; o prefixo de restore continua restrito à mesma conta e ambiente, compatível com o histórico.
 
 Após apply autorizado, a esteira comparará atributos FIFO/retenção/redrive e contratos SSM com as filas registradas no state. Antes do plano de destroy e imediatamente antes da aplicação, verifica mensagens visíveis, em voo e atrasadas na entrada e DLQ. Pendências, respostas inválidas e erros de acesso bloqueiam; só o erro específico de ausência permite recuperação. O contexto não sensível das filas acompanha o plano para verificar remoção e limpeza dos cinco parâmetros após esvaziar o state. Não faz purge nem redrive automático.
 
-**Parar produtores/consumidores e preservar dados antes de autorizar destroy.** Contagens SQS são aproximadas; o guardrail não substitui a quiescência operacional. Esta entrega não consulta a futura outbox SQL nem certifica que a Saga está sem pendências: essa integração pertence à implementação da F4-06. Destruir as filas elimina mensagens e evidências ainda retidas; não é uma rotina automática deste PR.
+**Parar produtores/consumidores e preservar dados antes de autorizar destroy.** Contagens SQS são aproximadas; o guardrail não substitui a quiescência operacional. A guarda de contagens SQS não certifica que a outbox SQL ou a Saga estejam sem pendências. Destruir as filas elimina mensagens e evidências ainda retidas; exige preparação e autorização específicas.
 
-Nenhuma consulta AWS, plano autenticado, apply ou destroy foi executado. Avisar Gabriel antes da janela para criar novo laboratório e atualizar environments. O merge prepara o contrato; não comprova disponibilidade dos recursos ou permissões reais.
+Antes de uma janela autorizada, conferir conta, região e validade das credenciais nos Environments. O merge e a CI não comprovam disponibilidade de recursos ou permissões reais. Evidências atuais ficam no backlog de referência, sem transformar este guia em registro de execuções.
 
 ## Validação
 
-Terraform 1.15.8: formatação, inicialização sem backend e validate aprovados. Três cenários com providers AWS/Kubernetes simulados aprovados: configuração FIFO/redrive da RFC, contratos SSM e isolamento de nomes por ambiente. Nove testes Node aprovados, incluindo guardrails originais, mensagens pendentes, state parcial, metadados de filas/SSM e distinção entre ausência e AccessDenied/credencial expirada/rede/JSON inválido. actionlint 1.7.12 aprovou os workflows, sem ShellCheck/Pyflakes. Nenhum desses testes comprova SQS/IAM real.
+Referência das verificações iniciais do contrato, sem equivalência a aceite real: Terraform 1.15.8: formatação, inicialização sem backend e validate aprovados. Três cenários com providers AWS/Kubernetes simulados aprovados: configuração FIFO/redrive da RFC, contratos SSM e isolamento de nomes por ambiente. Nove testes Node aprovados, incluindo guardrails originais, mensagens pendentes, state parcial, metadados de filas/SSM e distinção entre ausência e AccessDenied/credencial expirada/rede/JSON inválido. actionlint 1.7.12 aprovou os workflows, sem ShellCheck/Pyflakes. Nenhum desses testes comprova SQS/IAM real.
 
 ```powershell
 terraform fmt -check -recursive infra/terraform
@@ -59,7 +59,7 @@ terraform -chdir=infra/terraform/environments/dev validate
 terraform -chdir=infra/terraform/environments/dev test
 ```
 
-O CI repete os gates completos da API, incluindo testes .NET/cobertura, Docker, manifests e Terraform. A próxima validação real exige janela autorizada e não conclui, isoladamente, a Saga ou o fluxo de negócio ponta a ponta.
+O CI repete os gates completos da API, incluindo testes .NET/cobertura, Docker, manifests e Terraform. A validação real exige janela autorizada e deve seguir o [roteiro integrado](../deploy/deploy-aws.md); disponibilidade das filas não conclui, isoladamente, a Saga ou o fluxo de negócio ponta a ponta.
 
 ## Organização das validações
 

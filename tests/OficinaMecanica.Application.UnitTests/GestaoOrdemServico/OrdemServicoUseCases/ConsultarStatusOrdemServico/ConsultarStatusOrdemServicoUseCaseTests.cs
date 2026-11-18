@@ -12,6 +12,37 @@ namespace OficinaMecanica.Application.UnitTests.GestaoOrdemServico.OrdemServicoU
 
 public class ConsultarStatusOrdemServicoUseCaseTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Dado_OrdemDistribuidaComSnapshot_Quando_ConsultarStatus_Entao_NaoDeveApresentarEstadoFisicoLegado(bool preparada)
+    {
+        // Arrange
+        var ordem = OrdemServicoTestDataFactory.CriarOrdemServicoEmExecucaoComServicoPendente();
+        var saga = SagaOrdemServico.Iniciar(ordem.Id, 1, 1);
+        var preparacaoId = Guid.NewGuid();
+        if (preparada)
+        {
+            saga.RegistrarPreparacao(preparacaoId, 1);
+        }
+        var sagas = new Mock<ISagaOrdemServicoRepository>();
+        sagas.Setup(repo => repo.ObterPorOrdemAsync(ordem.Id, It.IsAny<CancellationToken>())).ReturnsAsync(saga);
+        var useCase = new ConsultarStatusOrdemServicoUseCase(CriarRepository(ordem).Object, sagas.Object,
+            new ConsultarStatusOrdemServicoValidator(), MapperFactory.Criar());
+
+        // Act
+        var resultado = await useCase.ExecuteAsync(new ConsultarStatusOrdemServicoRequest(ordem.Id));
+
+        // Assert
+        resultado.Sucesso.Should().BeTrue();
+        resultado.Valor!.Status.Should().Be(OrdemServicoTestDataFactory.StatusEmExecucao);
+        resultado.Valor.ExecucaoDistribuida.Should().BeTrue();
+        resultado.Valor.PreparacaoId.Should().Be(preparada ? preparacaoId : null);
+        resultado.Valor.Servicos.Should().BeEmpty();
+        ordem.Servicos.Should().ContainSingle().Which.Status.ToString().Should().Be(OrdemServicoTestDataFactory.StatusPendente);
+        sagas.Verify(repo => repo.ObterPorOrdemAsync(ordem.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Fact]
     public async Task Dado_OrdemServicoExistente_Quando_ConsultarStatusOrdemServico_Entao_DeveRetornarStatusDaOrdemServico()
     {
@@ -126,6 +157,7 @@ public class ConsultarStatusOrdemServicoUseCaseTests
 
     private static ConsultarStatusOrdemServicoUseCase CriarUseCase(Mock<IOrdemServicoRepository> repository)
     {
-        return new ConsultarStatusOrdemServicoUseCase(repository.Object, new ConsultarStatusOrdemServicoValidator(), MapperFactory.Criar());
+        return new ConsultarStatusOrdemServicoUseCase(repository.Object, Mock.Of<ISagaOrdemServicoRepository>(),
+            new ConsultarStatusOrdemServicoValidator(), MapperFactory.Criar());
     }
 }

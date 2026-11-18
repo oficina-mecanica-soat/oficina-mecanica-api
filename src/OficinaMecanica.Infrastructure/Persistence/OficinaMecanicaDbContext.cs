@@ -20,6 +20,7 @@ public sealed class OficinaMecanicaDbContext : DbContext
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
     public DbSet<Estoque> Estoques => Set<Estoque>();
     public DbSet<OrdemServico> OrdensServico => Set<OrdemServico>();
+    public DbSet<SagaOrdemServico> SagasOrdemServico => Set<SagaOrdemServico>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

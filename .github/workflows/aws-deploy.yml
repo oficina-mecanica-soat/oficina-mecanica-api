@@ -105,6 +105,7 @@ jobs:
       account_id: ${{ steps.prepare_vars.outputs.account_id }}
       ecr_image_uri: ${{ steps.prepare_vars.outputs.ecr_image_uri }}
     env:
+      TERRAFORM_STATE_KEY: ${{ secrets.TERRAFORM_STATE_KEY }}
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       TERRAFORM_ACTION: ${{ needs.resolve_action.outputs.terraform_action }}
 
@@ -131,6 +132,8 @@ jobs:
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
+          CLIENTES_API_ENABLED: ${{ vars.CLIENTES_API_ENABLED || 'false' }}
+          CLIENTES_INTERNOS_TOKEN: ${{ secrets.CLIENTES_INTERNOS_TOKEN }}
         run: |
           if [ "$TERRAFORM_ACTION" = "destroy" ]; then
             echo "Skipping application secret validation because this run will destroy the environment."
@@ -175,20 +178,147 @@ jobs:
           echo "account_id=$account_id" >> "$GITHUB_OUTPUT"
           echo "ecr_image_uri=$ecr_image_uri" >> "$GITHUB_OUTPUT"
 
+      - &protecao_artefatos
+        name: "🔐 Preparar proteção de states e planos"
+        run: |
+          cat > "$RUNNER_TEMP/proteger-estados.cjs" <<'PROTEGER_ESTADOS'
+          'use strict';
+          const fs = require('node:fs'),
+            path = require('node:path'),
+            crypto = require('node:crypto');
+          const stateFiles = ['terraform.tfstate', 'terraform.tfstate.backup'];
+          const planFiles = [
+            'tfplan',
+            'partial_destroy_override.tf',
+            'os-mensageria-destroy-context.json',
+            'execucao-destroy-context.json'
+          ];
+          function chave(valor) {
+            if (!/^[a-f0-9]{64}$/.test(valor || '')) throw Error('Chave protegida de 256 bits ausente.');
+            return Buffer.from(valor, 'hex');
+          }
+          function contexto(env, alvo) {
+            if (
+              !/^\d{12}$/.test(env.AWS_ACCOUNT_ID || '') ||
+              env.SSM_ENVIRONMENT_NAME !== 'development' ||
+              !/^oficina-mecanica-soat\/oficina-mecanica-(api|execucao|auth-lambda)$/.test(env.GITHUB_REPOSITORY || '')
+            )
+              throw Error('Escopo protegido inválido.');
+            let c = [env.GITHUB_REPOSITORY, env.AWS_ACCOUNT_ID, env.SSM_ENVIRONMENT_NAME, alvo];
+            if (alvo === 'plan') {
+              if (
+                !/^[a-z]{2}-[a-z]+-\d+$/.test(env.AWS_REGION || '') ||
+                !['apply', 'destroy'].includes(env.TERRAFORM_ACTION) ||
+                !/^\d+$/.test(env.GITHUB_RUN_ID || '') ||
+                !/^\d+$/.test(env.GITHUB_RUN_ATTEMPT || '') ||
+                !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA || '')
+              )
+                throw Error('Tentativa protegida inválida.');
+              c.push(env.GITHUB_RUN_ID, env.GITHUB_RUN_ATTEMPT, env.GITHUB_SHA, env.TERRAFORM_ACTION, env.AWS_REGION);
+            }
+            return c.join('|');
+          }
+          function selar(bytes, key, aad) {
+            const iv = crypto.randomBytes(12),
+              c = crypto.createCipheriv('aes-256-gcm', key, iv);
+            c.setAAD(Buffer.from(aad));
+            const data = Buffer.concat([c.update(bytes), c.final()]);
+            return JSON.stringify({
+              versao: 1,
+              iv: iv.toString('base64'),
+              tag: c.getAuthTag().toString('base64'),
+              dados: data.toString('base64')
+            });
+          }
+          function abrir(serializado, key, aad) {
+            const e = JSON.parse(serializado);
+            if (e.versao !== 1 || Object.keys(e).sort().join(',') !== 'dados,iv,tag,versao')
+              throw Error('Envelope protegido inválido.');
+            const iv = Buffer.from(e.iv, 'base64'),
+              tag = Buffer.from(e.tag, 'base64');
+            if (iv.length !== 12 || tag.length !== 16) throw Error('Autenticação inválida.');
+            const d = crypto.createDecipheriv('aes-256-gcm', key, iv);
+            d.setAAD(Buffer.from(aad));
+            d.setAuthTag(tag);
+            return Buffer.concat([d.update(Buffer.from(e.dados, 'base64')), d.final()]);
+          }
+          function main(modo, env = process.env) {
+            const dir = env.TF_WORKING_DIRECTORY,
+              key = chave(env.TERRAFORM_STATE_KEY);
+            if (!dir) throw Error('Diretório protegido ausente.');
+            if (modo === 'state-open' || modo === 'state-seal') {
+              const aad = contexto(env, 'state');
+              for (const nome of stateFiles) {
+                const raw = path.join(dir, nome),
+                  enc = raw + '.enc';
+                if (modo === 'state-open') {
+                  if (fs.existsSync(raw)) throw Error('State plaintext inesperado antes de restaurar.');
+                  if (fs.existsSync(enc))
+                    fs.writeFileSync(raw, abrir(fs.readFileSync(enc, 'utf8'), key, aad + '|' + nome), { mode: 0o600 });
+                } else if (fs.existsSync(raw))
+                  fs.writeFileSync(enc, selar(fs.readFileSync(raw), key, aad + '|' + nome), { mode: 0o600 });
+              }
+              return;
+            }
+            const bundle = path.join(dir, 'tfplan.bundle.enc'),
+              aad = contexto(env, 'plan');
+            if (modo === 'plan-seal') {
+              const arquivos = {};
+              for (const nome of planFiles) {
+                const f = path.join(dir, nome);
+                if (fs.existsSync(f)) arquivos[nome] = fs.readFileSync(f).toString('base64');
+              }
+              for (const nome of planFiles.slice(0, 1))
+                if (!arquivos[nome]) throw Error('Plano obrigatório incompleto.');
+              fs.writeFileSync(bundle, selar(Buffer.from(JSON.stringify(arquivos)), key, aad), { mode: 0o600 });
+            } else if (modo === 'plan-open') {
+              const arquivos = JSON.parse(abrir(fs.readFileSync(bundle, 'utf8'), key, aad));
+              if (!arquivos || Array.isArray(arquivos) || Object.keys(arquivos).some((n) => !planFiles.includes(n)))
+                throw Error('Pacote tenta gravar arquivo fora do plano.');
+              for (const nome of planFiles.slice(0, 1))
+                if (typeof arquivos[nome] !== 'string' || !arquivos[nome]) throw Error('Plano obrigatório ausente.');
+              for (const [nome, dados] of Object.entries(arquivos)) {
+                if (typeof dados !== 'string') throw Error('Conteúdo inválido.');
+                fs.writeFileSync(path.join(dir, nome), Buffer.from(dados, 'base64'), { mode: 0o600 });
+              }
+            } else throw Error('Operação protegida desconhecida.');
+          }
+          module.exports = { chave, contexto, selar, abrir, main };
+          if (require.main === module) {
+            try {
+              main(process.argv[2]);
+              console.log('Artefatos protegidos: ' + process.argv[2] + '.');
+            } catch {
+              console.error('Proteção dos artefatos falhou; não publicar nem substituir state.');
+              process.exit(1);
+            }
+          }
+          PROTEGER_ESTADOS
+
       - name: "📦 06 · Restaurar cache do state do Terraform"
         uses: actions/cache/restore@v6
         with:
           path: |
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.enc
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup.enc
+          key: tfstate-enc-v1-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-
+            tfstate-enc-v1-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-
+
+      - name: "🔓 Restaurar state autenticado"
+        id: restaurar_state_protegido
+        env:
+          AWS_ACCOUNT_ID: ${{ steps.aws_credentials.outputs.aws-account-id }}
+        run: node "$RUNNER_TEMP/proteger-estados.cjs" state-open
 
       - name: "📝 07 · Escrever variáveis do Terraform"
         env:
+          FLUXO_DISTRIBUIDO_ENABLED: ${{ vars.FLUXO_DISTRIBUIDO_ENABLED || 'false' }}
+          PROCESSAMENTO_REMOTO_ENABLED: ${{ vars.PROCESSAMENTO_REMOTO_ENABLED || 'false' }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           WEBHOOK_TOKEN: ${{ secrets.WEBHOOK_TOKEN }}
+          CLIENTES_API_ENABLED: ${{ vars.CLIENTES_API_ENABLED || 'false' }}
+          CLIENTES_INTERNOS_TOKEN: ${{ secrets.CLIENTES_INTERNOS_TOKEN }}
         run: |
           python - <<'PY'
           import json
@@ -205,7 +335,59 @@ jobs:
               )
               return result.stdout.strip()
 
+          def configuracao_fluxo():
+              valores = {"fluxo_distribuido_habilitado": False, "processamento_remoto_habilitado": False,
+                         "conta_aws": "", "execucao_entrada_queue_url": "", "orcamento_pagamento_entrada_queue_url": ""}
+              if os.environ["TERRAFORM_ACTION"] == "destroy":
+                  return valores
+              for chave in ("FLUXO_DISTRIBUIDO_ENABLED", "PROCESSAMENTO_REMOTO_ENABLED"):
+                  if os.environ.get(chave, "false") not in ("true", "false"):
+                      raise ValueError("Flag inválida: " + chave)
+              corte = os.environ.get("FLUXO_DISTRIBUIDO_ENABLED", "false") == "true"
+              remoto = os.environ.get("PROCESSAMENTO_REMOTO_ENABLED", "false") == "true"
+              if corte and (not remoto or os.environ.get("CLIENTES_API_ENABLED") != "true"):
+                  raise ValueError("Corte exige workers e consulta privada de clientes habilitados.")
+              valores.update(fluxo_distribuido_habilitado=corte, processamento_remoto_habilitado=remoto)
+              if not remoto:
+                  return valores
+              conta = aws_output("sts", "get-caller-identity", "--query", "Account", "--output", "text")
+              if len(conta) != 12 or not conta.isascii() or not conta.isdecimal():
+                  raise ValueError("Conta do runtime inválida.")
+              regiao = os.environ["AWS_REGION"]
+              base = "/oficina-mecanica/" + os.environ["SSM_ENVIRONMENT_NAME"]
+              def parametro(caminho):
+                  return aws_output("ssm", "get-parameter", "--name", base + "/" + caminho, "--query", "Parameter.Value", "--output", "text")
+              for owner, campo in (("execucao", "execucao_entrada_queue_url"), ("orcamento-pagamento", "orcamento_pagamento_entrada_queue_url")):
+                  if parametro("status/" + owner) != "ready":
+                      raise ValueError("Mensageria do serviço ainda não disponível: " + owner)
+                  nome = "oficina-mecanica-" + owner + "-" + os.environ["SSM_ENVIRONMENT_NAME"] + ".fifo"
+                  url = parametro(owner + "/entrada_queue_url")
+                  arn = parametro(owner + "/entrada_queue_arn")
+                  if url != "https://sqs." + regiao + ".amazonaws.com/" + conta + "/" + nome or arn != "arn:aws:sqs:" + regiao + ":" + conta + ":" + nome:
+                      raise ValueError("Fila publicada por outro owner, conta ou região.")
+                  atributos = json.loads(aws_output("sqs", "get-queue-attributes", "--queue-url", url,
+                      "--attribute-names", "QueueArn", "FifoQueue", "--query", "Attributes", "--output", "json"))
+                  if atributos.get("QueueArn") != arn or atributos.get("FifoQueue") != "true":
+                      raise ValueError("Fila FIFO real diverge do contrato publicado.")
+                  valores[campo] = url
+              valores["conta_aws"] = conta
+              return valores
+
           terraform_action = os.environ["TERRAFORM_ACTION"]
+          clientes_internos_habilitado = False
+          clientes_internos_token = ""
+          if terraform_action != "destroy":
+              valor_habilitado = os.environ.get("CLIENTES_API_ENABLED", "false")
+              if valor_habilitado not in ("true", "false"):
+                  raise ValueError("CLIENTES_API_ENABLED deve ser true ou false.")
+              clientes_internos_habilitado = valor_habilitado == "true"
+              if clientes_internos_habilitado:
+                  clientes_internos_token = os.environ.get("CLIENTES_INTERNOS_TOKEN", "")
+                  if not 32 <= len(clientes_internos_token) <= 256 or any(not "!" <= c <= "~" for c in clientes_internos_token):
+                      raise ValueError("Configure uma credencial técnica válida para a consulta privada de clientes.")
+                  if clientes_internos_token in (os.environ.get("JWT_SECRET"), os.environ.get("WEBHOOK_TOKEN")):
+                      raise ValueError("A credencial técnica deve ser segregada do JWT e do orçamento.")
+                  print(f"::add-mask::{clientes_internos_token}")
 
           if terraform_action == "destroy":
               db_connection_string = "destroy-only-placeholder"
@@ -213,7 +395,14 @@ jobs:
               webhook_token = "destroy-only-placeholder"
           else:
               endpoint = aws_output("ssm", "get-parameter", "--name", f"{os.environ['SSM_RDS_PREFIX']}/endpoint", "--query", "Parameter.Value", "--output", "text")
-              secret_arn = aws_output("ssm", "get-parameter", "--name", f"{os.environ['SSM_RDS_PREFIX']}/master_secret_arn", "--query", "Parameter.Value", "--output", "text")
+              status_sql = aws_output("ssm", "get-parameter", "--name", f"/oficina-mecanica/{os.environ['SSM_ENVIRONMENT_NAME']}/status/rds-os", "--query", "Parameter.Value", "--output", "text")
+              database_name = aws_output("ssm", "get-parameter", "--name", f"{os.environ['SSM_RDS_PREFIX']}/os/database_name", "--query", "Parameter.Value", "--output", "text")
+              secret_arn = aws_output("ssm", "get-parameter", "--name", f"{os.environ['SSM_RDS_PREFIX']}/os/secret_arn", "--query", "Parameter.Value", "--output", "text")
+              conta_sql = aws_output("sts", "get-caller-identity", "--query", "Account", "--output", "text")
+              prefixo_secret = f"arn:aws:secretsmanager:{os.environ['AWS_REGION']}:{conta_sql}:secret:oficina-mecanica/{os.environ['SSM_ENVIRONMENT_NAME']}/rds/os-"
+              sufixo_secret = secret_arn.removeprefix(prefixo_secret)
+              if status_sql != "ready" or database_name != "OficinaMecanicaDb" or not secret_arn.startswith(prefixo_secret) or len(sufixo_secret) != 6 or not sufixo_secret.isascii() or not sufixo_secret.isalnum():
+                  raise ValueError("Banco ou credencial exclusiva de OS não estão prontos no escopo esperado.")
               if not endpoint or not secret_arn:
                   raise ValueError("RDS endpoint ou ARN do segredo não foi publicado.")
               secret_string = aws_output("secretsmanager", "get-secret-value", "--secret-id", secret_arn, "--query", "SecretString", "--output", "text")
@@ -223,8 +412,8 @@ jobs:
                   raise ValueError("SecretString do RDS não contém JSON válido.") from error
               username = secret.get("username")
               password = secret.get("password")
-              if not username or not password:
-                  raise ValueError("SecretString do RDS não contém username e password.")
+              if username != "oficina_os" or secret.get("database") != database_name or not isinstance(password, str) or not password or any(c in password for c in ';\r\n"'):
+                  raise ValueError("Credencial SQL não pertence ao banco e login exclusivos de OS.")
               db_connection_string = f"Server=tcp:{endpoint},1433;Database=OficinaMecanicaDb;User Id={username};Password={password};TrustServerCertificate=True;"
               print(f"::add-mask::{username}")
               print(f"::add-mask::{password}")
@@ -233,9 +422,12 @@ jobs:
               webhook_token = os.environ["WEBHOOK_TOKEN"]
 
           values = {
+              **configuracao_fluxo(),
               "aws_region": os.environ["AWS_REGION"],
               "ssm_environment_name": os.environ["SSM_ENVIRONMENT_NAME"],
               "db_connection_string": db_connection_string,
+              "clientes_internos_habilitado": clientes_internos_habilitado,
+              "clientes_internos_token": clientes_internos_token,
               "api_deploy_enabled": True,
               "api_image_uri": os.environ["ECR_IMAGE_URI"],
               "jwt_secret": jwt_secret,
@@ -262,10 +454,20 @@ jobs:
             if (!Array.isArray(resources)) throw new Error(`Resposta inválida: ${label}`);
             if (resources.some(projectResource)) throw new Error(`${label}: há recursos do projeto; bootstrap sem state bloqueado.`);
           }
+          function consultarInventario(args, executar = cp.execFileSync) {
+            const texto = executar('aws', [...args, '--region', process.env.AWS_REGION || 'us-east-1', '--output', 'json'], {encoding:'utf8',stdio:['ignore','pipe','pipe']});
+            const listarFilas = args[0] === 'sqs' && args[1] === 'list-queues';
+            // A CLI pode retornar sucesso com stdout vazio quando não há filas.
+            if (listarFilas && !texto.trim()) return { QueueUrls: [] };
+            const resultado = JSON.parse(texto);
+            if (listarFilas && (!resultado || typeof resultado !== 'object' || Array.isArray(resultado)))
+              throw new Error('Resposta SQS inválida; bootstrap bloqueado.');
+            return resultado;
+          }
           function main() {
             const dir = process.env.TF_WORKING_DIRECTORY;
             const stateFile = path.join(dir, 'terraform.tfstate');
-            const aws = (...args) => JSON.parse(cp.execFileSync('aws', [...args, '--region', process.env.AWS_REGION || 'us-east-1', '--output', 'json'], {encoding:'utf8',stdio:['ignore','pipe','pipe']}));
+            const aws = (...args) => consultarInventario(args);
             const account = aws('sts','get-caller-identity').Account;
             if (fs.existsSync(stateFile)) {
               const state = JSON.parse(fs.readFileSync(stateFile,'utf8'));
@@ -307,7 +509,7 @@ jobs:
             if (!Array.isArray(parameters) || parameters.length) throw new Error('SSM: contratos existentes ou resposta inválida; bootstrap bloqueado.');
             console.log(`Bootstrap autorizado somente para destroy: conta ${account} sem recursos do projeto. Caches históricos de outras contas preservados e fora da restauração.`);
           }
-          module.exports={checkEmpty,projectResource};
+          module.exports={checkEmpty,projectResource,consultarInventario};
           if(require.main===module) {try{main();}catch(error){console.error(error.message);process.exit(1);}}
           VALIDACAO_INLINE_0
           cat > "$RUNNER_TEMP/prepare-destroy.cjs" <<'VALIDACAO_INLINE_1'
@@ -454,6 +656,8 @@ jobs:
             for (const url of [contratos.entrada_queue_url, contratos.dlq_url].filter(Boolean)) confirmar('sqs', 'get-queue-attributes', '--queue-url', url, '--attribute-names', 'QueueArn');
             for (const nome of Object.keys(contratos)) confirmar('ssm', 'get-parameter', '--name', `${prefix}/api/${nome}`);
             confirmar('ssm', 'get-parameter', '--name', `${prefix}/status/api`);
+            confirmar('ssm', 'get-parameter', '--name', `${prefix}/status/api-aplicacao`);
+            confirmar('ssm', 'get-parameter', '--name', `${prefix}/api/fluxo_distribuido_habilitado`);
           }
 
           function consultarAws(...args) {
@@ -511,14 +715,21 @@ jobs:
       - name: "🔍 09 · Validar configuração do Terraform"
         run: terraform -chdir="$TF_WORKING_DIRECTORY" validate
 
+      - name: "🔐 Cifrar state inclusive após falha parcial"
+        id: cifrar_state_0
+        if: always() && steps.restaurar_state_protegido.outcome == 'success'
+        env:
+          AWS_ACCOUNT_ID: ${{ steps.aws_credentials.outputs.aws-account-id }}
+        run: node "$RUNNER_TEMP/proteger-estados.cjs" state-seal
+
       - name: "💾 12 · Salvar cache intermediário do state do Terraform"
-        if: always()
+        if: always() && steps.cifrar_state_0.outcome == 'success'
         uses: actions/cache/save@v6
         with:
           path: |
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}-prepared
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.enc
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup.enc
+          key: tfstate-enc-v1-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}-prepared
 
       - name: "📐 13 · Gerar plano do Terraform (apply)"
         if: env.TERRAFORM_ACTION == 'apply'
@@ -545,14 +756,16 @@ jobs:
         if: always()
         run: rm -f "$TF_WORKING_DIRECTORY/zz_ci.auto.tfvars.json"
 
+      - name: "🔐 Cifrar plano vinculado à tentativa"
+        env:
+          AWS_ACCOUNT_ID: ${{ steps.aws_credentials.outputs.aws-account-id }}
+        run: node "$RUNNER_TEMP/proteger-estados.cjs" plan-seal
+
       - name: "⬆️ 16 · Publicar plano do Terraform como artefato"
         uses: actions/upload-artifact@v7
         with:
           name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.TF_WORKING_DIRECTORY }}/tfplan
-            ${{ env.TF_WORKING_DIRECTORY }}/partial_destroy_override.tf
-            ${{ env.TF_WORKING_DIRECTORY }}/os-mensageria-destroy-context.json
+          path: ${{ env.TF_WORKING_DIRECTORY }}/tfplan.bundle.enc
           retention-days: 1
           if-no-files-found: error
 
@@ -634,6 +847,7 @@ jobs:
     outputs:
       eks_cluster_name: ${{ steps.read_outputs.outputs.eks_cluster_name }}
     env:
+      TERRAFORM_STATE_KEY: ${{ secrets.TERRAFORM_STATE_KEY }}
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       TERRAFORM_ACTION: ${{ needs.resolve_action.outputs.terraform_action }}
 
@@ -656,15 +870,23 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
+      - *protecao_artefatos
+
       - name: "📦 05 · Restaurar cache do state do Terraform"
         uses: actions/cache/restore@v6
         with:
           path: |
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}-prepared
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.enc
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup.enc
+          key: tfstate-enc-v1-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}-prepared
           restore-keys: |
-            tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-
+            tfstate-enc-v1-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-
+
+      - name: "🔓 Restaurar state autenticado"
+        id: restaurar_state_protegido
+        env:
+          AWS_ACCOUNT_ID: ${{ steps.aws_credentials.outputs.aws-account-id }}
+        run: node "$RUNNER_TEMP/proteger-estados.cjs" state-open
 
       - *validacoes_inline
 
@@ -684,6 +906,11 @@ jobs:
           name: tfplan-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.TF_WORKING_DIRECTORY }}
 
+      - name: "🔓 Validar e abrir plano desta tentativa"
+        env:
+          AWS_ACCOUNT_ID: ${{ steps.aws_credentials.outputs.aws-account-id }}
+        run: node "$RUNNER_TEMP/proteger-estados.cjs" plan-open
+
       - name: "🛡️ Validar plano exclusivo de destroy"
         if: env.TERRAFORM_ACTION == 'destroy'
         run: node "$RUNNER_TEMP/prepare-destroy.cjs" verify-plan
@@ -691,6 +918,33 @@ jobs:
       - name: "🛡️ Revalidar pendências antes do destroy"
         if: env.TERRAFORM_ACTION == 'destroy'
         run: node "$RUNNER_TEMP/verificar-mensageria-os.cjs" before-destroy
+
+      - name: "🚦 Invalidar disponibilidade anterior da API"
+        if: env.TERRAFORM_ACTION == 'apply'
+        run: |
+          python - <<'INVALIDAR_API'
+          import json, os, subprocess
+          from pathlib import Path
+          arquivo = Path(os.environ["TF_WORKING_DIRECTORY"]) / "terraform.tfstate"
+          state = json.loads(arquivo.read_text()) if arquivo.exists() else {"resources": []}
+          nome = "/oficina-mecanica/" + os.environ["SSM_ENVIRONMENT_NAME"] + "/status/api-aplicacao"
+          registros = [i["attributes"] for r in state.get("resources", [])
+                       if r.get("mode") == "managed" and r.get("type") == "aws_ssm_parameter"
+                       and r.get("name") == "api_aplicacao_status" and not r.get("module")
+                       for i in r.get("instances", [])]
+          if registros:
+              if len(registros) != 1 or registros[0].get("name") != nome:
+                  raise ValueError("Status do state não pertence à API neste ambiente.")
+              resposta = subprocess.run(["aws", "ssm", "get-parameter", "--name", nome, "--output", "json"], capture_output=True, text=True)
+              if resposta.returncode:
+                  if "(ParameterNotFound)" not in resposta.stderr:
+                      raise RuntimeError("Consulta do status falhou; disponibilidade não invalidada.")
+              else:
+                  parametro = json.loads(resposta.stdout)["Parameter"]
+                  if parametro.get("ARN") != registros[0].get("arn") or parametro.get("Type") != "String":
+                      raise ValueError("Status real diverge do ownership registrado no state.")
+                  subprocess.run(["aws", "ssm", "put-parameter", "--name", nome, "--type", "String", "--value", "implantacao-pendente", "--overwrite"], check=True, capture_output=True)
+          INVALIDAR_API
 
       - name: "✅ 07 · Aplicar plano do Terraform (apply ou destroy)"
         run: terraform -chdir="$TF_WORKING_DIRECTORY" apply -input=false -auto-approve tfplan
@@ -707,14 +961,21 @@ jobs:
         if: env.TERRAFORM_ACTION == 'destroy'
         run: node "$RUNNER_TEMP/verificar-mensageria-os.cjs" after-destroy
 
+      - name: "🔐 Cifrar state inclusive após falha parcial"
+        id: cifrar_state_1
+        if: always() && steps.restaurar_state_protegido.outcome == 'success'
+        env:
+          AWS_ACCOUNT_ID: ${{ steps.aws_credentials.outputs.aws-account-id }}
+        run: node "$RUNNER_TEMP/proteger-estados.cjs" state-seal
+
       - name: "💾 08 · Salvar cache final do state do Terraform"
-        if: always()
+        if: always() && steps.cifrar_state_1.outcome == 'success'
         uses: actions/cache/save@v6
         with:
           path: |
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate
-            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup
-          key: tfstate-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.enc
+            ${{ env.TF_WORKING_DIRECTORY }}/terraform.tfstate.backup.enc
+          key: tfstate-enc-v1-${{ steps.aws_credentials.outputs.aws-account-id }}-${{ inputs.environment_name }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: "📖 09 · Ler nome do cluster EKS"
         id: read_outputs
@@ -728,6 +989,7 @@ jobs:
     needs:
       - resolve_action
       - apply_or_destroy
+      - prepare_and_plan
     if: needs.resolve_action.outputs.terraform_action == 'apply' && needs.apply_or_destroy.result == 'success'
     runs-on: ubuntu-latest
     environment:
@@ -735,6 +997,7 @@ jobs:
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       EKS_CLUSTER_NAME: ${{ needs.apply_or_destroy.outputs.eks_cluster_name }}
+      EXPECTED_IMAGE: ${{ needs.prepare_and_plan.outputs.ecr_image_uri }}
 
     steps:
       - name: "🔑 01 · Configurar credenciais AWS"
@@ -798,3 +1061,25 @@ jobs:
           fi
 
           echo "Service $service_name validado como NodePort na porta $node_port."
+
+      - name: "❤️ 06 · Conferir imagem, modo e health antes de publicar ready"
+        run: |
+          set -euo pipefail
+          test "$(kubectl get deployment oficina-mecanica-api -n oficina-mecanica -o jsonpath='{.spec.template.spec.containers[?(@.name=="oficina-mecanica-api")].image}')" = "$EXPECTED_IMAGE"
+          modo="$(kubectl get configmap oficina-mecanica-api-config -n oficina-mecanica -o jsonpath='{.data.Integracoes__FluxoDistribuido__Habilitado}')"
+          case "$modo" in true|false) ;; *) exit 1 ;; esac
+          prefix="/oficina-mecanica/$SSM_ENVIRONMENT_NAME"
+          test "$(aws ssm get-parameter --name "$prefix/api/fluxo_distribuido_habilitado" --query Parameter.Value --output text)" = "$modo"
+          test "$(aws ssm get-parameter --name "$prefix/status/api-aplicacao" --query Parameter.Value --output text)" = implantacao-pendente
+          kubectl port-forward -n oficina-mecanica service/oficina-mecanica-api 18080:80 > "$RUNNER_TEMP/api-health-port-forward.log" 2>&1 &
+          encaminhamento=$!
+          trap 'kill "$encaminhamento" 2>/dev/null || true' EXIT
+          for tentativa in $(seq 1 30); do
+            if curl --fail --silent --max-time 3 http://127.0.0.1:18080/api/health > "$RUNNER_TEMP/api-health.txt"; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(cat "$RUNNER_TEMP/api-health.txt")" = Healthy
+          aws ssm put-parameter --name "$prefix/status/api-aplicacao" --type String --value ready --overwrite >/dev/null
+          test "$(aws ssm get-parameter --name "$prefix/status/api-aplicacao" --query Parameter.Value --output text)" = ready

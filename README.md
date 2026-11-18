@@ -1,8 +1,8 @@
 # 🔧 Oficina Mecânica API
 
-API REST para atendimento, execução e acompanhamento de ordens de serviço em uma oficina mecânica.
+Serviço de ordens de serviço e porta de entrada da documentação da solução Oficina Mecânica.
 
-Projeto desenvolvido para o **Tech Challenge — Fase 3 da Pós Tech FIAP em Arquitetura de Software**, com foco em Clean Architecture, modelagem de domínio, autenticação serverless, execução em Kubernetes, AWS, observabilidade e rastreabilidade de qualidade via CI/CD.
+Projeto desenvolvido para o **Tech Challenge da Pós Tech FIAP em Arquitetura de Software**. A evolução da Fase 4 distribui o negócio entre OS, Execução e Orçamento/Pagamento, preservando Clean Architecture, DDD, autenticação, Kubernetes, observabilidade e CI/CD das fases anteriores.
 
 ---
 
@@ -51,12 +51,14 @@ Este README é a porta de entrada da solução. Cada infraestrutura possui repos
 
 | Repositório | Responsabilidade |
 | --- | --- |
-| [`oficina-mecanica-api`](https://github.com/geoscabio/oficina-mecanica-api) | API .NET, regras de negócio, testes e workload Kubernetes. |
-| [`oficina-mecanica-infra-vpc`](https://github.com/geoscabio/oficina-mecanica-infra-vpc) | Rede base, subnets, NAT e contratos de VPC no SSM. |
-| [`oficina-mecanica-infra-kubernetes`](https://github.com/geoscabio/oficina-mecanica-infra-kubernetes) | EKS, ECR, NLB interno e Datadog no cluster. |
-| [`oficina-mecanica-infra-rds`](https://github.com/geoscabio/oficina-mecanica-infra-rds) | SQL Server privado, credenciais gerenciadas e contratos de banco no SSM. |
-| [`oficina-mecanica-auth-lambda`](https://github.com/geoscabio/oficina-mecanica-auth-lambda) | Autenticação por documento e emissão do JWT de Cliente. |
-| [`oficina-mecanica-infra-api-gateway`](https://github.com/geoscabio/oficina-mecanica-infra-api-gateway) | HTTP API pública, VPC Link, integrações e access logs. |
+| [`oficina-mecanica-api`](https://github.com/oficina-mecanica-soat/oficina-mecanica-api) | Cadastros, ordens de serviço, Saga orquestrada e workload de OS. |
+| [`oficina-mecanica-execucao`](https://github.com/oficina-mecanica-soat/oficina-mecanica-execucao) | Preparação, estoque, ações do mecânico, DynamoDB e mensageria próprios. |
+| [`oficina-mecanica-orcamento-pagamento`](https://github.com/oficina-mecanica-soat/oficina-mecanica-orcamento-pagamento) | Orçamento, decisão, cobrança, integração Mercado Pago e banco SQL próprio. |
+| [`oficina-mecanica-infra-vpc`](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-vpc) | Rede base, subnets, NAT e contratos de VPC no SSM. |
+| [`oficina-mecanica-infra-kubernetes`](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-kubernetes) | EKS, ECR, NLB interno e Datadog no cluster. |
+| [`oficina-mecanica-infra-rds`](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-rds) | SQL Server privado, credenciais gerenciadas e contratos de banco no SSM. |
+| [`oficina-mecanica-auth-lambda`](https://github.com/oficina-mecanica-soat/oficina-mecanica-auth-lambda) | Autenticação por documento e emissão do JWT de Cliente. |
+| [`oficina-mecanica-infra-api-gateway`](https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-api-gateway) | HTTP API pública, VPC Link, integrações e access logs. |
 
 ---
 
@@ -79,14 +81,13 @@ Este README é a porta de entrada da solução. Cada infraestrutura possui repos
 1. Cliente solicita atendimento.
 2. Atendente identifica ou cadastra cliente e veículo.
 3. Atendente abre a ordem de serviço.
-4. Mecânico inicia diagnóstico.
-5. Mecânico define serviços e reserva peças/insumos.
-6. Sistema calcula orçamento.
-7. Atendente envia orçamento por canal externo.
-8. Cliente aprova ou recusa.
-9. Mecânico executa e finaliza serviços.
-10. Sistema baixa estoque reservado.
-11. Atendente entrega o veículo.
+4. OS inicia a Saga e solicita preparação ao serviço de Execução, que reserva as peças.
+5. Orçamento/Pagamento gera o orçamento a partir do snapshot recebido.
+6. Cliente aprova ou recusa a versão vigente do orçamento.
+7. Após aprovação, o mecânico inicia e finaliza manualmente o trabalho em Execução.
+8. Execução confirma a finalização física e a baixa do estoque reservado.
+9. Orçamento/Pagamento cria o checkout; a confirmação exige notificação verificada e consulta ao Mercado Pago.
+10. OS permite a entrega somente após finalização física e pagamento confirmado.
 
 Fluxos alternativos como estoque insuficiente, reprovação de orçamento, cancelamento com estorno e conflito de atualização também foram tratados.
 
@@ -96,16 +97,20 @@ Fluxos alternativos como estoque insuficiente, reprovação de orçamento, cance
 
 ## 🏗️ Arquitetura
 
-O projeto adota **Clean Architecture** em um **monólito modular**, preservando o domínio de detalhes externos como HTTP, Swagger, banco de dados e infraestrutura.
+Cada um dos três microsserviços adota **Clean Architecture**, preservando o domínio de HTTP, banco de dados, mensageria e provedores externos. A distribuição dos serviços segue as [ADRs 0024–0026](docs/architecture/adrs/README.md) e a [RFC-0007](docs/architecture/rfcs/rfc-0007-evolucao-para-microsservicos.md). O monólito modular é a arquitetura histórica de origem.
 
-A arquitetura final da Fase 3 mantém o API Gateway como entrada pública única:
+A entrada pública continua única; o Gateway encaminha cada operação ao responsável:
 
 ```text
 Internet
   -> API Gateway HTTP API
-      -> POST /auth/documento -> Auth Lambda -> RDS
-      -> ANY /api/{proxy+} -> VPC Link -> NLB interno
-         -> EKS NodePort -> API Pods -> RDS
+      -> POST /auth/documento -> Auth Lambda -> consulta privada de clientes na API
+      -> rotas de OS e cadastros -> VPC Link -> NLB interno -> API/OS -> SQL próprio
+      -> rotas de execução -> VPC Link -> NLB interno -> Execução -> DynamoDB
+      -> rotas de orçamento/pagamento -> VPC Link -> NLB interno -> Orçamento/Pagamento -> SQL próprio
+
+OS <-> SQS FIFO + Inbox/Outbox <-> Execução e Orçamento/Pagamento
+Orçamento/Pagamento -> Mercado Pago; Webhook -> Gateway -> Orçamento/Pagamento
 ```
 
 O NLB é interno e encaminha tráfego ao Service `NodePort`; não há acesso público direto à API no EKS.
@@ -121,7 +126,8 @@ O NLB é interno e encaminha tráfego ao Service `NodePort`; não há acesso pú
 
 | Decisão | Aplicação prática |
 | --- | --- |
-| **Monólito modular** | Deploy único com organização por contextos: Administrativo, Atendimento, Estoque e Ordem de Serviço. |
+| **Três microsserviços** | OS orquestra a Saga; Execução e Orçamento/Pagamento possuem código, workloads e dados próprios. Cadastros permanecem na API. |
+| **Saga e mensageria** | SQS FIFO, Inbox/Outbox persistidas, idempotência e compensação conforme os limites do trabalho físico. |
 | **Clean Architecture** | Dependências apontam para dentro; domínio não depende de API ou Infrastructure. |
 | **DDD tático** | Uso de agregados, entidades, value objects, enums e regras no domínio. |
 | **Use Cases** | Regras de aplicação centralizadas na camada Application. |
@@ -138,7 +144,8 @@ O NLB é interno e encaminha tráfego ao Service `NodePort`; não há acesso pú
 | Item | Caminho |
 | --- | --- |
 | 🧭 Índice mestre de documentação | [`docs/README.md`](docs/README.md) |
-| 🧩 C4 Model oficial validado | [`docs/architecture/diagrams/c4-model`](docs/architecture/diagrams/c4-model) |
+| 🧩 Arquitetura distribuída | [`diagrama geral`](docs/architecture/diagrams/distributed-architecture.svg) · [`fonte draw.io`](docs/architecture/diagrams/distributed-architecture.drawio) |
+| 🧩 C4 histórico | [`docs/architecture/diagrams/c4-model`](docs/architecture/diagrams/c4-model) |
 | ☁️ Diagrama de infraestrutura AWS (inclui Kubernetes/Docker) | [`docs/architecture/diagrams/aws`](docs/architecture/diagrams/aws) |
 | 🔁 Diagrama de fluxo CI/CD | [`docs/architecture/diagrams/ci-cd`](docs/architecture/diagrams/ci-cd) |
 | 🐳 Docker Compose local | [`docker-compose.yml`](docker-compose.yml) |
@@ -147,7 +154,7 @@ O NLB é interno e encaminha tráfego ao Service `NodePort`; não há acesso pú
 | 🚀 Guias de deploy | [`docs/deploy`](docs/deploy) |
 | 📌 Gestão do projeto | [`docs/projeto`](docs/projeto) |
 
-> Os diagramas C4 já estão finalizados e validados. Os diretórios AWS, Kubernetes, Docker e CI/CD foram reservados para receber os arquivos finais da entrega.
+O diagrama geral representa a divisão atual. Modelos detalhados das fases anteriores devem ser lidos como históricos quando divergirem das ADRs/RFCs vigentes. O [guia de operação](docs/deploy/deploy-aws.md) descreve configuração e recuperação do ambiente.
 
 ---
 
@@ -158,7 +165,8 @@ O NLB é interno e encaminha tráfego ao Service `NodePort`; não há acesso pú
 | Categoria | Tecnologias |
 | --- | --- |
 | Linguagem e plataforma | C#, .NET 10, ASP.NET Core Web API |
-| Banco de dados | SQL Server 2022 |
+| Banco de dados | SQL Server para OS e Orçamento/Pagamento; DynamoDB para Execução |
+| Integração assíncrona e pagamento | SQS FIFO/DLQ, Saga orquestrada, Inbox/Outbox e Mercado Pago Checkout Pro |
 | ORM | Entity Framework Core |
 | API docs | Swagger/OpenAPI com Swashbuckle |
 | Segurança | JWT Bearer, autorização por perfis e headers HTTP de segurança |
@@ -180,7 +188,7 @@ O NLB é interno e encaminha tráfego ao Service `NodePort`; não há acesso pú
 ├── docs/                           # Índice, guias, evidências e diagramas
 ├── infra/terraform/                # Infraestrutura AWS real
 │   ├── environments/dev/           # Ambiente development
-│   └── modules/                    # Módulos AWS: VPC, ECR, RDS e EKS
+│   └── modules/                    # Módulos específicos do workload e da mensageria OS
 ├── k8s/                            # Manifests Kubernetes
 ├── src/                            # Código de produção
 ├── tests/                          # Testes unitários e integração
@@ -297,14 +305,22 @@ A infraestrutura AWS real é provisionada por Terraform para o ambiente `develop
 
 ### Fluxo operacional
 
-1. Provisionar a VPC pelo repositório `oficina-mecanica-infra-vpc`.
-2. Provisionar Kubernetes/ECR e RDS por seus repositórios; essas duas esteiras podem evoluir em paralelo após a VPC.
-3. Publicar a imagem e o workload da API por este repositório.
-4. Provisionar a Auth Lambda.
-5. Provisionar o API Gateway por último, quando NLB e Lambda estiverem disponíveis.
-6. Instalar/validar o Datadog no EKS pelo workflow do repositório Kubernetes e validar a instrumentação da API.
-7. Em cada repositório, integrar a branch de trabalho em `develop`; mudanças deployáveis executam o pipeline próprio e alterações exclusivamente documentais pulam a AWS.
-8. Promover por PR para `release` e `main` somente após o estágio anterior concluir com sucesso.
+| Ordem | Esteira de apply | Dependência e configuração |
+| --- | --- | --- |
+| 1 | `oficina-mecanica-infra-vpc` | Rede e contratos SSM. |
+| 2 | `oficina-mecanica-infra-kubernetes` | Consome VPC; publica EKS, três registries, ingresso privado e plataforma Datadog. |
+| 3 | `oficina-mecanica-infra-rds` | Consome VPC e Kubernetes; cria RDS e prepara o banco/login próprios de Orçamento/Pagamento. |
+| 4 | `oficina-mecanica-api` | Publica fila OS e workload; clientes privados ligados, worker e fluxo distribuído ainda desligados. |
+| 5 | `oficina-mecanica-auth-lambda` | Usa a consulta privada da API, com JWT compartilhado e sem conexão SQL nesse modo. |
+| 6 | `oficina-mecanica-execucao` | Publica sua entrada/DLQ e DynamoDB; worker usa a fila OS. |
+| 7 | `oficina-mecanica-orcamento-pagamento` | Banco próprio, fila OS e worker; fluxo distribuído ligado e Mercado Pago ainda desligado. |
+| 8 | `oficina-mecanica-api` | Atualiza o mesmo workload com as filas dos participantes, worker e fluxo distribuído ligados. |
+| 9 | `oficina-mecanica-infra-api-gateway` | Sobe uma vez com todas as rotas, após os três serviços e a Auth estarem prontos. |
+| 10 | `oficina-mecanica-orcamento-pagamento` | Após configurar Webhook e assinatura com a URL real do Gateway, atualiza o mesmo workload com Mercado Pago ligado. |
+
+As duas passagens da API resolvem a dependência circular entre filas de owners diferentes. A atualização final de Orçamento/Pagamento depende da URL pública criada pelo Gateway. São atualizações idempotentes pela mesma esteira; não exigem destroy nem criam serviços adicionais. Não iniciar a jornada de negócio antes da configuração final. O [procedimento detalhado](docs/deploy/deploy-aws.md#configuração-dos-serviços) contém os nomes exatos das flags e as provas exigidas em cada etapa.
+
+Todo provisionamento, atualização e destruição na AWS ocorre exclusivamente pelas esteiras. Em cada repositório, usar PR para `develop`, checks aprovados, controle versionado `apply/destroy` e janela AWS autorizada. Durante o aceite, manter promoções retidas; `release/main` não são atalhos para implantar. O Compose local legado não inicia sozinho os três serviços.
 
 Os comandos de execução, dependências, outputs SSM, secrets e procedimento de `destroy` estão documentados no README de cada repositório. A ordem de destruição é a inversa, mantendo a VPC por último.
 
@@ -334,7 +350,7 @@ Como usar:
 2. Alterar somente `infra/terraform/environments/dev/terraform-action.env`.
 3. Abrir PR para `develop`.
 4. Após o merge, o workflow `🚀 CD Development` roda automaticamente.
-5. Ao finalizar o destroy, abrir outro PR voltando para `TERRAFORM_ACTION=apply`.
+5. Após destroy, preservar o controle até existir uma nova janela autorizada; retornar para `apply` por PR aciona provisionamento real quando o bloqueio AWS estiver habilitado.
 
 > Segurança: `TERRAFORM_ACTION=destroy` só é aceito quando o arquivo `terraform-action.env` foi alterado no próprio merge. Isso evita destruir recursos por acidente em pushes futuros.
 
@@ -349,17 +365,21 @@ Environment secrets:
 | `AWS_ACCESS_KEY_ID` | Copiar de `AWS Details` / credenciais CLI do AWS Academy. |
 | `AWS_SECRET_ACCESS_KEY` | Copiar de `AWS Details` / credenciais CLI do AWS Academy. |
 | `AWS_SESSION_TOKEN` | Copiar de `AWS Details` / credenciais CLI do AWS Academy. Expira a cada sessão. |
-| `DB_PASSWORD` | Criar uma senha forte para o RDS SQL Server. |
-| `JWT_SECRET` | Criar uma string aleatória com pelo menos 32 caracteres. |
-| `WEBHOOK_TOKEN` | Criar uma string aleatória com pelo menos 32 caracteres. |
+| `TERRAFORM_STATE_KEY` | Chave de proteção dos planos/states, com 64 caracteres hexadecimais; preservar cópia segura de recuperação. |
+| `JWT_SECRET` | Mesma chave compartilhada por API, Auth Lambda, Execução e Orçamento/Pagamento no ambiente; não gerar uma chave diferente para cada serviço. |
+| `WEBHOOK_TOKEN` | Token do contrato legado de decisão de orçamento; não é a assinatura do Webhook Mercado Pago. |
+| `CLIENTES_INTERNOS_TOKEN` | Token compartilhado com Auth Lambda para consulta privada de clientes; distinto de JWT_SECRET e WEBHOOK_TOKEN. |
 
 Environment variables:
 
 | Nome | Valor esperado |
 | --- | --- |
 | `AWS_REGION` | `us-east-1` |
-| `EKS_CLUSTER_ROLE_NAME` | `LabRole`, salvo se o AWS Academy informar outro nome. |
-| `EKS_NODE_ROLE_NAME` | `LabRole`, salvo se o AWS Academy informar outro nome. |
+| `CLIENTES_API_ENABLED` | Habilita a consulta privada usada pela Auth Lambda; requer CLIENTES_INTERNOS_TOKEN. |
+| `PROCESSAMENTO_REMOTO_ENABLED` | Habilita consumidor/publicador SQS após os contratos dos participantes estarem disponíveis. |
+| `FLUXO_DISTRIBUIDO_ENABLED` | Ativa o corte distribuído; seguir a ordem de apply acima e os guardrails da esteira. |
+
+O CD obtém a conexão SQL do Secret exclusivo da OS publicado pela esteira RDS; não recebe `DB_PASSWORD` no Environment da API nem utiliza a credencial administrativa do banco. Configuração das roles do cluster e dos nós pertence ao repositório Kubernetes. `AWS_DEPLOY_ENABLED` controla a janela real; `AUTO_PR_ENABLED` controla a criação dos PRs de promoção, sem autorizar seus merges. Nenhuma flag substitui a autorização operacional da janela.
 
 > Nunca versionar esses valores em `.env`, YAML, Terraform ou README. O repositório documenta os nomes, mas os valores ficam somente no GitHub Environment.
 
@@ -448,14 +468,9 @@ dotnet test OficinaMecanica.sln `
   --logger "trx"
 ```
 
-Evidência atual:
+Na [CI de referência do código entregue](https://github.com/oficina-mecanica-soat/oficina-mecanica-api/actions/runs/43998606352), foram aprovados **669 testes**, sem ignorados, com **93,07% de cobertura global de linhas** (5.253 de 5.644 linhas). O artefato `test-and-coverage-results` reúne relatórios de testes e cobertura. O gate bloqueia testes ignorados e cobertura abaixo de **90%**; uma CI somente documental não gera uma nova medição.
 
-- **424 testes aprovados**
-- **0 testes ignorados**
-- **91.2% de cobertura global de linhas**
-- CI configurado para bloquear cobertura abaixo de **90%**
-
-Arquivos de evidência:
+Os arquivos abaixo preservam evidências das fases anteriores e procedimentos complementares; não representam reexecução de SonarQube/ZAP na janela atual:
 
 | Evidência | Caminho |
 | --- | --- |
@@ -521,6 +536,8 @@ A observabilidade da aplicação e do cluster usa Datadog:
 - latência P95, error rate e healthcheck;
 - logs ao vivo e dashboard da entrega.
 
+Os painéis são separados por assunto e agrupados por serviço: [Aplicações](https://app.datadoghq.com/dashboard/2g5-62n-jci) reúne HTTP, logs próprios, diagnóstico de bibliotecas e correlação da Saga; [Infraestrutura](https://app.datadoghq.com/dashboard/axy-gix-3kr) reúne réplicas, CPU, memória e reinícios Kubernetes. Mensagens das bibliotecas são preservadas com sua origem; SQL rotineiro e healthcheck saudável não ocupam o nível normal. A [RFC-0006](docs/architecture/rfcs/rfc-0006-observabilidade-centralizada-com-datadog.md) define a convenção. Métrica ausente não significa zero nem disponibilidade comprovada.
+
 A Auth Lambda possui layers e variáveis de instrumentação Datadog e armazena a API key no AWS Secrets Manager. Entretanto, a ingestão de logs e traces da Lambda não foi evidenciada de ponta a ponta no ambiente acadêmico; essa lacuna permanece registrada como evolução pós-entrega. O API Gateway publica access logs no CloudWatch, sem afirmar a existência de um Datadog Forwarder que não foi validado.
 
 ---
@@ -533,11 +550,13 @@ A Auth Lambda possui layers e variáveis de instrumentação Datadog e armazena 
 | --- | --- |
 | Swagger local | `http://localhost:5093/swagger` |
 | OpenAPI local | `http://localhost:5093/swagger/v1/swagger.json` |
-| OpenAPI versionado (referência da Fase 2) | [`docs/openapi/oficina-mecanica-openapi.json`](docs/openapi/oficina-mecanica-openapi.json) |
+| OpenAPI versionado da API | [`docs/openapi/oficina-mecanica-openapi.json`](docs/openapi/oficina-mecanica-openapi.json) |
+| Collection final da solução | [`docs/postman/oficina-mecanica-completa.postman_collection.json`](docs/postman/oficina-mecanica-completa.postman_collection.json) — OS, Execução, Orçamento/Pagamento, Auth e demonstração |
+| Collection do fluxo distribuído | [`docs/postman/oficina-mecanica-distribuida.postman_collection.json`](docs/postman/oficina-mecanica-distribuida.postman_collection.json) |
 | Collection Postman (referência da Fase 2) | [`docs/postman/oficina-mecanica-api.postman_collection.json`](docs/postman/oficina-mecanica-api.postman_collection.json) |
 | Environments Postman | [`local`](docs/postman/oficina-mecanica-local.postman_environment.json) · [`AWS dev`](docs/postman/oficina-mecanica-aws-dev.postman_environment.json) |
 
-O Swagger runtime é gerado pela aplicação atual e permanece a fonte mais fiel para explorar os endpoints executados. O OpenAPI e a collection Postman versionados ainda refletem a Fase 2 e não incluem integralmente o fluxo da Fase 3; sua atualização final está registrada como evolução pós-entrega. Não os use como evidência de cobertura do endpoint `POST /auth/documento`.
+O Swagger runtime é gerado pela aplicação. A collection final consolida os contratos por aplicação e mantém um roteiro guiado separado do catálogo completo; os ambientes **Local** e **Development** usam as mesmas requisições. O [guia do Postman](docs/evidencias/postman.md) explica URLs, perfis, parâmetros, captura de IDs e demonstração. As collections anteriores continuam como referência histórica. Execução e Orçamento/Pagamento também publicam seus contratos nos próprios repositórios. Não exportar tokens e senhas junto dos environments; preencher a URL real do Gateway após o deploy.
 
 ---
 
@@ -570,23 +589,19 @@ Credenciais locais ficam no arquivo `.env`, criado a partir de `.env.example`.
 
 Este repositório mantém a aplicação principal .NET, Dockerfile, CI, build e publicação da imagem Docker, deploy no Kubernetes e os recursos Kubernetes específicos da aplicação enquanto a estratégia atual usa Terraform neste repositório.
 
+| Provisionado por esta esteira | Finalidade |
+| --- | --- |
+| Namespace, Deployment, ConfigMap, Secret, Service NodePort 30080 e HPA | Executar e configurar exclusivamente o workload de OS no EKS compartilhado |
+| Entrada SQS FIFO, DLQ e política de redrive da OS | Receber resultados de Execução e Orçamento/Pagamento; confirmar mensagens após a transação local |
+| Contratos SSM de mensageria, modo distribuído e prontidão da aplicação | Publicar fila de resultados para os participantes e estado validado para o Gateway |
+| Imagem da API no ECR já criado pela plataforma | Publicar o artefato validado pela CI e conferir a imagem no rollout |
+
+Migrations e seed de OS são executados pelo host conforme configuração; banco lógico, login e secret de conexão são preparados pela esteira RDS. A API não cria os workloads, tabelas ou filas dos outros microsserviços. O inventário está em [`infra/terraform/environments/dev`](infra/terraform/environments/dev).
+
 VPC, subnets, NAT/Internet Gateway, rotas, EKS, RDS e o ECR compartilhado não são criados aqui. A API depende de `oficina-mecanica-infra-vpc`, `oficina-mecanica-infra-kubernetes` (EKS/ECR via SSM) e `oficina-mecanica-infra-rds` (endpoint e ARN do segredo via SSM). Auth Lambda e API Gateway são componentes separados.
 
-As seis esteiras são: API, Auth Lambda, infra-vpc, infra-kubernetes, infra-rds e infra-api-gateway. Os quatro repositórios obrigatórios da Fase 3 são o mínimo; a separação adicional por responsabilidade é aceita quando ownership e dependências estão documentados.
+As oito esteiras são: API/OS, Execução, Orçamento/Pagamento, Auth Lambda, infra-vpc, infra-kubernetes, infra-rds e infra-api-gateway. Os registries pertencem à plataforma Kubernetes; cada aplicação mantém seu workload, filas, contratos e dados próprios conforme o ownership aprovado.
 
-Oficina Mecânica — API: https://github.com/geoscabio/oficina-mecanica-api 
-
-Oficina Mecânica — Auth Lambda: https://github.com/geoscabio/oficina-mecanica-auth-lambda 
-
-Oficina Mecânica — Infra Kubernetes: https://github.com/geoscabio/oficina-mecanica-infra-kubernetes 
-
-Oficina Mecânica — Infra RDS: https://github.com/geoscabio/oficina-mecanica-infra-rds 
-
-Oficina Mecânica — Infra VPC: https://github.com/geoscabio/oficina-mecanica-infra-vpc 
-
-Oficina Mecânica — Infra API Gateway: https://github.com/geoscabio/oficina-mecanica-infra-api-gateway 
-
-Helm não foi introduzido nesta mudança para reduzir risco. A evolução para Helm/manifests centralizados e a possível migração futura do ECR para a API estão registradas no backlog técnico.
 
 Os módulos legados de VPC, EKS, RDS e ECR, o workflow de import e o arquivo transicional de state foram removidos após o primeiro apply seguro. Dockerfile e Docker Compose local permanecem independentes da infraestrutura AWS compartilhada.
 
@@ -595,48 +610,18 @@ Os módulos legados de VPC, EKS, RDS e ECR, o workflow de import e o arquivo tra
 - O deploy para `main` deve usar branch protection e aprovação obrigatória de PR.
 - O projeto prioriza rastreabilidade e simplicidade operacional, sem depender de contexto externo para ser compreendido.
 
-### Reconciliação de destroy após reset do laboratório
+### Recuperação após Reset da AWS Academy
 
-O destroy restaura o cache Terraform existente e usa uma configuração temporária sem data sources de contratos SSM. O state original não é editado nem descartado: o provider confirma os recursos ausentes durante o plano de destruição. Somente o plano salvo, sem criação ou atualização, pode ser aplicado. Ao terminar, a esteira verifica que o state não contém recursos gerenciados antes de persistir o cache final. Falhas de autenticação, permissão ou rede bloqueiam a operação.
+Um ambiente existente não precisa ser destruído para avaliação. Sessão expirada exige credenciais válidas; Reset pode remover recursos sem remover o state. Sem cache compatível, API, Execução, Auth e Orçamento/Pagamento exigem recuperação por destroy dedicado e inventário vazio comprovado antes do primeiro apply. Recursos existentes exigem recuperar o state correto. Consulte o [procedimento operacional](docs/deploy/deploy-aws.md#states-e-planos).
 
-Na API, vínculos Kubernetes só podem ser retirados por blocos declarativos removed com destroy=false após ResourceNotFoundException confirmar que o EKS registrado no state não existe. Com EKS existente, permanece a configuração normal de destroy. Não há uso de state rm, import ou mv.
+<a id="mensageria-e-implantação-da-os"></a>
 
-O retorno isolado de terraform-action.env para apply ainda é reconhecido como mudança de infraestrutura pelo detector de CD; não faça esse retorno enquanto não existir separação segura entre rearmar e provisionar. Preserve destroy após a reconciliação e só autorize nova subida em tarefa própria.
+## 📨 Mensageria e implantação da OS
 
-#### State isolado por conta AWS
+A API é responsável pela entrada FIFO de resultados da OS e por sua DLQ, conforme ADR-0025/RFC-0007. Os contratos SSM, parâmetros operacionais e ownership estão em [Mensageria de OS](docs/deploy/mensageria-os.md). Execução e Orçamento/Pagamento publicam resultados nessa entrada; cada participante mantém sua própria fila de comandos.
 
-As chaves de cache incluem o ID da conta retornado pela autenticação AWS, antes do ambiente e da execução. A restauração só pesquisa esse escopo, sem fallback para chaves históricas sem conta. Os caches anteriores permanecem preservados como histórico do laboratório encerrado 058264466885, inclusive quando contêm referências que a conta atual não consegue consultar. AccessDenied não é convertido em ausência.
+A Saga, a outbox SQL, o consumidor SQS e o publicador estão implementados. O worker é registrado quando `PROCESSAMENTO_REMOTO_ENABLED=true`; o corte das mutações legadas é controlado por `FLUXO_DISTRIBUIDO_ENABLED`. A sequência de implantação acima distingue a implantação inicial da API da configuração distribuída final. `status/api=ready` confirma somente a infraestrutura das filas; `status/api-aplicacao=ready` depende da validação do workload.
 
-Sem cache no escopo atual, a esteira bloqueia apply. Um destroy dedicado só pode iniciar state novo depois de consultas read-only confirmarem que não existem recursos ou contratos do projeto na conta atual. Recursos internos do laboratório são preservados. Depois disso, o plano exclusivo de destroy e a validação de state vazio produzem o cache usado pelas próximas execuções da mesma conta. Em laboratório com recursos existentes e cache ausente, é necessário recuperar o state correto; o bootstrap não libera provisionamento automático.
+O CD exige autorização por `AWS_DEPLOY_ENABLED`, ação válida no controle versionado e branch `develop`. Consome os contratos de Kubernetes/ECR e RDS, restaura o state cifrado da conta e gera um plano salvo. Publica a imagem validada pela CI do PR integrado e aplica o plano da mesma tentativa. O apply inclui o workload da API e suas filas; não transfere ownership de VPC, EKS, ECR ou RDS. Migrations e seed demo são executados na inicialização conforme a configuração existente.
 
-## Mensageria de OS — preparação da Fase 4
-
-A infraestrutura da entrada FIFO de resultados da OS e de sua DLQ está preparada neste repositório, conforme ADR-0025/RFC-0007. Os nomes propostos, quatro contratos SSM sob `/oficina-mecanica/{ambiente}/api/`, status de infraestrutura, validações e recuperação estão em [Mensageria de OS](docs/deploy/mensageria-os.md). O contrato `entrada_queue_url` é o futuro destino dos resultados de Execução e Orçamento/Pagamento.
-
-Este incremento não implementa nem ativa Saga, consumidor ou outbox SQL; essa parte continua com Geovanna na F4-06. Não altera rotas ou regras de negócio .NET. `status/api=ready` indica somente infraestrutura de mensageria, sem afirmar prontidão da aplicação ou da Saga.
-
-**AWS continua desabilitada.** A variável de repositório `AWS_DEPLOY_ENABLED=false` impede provisionamento pelo CD e promoção de alteração implantável como se tivesse ocorrido deploy; o workflow reutilizável exige habilitação explícita. `terraform-action.env` permanece inalterado. Nenhum recurso foi criado nesta preparação. Antes de precisar do laboratório, avisar Gabriel para criá-lo e atualizar os environments.
-
-Validações locais: Terraform 1.15.8 com três testes simulados, formatação/validate e nove testes Node aprovados; workflows conferidos com actionlint. O CI repete os gates existentes. Não confundir mocks com prova de acesso SQS pelo workload.
-
-## Preparação da subida da API — F4-04
-
-O controle da API retorna para `TERRAFORM_ACTION=apply`, mantendo `AWS_DEPLOY_ENABLED=false` até a janela autorizada. O workflow reutilizável exige habilitação explícita e a branch `develop`; arquivo de controle ausente, ação vazia ou inválida bloqueiam a operação, sem assumir `apply`. Destroy continua exigindo alteração dedicada no controle.
-
-Na futura execução autorizada, a esteira consome os contratos de Kubernetes/ECR e RDS, restaura e valida o state da conta e gera um plano salvo. Publica a mesma imagem produzida pela CI do PR integrado, conferindo a árvore de código, e aplica o plano da mesma tentativa, sem replanejar no job de aplicação. Mantém a validação de ownership, as verificações de filas/SSM e o rollout existente.
-
-O apply previsto inclui namespace, ConfigMap, Secret, Deployment, Service NodePort e HPA da API, além da entrada FIFO/DLQ de OS, redrive e contratos SSM já definidos. Não recria VPC, EKS, ECR ou RDS. A configuração atual aplica migrations e seed demo ao iniciar a API; isso faz parte da futura implantação, não desta preparação. `/status/api=ready` confirma a infraestrutura de mensageria, não a saúde HTTP ou a integração da Saga.
-
-Esta preparação não ativa o Execução remoto, não provisiona Lambda/Gateway e não altera contratos ou regras de negócio. A prova real de acesso DynamoDB/SQS pelo Pod do Execução permanece pendente da F4-04. Nenhum recurso AWS é criado por este PR enquanto o bloqueio permanecer ativo.
-
-## Estrutura obrigatória dos PRs
-
-Validações operacionais e seus testes ficam nos YAMLs existentes de CI/CD. Não são versionadas pastas de scripts nem diretórios auxiliares adicionais. Trechos necessários à execução são gerados somente no diretório temporário do runner; não são enviados como conteúdo do repositório ou artefato de scripts.
-
-O job obrigatório de Git Flow verifica essa estrutura em todos os PRs, inclusive documentais: bloqueia qualquer pasta chamada `scripts` e diretórios de topo fora da estrutura aprovada do projeto. Funcionalidades devem seguir as camadas existentes. Exceções de estrutura precisam de alinhamento explícito, sem remover o gate para contornar a regra. `AGENTS.md` e as orientações locais registram o mesmo requisito.
-
-## Orientações para trabalho com Codex
-
-O `AGENTS.md` mantém as regras obrigatórias e aponta para o procedimento canônico em `oficina-mecanica-api/.agents/skills/oficina-mecanica/SKILL.md`. A skill do Execução é somente um encaminhamento, evitando duas versões do mesmo fluxo. READMEs e documentos de arquitetura continuam sendo as fontes de decisões e comportamento do projeto.
-
-Ao abrir um novo chat, prefira a raiz do repositório correto. Se o chat foi aberto fora do Git, peça a leitura explícita do `AGENTS.md` e da skill antes de implementar; entrar na pasta por um comando não garante descoberta automática. A verificação deste ajuste confirma os arquivos e os caminhos, sem instalar skill pessoal ou mudar a configuração do Codex. O gate do CI continua sendo o bloqueio verificável de estrutura, complementando as instruções.
+Testes locais e CI não comprovam IAM, FIFO/DLQ ou a jornada na AWS. As evidências e pendências atuais ficam no [backlog](docs/projeto/backlog-tecnico.md); o procedimento operacional está no [guia de deploy](docs/deploy/deploy-aws.md).
