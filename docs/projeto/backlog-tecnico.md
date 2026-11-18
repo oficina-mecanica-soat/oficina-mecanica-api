@@ -1,5 +1,16 @@
 # Backlog técnico
 
+## Entrega da Fase 4 — 17/11/2026
+
+- [Vídeo de demonstração](https://www.youtube.com/watch?v=dIqxOv-PXX8), com duração informada de 2min56s. PDF final com Grupo 88, participantes, repositórios, diagrama e justificativas entregue à equipe; submissão no portal não verificada por esta revisão.
+- Jornada gravada: OS 9014 entregue após execução e pagamento de teste confirmado; OS 9015 recusada, Saga compensada e preparação cancelada. O estado físico é consultado no serviço de Execução.
+- Evidência de CI/CD da Execução: [361 testes e cobertura de 95,38%](https://github.com/oficina-mecanica-soat/oficina-mecanica-execucao/actions/runs/43952065682), seguida de [deploy e healthcheck](https://github.com/oficina-mecanica-soat/oficina-mecanica-execucao/actions/runs/43952855389). São execuções de 16/11, apresentadas como histórico real.
+- Datadog: trace da compensação `6afce1ef0000000090a47fdb7e24388e`, com 83 spans e operações dos três serviços, observado na demonstração de 17/11. Disponibilidade do ambiente após encerramento do laboratório exige nova consulta.
+- Limitações mantidas: apresentação do snapshot de serviços na resposta de entrega da OS; integração completa de telemetria AWS/Lambda, métricas de negócio e alertas com baseline; identidade LabRole compartilhada e persistência de state por cache. Melhorias não são consideradas concluídas pela gravação.
+- Revisão documental: modelo do README da API preservado; READMEs dos componentes simplificados e instruções operacionais reunidas no guia de deploy. O roteiro de preparação foi retirado após incorporar sua configuração útil. Esta revisão não altera código, workflows ou Terraform e não executa deploy.
+
+As seções abaixo registram o acompanhamento anterior e não substituem este fechamento. Pendências antigas de gravação/publicação foram atendidas pelo vídeo acima; os demais limites continuam sujeitos aos respectivos critérios de aceite.
+
 ## Execução da Fase 4 — 09 a 17/11/2026
 
 Fonte de arquitetura: ADR-0024 a ADR-0026 e RFC-0007. Esta seção prevalece para o escopo atual; itens históricos abaixo não viram trabalho automático. Responsável indica quem conduz a tarefa com seu Codex. Contratos são compartilhados; alterações incompatíveis devem ser alinhadas antes de implementação.
@@ -112,7 +123,7 @@ Oito clones atualizados por fetch/pull em develop, sem novas entregas ou PRs da 
 | Datadog | DD_API_KEY presente em Kubernetes/Auth. Valores/site/validade/ingestão não validados. Painel versionado e Agent não equivalem a importação, dados ou alerta testado. |
 | Dados para aceite | Preparar cliente/veículo/mecânico/catálogos na API e saldo exclusivo de teste no Execução, com os IDs/filial do snapshot. Seed da API e fixtures locais não abastecem remotamente o Execução. Operação local de escrita só com a exceção explícita da janela; não presumir autorização a partir dos testes locais. |
 
-Procedimento concreto incorporado ao [roteiro existente](../evidencias/validacao-integrada.md#configuração-exigida-antes-de-executar): VPC → Kubernetes → RDS/banco próprio → API inicial sem worker/corte e com clientes privados → Auth privada → Gateway inicial sem corte para obter URL → Execução remoto → Orçamento remoto/distribuído/Mercado Pago configurado → API distribuída → Gateway distribuído. Reaplicações devem capturar as Variables em novo plano/tentativa do CD completo; alterar Variable não dispara deploy. Nenhum comando AWS, apply/destroy, state, IAM, workload ou conta Datadog foi alterado nesta revisão.
+Procedimento concreto incorporado ao [roteiro existente](../deploy/deploy-aws.md): VPC → Kubernetes → RDS/banco próprio → API inicial sem worker/corte e com clientes privados → Auth privada → Gateway inicial sem corte para obter URL → Execução remoto → Orçamento remoto/distribuído/Mercado Pago configurado → API distribuída → Gateway distribuído. Reaplicações devem capturar as Variables em novo plano/tentativa do CD completo; alterar Variable não dispara deploy. Nenhum comando AWS, apply/destroy, state, IAM, workload ou conta Datadog foi alterado nesta revisão.
 
 #### Evidências de CI para preparar o aceite
 
@@ -215,7 +226,7 @@ O PDF reenviado em Downloads é idêntico ao preservado no contexto histórico (
 | CI/CD independente, Kubernetes e main protegida | Workflows/gates preparados. Conferir proteção atual e comprovar deploy físico de cada serviço; vídeo exige pelo menos um deploy com testes. Job ignorado ou promoção lógica não é prova. |
 | Observabilidade da Fase 3 e rastreamento distribuído | Painel Saga existente; preparar ingestão dos três serviços e demonstrar correlação/falha/recuperação. F3-008/F3-009 ainda têm Lambda, métricas de negócio e alerta de falha de OS pendentes; painel vazio não encerra itens. |
 | Swagger ou Postman atualizado; arquitetura e cobertura no README por serviço | Collection distribuída e environments preparados nesta frente; validar no ambiente. Swagger runtime e documentação final dos serviços devem acompanhar a versão entregue. README da API preservado nesta frente. |
-| Vídeo <=15 minutos e PDF | [Roteiro integrado](../evidencias/validacao-integrada.md) reúne cenários, observabilidade, sequência do vídeo de 14m30s e checklist do PDF. Gravação, diagrama final, links e envio permanecem pendentes. |
+| Vídeo <=15 minutos e PDF | [Roteiro integrado](../deploy/deploy-aws.md) reúne cenários, observabilidade, sequência do vídeo de 14m30s e checklist do PDF. Gravação, diagrama final, links e envio permanecem pendentes. |
 
 Preparo documental/Postman não equivale a teste integrado executado. A collection completa antiga fica identificada como histórica; a nova usa contratos atuais, IDs retornados e ações manuais do mecânico. Endereço AWS antigo removido dos environments, sem substituir por URL inventada. Não houve ativação AWS, alteração real de Datadog, deploy ou promoção.
 
