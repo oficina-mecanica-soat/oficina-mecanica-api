@@ -29,6 +29,8 @@ As passagens adicionais da API e de Orçamento/Pagamento são dependências da i
 
 Quando uma configuração depender de recursos publicados pela passagem anterior, usar nova execução completa do CD autorizado, com plano da nova tentativa. Não repetir somente o job que aplica um plano antigo.
 
+<a id="states-e-planos"></a>
+
 ## 💾 States e planos
 
 Cada owner mantém state separado por conta e ambiente. API, Execução, Auth e Orçamento/Pagamento cifram states e planos com AES-256-GCM e chave exclusiva do Environment. Contexto de repositório, conta e ambiente é autenticado; o plano também vincula commit, ação e tentativa. Os workflows determinam os prefixos de cache efetivos; não restaurar manualmente caches de outra conta ou material legado sem proteção.
