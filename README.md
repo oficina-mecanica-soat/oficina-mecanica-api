@@ -589,6 +589,15 @@ Credenciais locais ficam no arquivo `.env`, criado a partir de `.env.example`.
 
 Este repositório mantém a aplicação principal .NET, Dockerfile, CI, build e publicação da imagem Docker, deploy no Kubernetes e os recursos Kubernetes específicos da aplicação enquanto a estratégia atual usa Terraform neste repositório.
 
+| Provisionado por esta esteira | Finalidade |
+| --- | --- |
+| Namespace, Deployment, ConfigMap, Secret, Service NodePort 30080 e HPA | Executar e configurar exclusivamente o workload de OS no EKS compartilhado |
+| Entrada SQS FIFO, DLQ e política de redrive da OS | Receber resultados de Execução e Orçamento/Pagamento; confirmar mensagens após a transação local |
+| Contratos SSM de mensageria, modo distribuído e prontidão da aplicação | Publicar fila de resultados para os participantes e estado validado para o Gateway |
+| Imagem da API no ECR já criado pela plataforma | Publicar o artefato validado pela CI e conferir a imagem no rollout |
+
+Migrations e seed de OS são executados pelo host conforme configuração; banco lógico, login e secret de conexão são preparados pela esteira RDS. A API não cria os workloads, tabelas ou filas dos outros microsserviços. O inventário está em [`infra/terraform/environments/dev`](infra/terraform/environments/dev).
+
 VPC, subnets, NAT/Internet Gateway, rotas, EKS, RDS e o ECR compartilhado não são criados aqui. A API depende de `oficina-mecanica-infra-vpc`, `oficina-mecanica-infra-kubernetes` (EKS/ECR via SSM) e `oficina-mecanica-infra-rds` (endpoint e ARN do segredo via SSM). Auth Lambda e API Gateway são componentes separados.
 
 As oito esteiras são: API/OS, Execução, Orçamento/Pagamento, Auth Lambda, infra-vpc, infra-kubernetes, infra-rds e infra-api-gateway. Os registries pertencem à plataforma Kubernetes; cada aplicação mantém seu workload, filas, contratos e dados próprios conforme o ownership aprovado.
