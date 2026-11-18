@@ -22,6 +22,7 @@ resource "kubernetes_deployment_v1" "oficina_mecanica_api" {
         })
 
         annotations = {
+          "checksum/config"                            = sha256(jsonencode(kubernetes_config_map_v1.oficina_mecanica_api[0].data))
           "ad.datadoghq.com/oficina-mecanica-api.logs" = jsonencode([{ source = "csharp", service = "oficina-mecanica-api" }])
           "admission.datadoghq.com/dotnet-lib.version" = "3.50.0"
         }
@@ -73,6 +74,19 @@ resource "kubernetes_deployment_v1" "oficina_mecanica_api" {
               secret_key_ref {
                 name = kubernetes_secret_v1.oficina_mecanica_api[0].metadata[0].name
                 key  = "Integracoes__Orcamento__WebhookToken"
+              }
+            }
+          }
+
+          dynamic "env" {
+            for_each = var.clientes_internos_habilitado ? [true] : []
+            content {
+              name = "Integracoes__ClientesInternos__Token"
+              value_from {
+                secret_key_ref {
+                  name = kubernetes_secret_v1.oficina_mecanica_api[0].metadata[0].name
+                  key  = "Integracoes__ClientesInternos__Token"
+                }
               }
             }
           }

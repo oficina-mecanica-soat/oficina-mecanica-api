@@ -21,6 +21,7 @@ public sealed class UnitOfWork : IUnitOfWork
             await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
             await operacao(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             await transaction.CommitAsync(cancellationToken);
         });

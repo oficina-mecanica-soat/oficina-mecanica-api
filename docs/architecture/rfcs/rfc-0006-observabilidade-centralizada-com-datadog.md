@@ -80,6 +80,24 @@ Cada log deverá conter, quando aplicável:
 
 CPF puro, tokens JWT, senhas, segredos, credenciais AWS e dados sensíveis não poderão ser registrados em logs.
 
+### Convenção dos serviços .NET
+
+OS/API, Execução e Orçamento/Pagamento seguem a mesma configuração Serilog da API principal, mantendo implementações independentes. Usar `ILogger<T>` com templates estruturados e parâmetros; não interpolar valores no texto nem criar um logger ou pacote compartilhado entre os domínios. O middleware oficial `UseSerilogRequestLogging` produz um único evento de conclusão HTTP; o middleware de correlação mantém sua responsabilidade de validar e propagar o identificador.
+
+A saída nativa de `JsonFormatter(renderMessage: true)` mantém `Timestamp`, `Level`, `MessageTemplate`, `RenderedMessage` e `Properties`. Na ingestão Datadog, os atributos reservados `timestamp`, `status` e `message` representam horário, severidade e mensagem. Não renomear o JSON da aplicação apenas para alterar a apresentação. `Properties.SourceContext` identifica o logger emissor; `service` continua identificando o microsserviço, e `source` identifica a tecnologia de coleta, não a biblioteca.
+
+| Tipo de evento | Convenção |
+| --- | --- |
+| HTTP | `operation=http.request`, `http.method`, `http.route`, `http.status_code`, `Elapsed` em milissegundos e `x_correlation_id`; mensagem de conclusão em português. Rotas parametrizadas ou `unmatched`, sem caminho/query brutos, cabeçalhos ou corpo. |
+| Mensageria/Saga | Operações vigentes da RFC-0007, `bounded_context`, `mensagem_id`, `ordem_servico_id`, `saga_id`, `x_correlation_id`, `outcome=concluida` ou `falha` e `duration_ms`. Resultado específico de negócio, quando necessário, é um campo separado; conclusão técnica não equivale a Saga concluída. |
+| Inicialização e bibliotecas | Preservar a mensagem original e o `SourceContext` da biblioteca; não traduzir exceções nem acrescentar prefixos cosméticos. Eventos nossos permanecem em português. |
+
+Configuração normal: `Default=Warning`, com `OficinaMecanica`, `Serilog.AspNetCore` e `Microsoft.Hosting.Lifetime` em `Information`, conforme a referência da API. Comandos SQL e detalhes rotineiros do framework não entram em `Information`; avisos e erros continuam registrados. HTTP 4xx usa `Warning`, 5xx/exceção usa `Error`; healthcheck saudável usa `Debug`, sem ruído no nível normal. Healthcheck com falha permanece visível.
+
+Nos painéis, separar eventos da aplicação e diagnóstico das bibliotecas por `SourceContext`; manter severidade, horário, serviço e acesso ao evento completo. Não alterar mensagens de bibliotecas para aparentarem eventos de negócio. Ajustes temporários de nível para diagnóstico devem ser explícitos e não podem habilitar dados sensíveis do EF Core. Sem profiler ativo, não fabricar `dd.trace_id` ou `dd.span_id`.
+
+Referências: [coleta C# do Datadog](https://docs.datadoghq.com/logs/log_collection/csharp/), [atributos padrão](https://docs.datadoghq.com/standard-attributes/) e [middleware Serilog ASP.NET Core](https://github.com/serilog/serilog-aspnetcore#request-logging).
+
 ## Correlação de requisições
 
 A solução utilizará dois mecanismos complementares de correlação:

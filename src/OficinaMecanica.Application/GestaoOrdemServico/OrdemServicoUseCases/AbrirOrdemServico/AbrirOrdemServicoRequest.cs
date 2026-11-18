@@ -8,4 +8,5 @@ public sealed record AbrirOrdemServicoRequest(
     Guid VeiculoId,
     Guid MecanicoId,
     IReadOnlyCollection<Guid>? ServicosCatalogoIds,
-    IReadOnlyCollection<PecaInsumoRequest>? PecasInsumos);
+    IReadOnlyCollection<PecaInsumoRequest>? PecasInsumos,
+    Guid? FilialId = null);

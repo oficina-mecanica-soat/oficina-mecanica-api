@@ -31,7 +31,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -41,59 +41,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -166,59 +166,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -269,7 +269,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -292,7 +292,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -302,59 +302,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -405,7 +405,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -427,7 +427,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -437,59 +437,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -540,7 +540,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -572,7 +572,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -582,59 +582,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -685,7 +685,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -727,7 +727,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -737,59 +737,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -840,7 +840,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -866,59 +866,59 @@
             "description": "Recurso removido com sucesso."
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -969,7 +969,152 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/clientes/me/ordens-servico": {
+      "get": {
+        "tags": [
+          "ClientesMe"
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "tamanhoPagina",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação executada com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdemServicoResponsePagedResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Requisição inválida.",
+                  "tipo": "Validacao",
+                  "erros": [
+                    "Requisição inválida."
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Não autorizado.",
+                  "tipo": "NaoAutorizado"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Recurso não encontrado.",
+                  "tipo": "NaoEncontrado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Regra de negócio violada.",
+                  "tipo": "RegraNegocio"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito ao salvar o recurso. Recarregue os dados e tente novamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Conflito ao salvar o recurso. Recarregue os dados e tente novamente.",
+                  "tipo": "Conflito"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Erro interno inesperado.",
+                  "tipo": "ErroInterno"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso proibido para o perfil informado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Acesso proibido para o perfil informado.",
+                  "tipo": "AcessoProibido"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
           }
         ]
       }
@@ -1010,59 +1155,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -1113,7 +1258,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -1136,7 +1281,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1146,59 +1291,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -1249,7 +1394,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -1281,7 +1426,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1291,59 +1436,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -1394,7 +1539,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -1436,7 +1581,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1446,59 +1591,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -1549,7 +1694,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -1590,59 +1735,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -1693,7 +1838,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -1716,7 +1861,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1726,59 +1871,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -1829,7 +1974,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -1861,7 +2006,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1871,59 +2016,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -1974,7 +2119,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -2016,7 +2161,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2026,59 +2171,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -2129,7 +2274,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -2155,59 +2300,59 @@
             "description": "Recurso removido com sucesso."
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -2258,7 +2403,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -2298,60 +2443,80 @@
               }
             }
           },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdemServicoResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdemServicoResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrdemServicoResponse"
+                }
+              }
+            }
+          },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -2402,7 +2567,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -2425,7 +2590,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2435,59 +2600,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -2538,7 +2703,143 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/gestao-ordem-servico/ordens-servico/{ordemServicoId}/consultar-andamento": {
+      "get": {
+        "tags": [
+          "OrdensServico"
+        ],
+        "parameters": [
+          {
+            "name": "ordemServicoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operação executada com sucesso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndamentoOrdemServicoResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisição inválida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Requisição inválida.",
+                  "tipo": "Validacao",
+                  "erros": [
+                    "Requisição inválida."
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autorizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Não autorizado.",
+                  "tipo": "NaoAutorizado"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Recurso não encontrado.",
+                  "tipo": "NaoEncontrado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Regra de negócio violada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Regra de negócio violada.",
+                  "tipo": "RegraNegocio"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito ao salvar o recurso. Recarregue os dados e tente novamente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Conflito ao salvar o recurso. Recarregue os dados e tente novamente.",
+                  "tipo": "Conflito"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno inesperado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Erro interno inesperado.",
+                  "tipo": "ErroInterno"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Acesso proibido para o perfil informado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "mensagem": "Acesso proibido para o perfil informado.",
+                  "tipo": "AcessoProibido"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
           }
         ]
       }
@@ -2561,7 +2862,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2571,59 +2872,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -2687,7 +2988,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2697,59 +2998,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -2800,7 +3101,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -2832,7 +3133,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2842,59 +3143,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -2945,7 +3246,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -2968,7 +3269,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -2978,59 +3279,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -3081,7 +3382,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -3123,7 +3424,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3133,59 +3434,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -3236,7 +3537,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -3278,7 +3579,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3288,59 +3589,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -3391,7 +3692,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -3414,7 +3715,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3424,59 +3725,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -3527,7 +3828,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -3575,7 +3876,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3585,59 +3886,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -3692,7 +3993,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3702,59 +4003,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -3805,7 +4106,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -3837,7 +4138,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3847,59 +4148,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -3950,7 +4251,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -3982,7 +4283,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3992,59 +4293,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -4095,7 +4396,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -4118,7 +4419,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4128,59 +4429,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -4231,7 +4532,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -4254,7 +4555,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4264,59 +4565,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -4367,7 +4668,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -4409,7 +4710,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4418,60 +4719,80 @@
               }
             }
           },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelamentoOrdemServicoResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelamentoOrdemServicoResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelamentoOrdemServicoResponse"
+                }
+              }
+            }
+          },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -4522,7 +4843,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -4545,7 +4866,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4555,59 +4876,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -4658,7 +4979,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -4690,7 +5011,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4700,59 +5021,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -4803,7 +5124,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -4844,59 +5165,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -4947,7 +5268,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -4970,7 +5291,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4980,59 +5301,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -5083,7 +5404,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -5115,7 +5436,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5125,59 +5446,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -5228,7 +5549,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -5270,7 +5591,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5280,59 +5601,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -5383,7 +5704,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -5409,59 +5730,59 @@
             "description": "Recurso removido com sucesso."
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -5512,7 +5833,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -5553,59 +5874,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -5656,7 +5977,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -5679,7 +6000,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5689,59 +6010,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -5792,7 +6113,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -5824,7 +6145,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5834,59 +6155,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -5937,7 +6258,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -5979,7 +6300,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5989,59 +6310,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -6092,7 +6413,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -6118,59 +6439,59 @@
             "description": "Recurso removido com sucesso."
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -6221,7 +6542,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -6262,59 +6583,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -6365,7 +6686,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -6388,7 +6709,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6398,59 +6719,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -6501,7 +6822,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -6523,7 +6844,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6533,59 +6854,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -6636,7 +6957,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -6668,7 +6989,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6678,59 +6999,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -6781,7 +7102,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -6823,7 +7144,7 @@
         },
         "responses": {
           "200": {
-            "description": "Operacao executada com sucesso.",
+            "description": "Operação executada com sucesso.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6833,59 +7154,59 @@
             }
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -6936,7 +7257,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -6962,59 +7283,59 @@
             "description": "Recurso removido com sucesso."
           },
           "400": {
-            "description": "Requisicao invalida.",
+            "description": "Requisição inválida.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Requisicao invalida.",
+                  "mensagem": "Requisição inválida.",
                   "tipo": "Validacao",
                   "erros": [
-                    "Requisicao invalida."
+                    "Requisição inválida."
                   ]
                 }
               }
             }
           },
           "401": {
-            "description": "Nao autorizado.",
+            "description": "Não autorizado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Nao autorizado.",
+                  "mensagem": "Não autorizado.",
                   "tipo": "NaoAutorizado"
                 }
               }
             }
           },
           "404": {
-            "description": "Recurso nao encontrado.",
+            "description": "Recurso não encontrado.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Recurso nao encontrado.",
+                  "mensagem": "Recurso não encontrado.",
                   "tipo": "NaoEncontrado"
                 }
               }
             }
           },
           "422": {
-            "description": "Regra de negocio violada.",
+            "description": "Regra de negócio violada.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "mensagem": "Regra de negocio violada.",
+                  "mensagem": "Regra de negócio violada.",
                   "tipo": "RegraNegocio"
                 }
               }
@@ -7065,7 +7386,7 @@
         },
         "security": [
           {
-            "Bearer": []
+            "Bearer": [ ]
           }
         ]
       }
@@ -7106,6 +7427,61 @@
             "items": {
               "$ref": "#/components/schemas/PecaInsumoRequest"
             },
+            "nullable": true
+          },
+          "filialId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AndamentoOrdemServicoResponse": {
+        "type": "object",
+        "properties": {
+          "ordemServicoId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sagaId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "estado": {
+            "type": "string",
+            "nullable": true
+          },
+          "preparacaoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "orcamentoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "versaoOrcamento": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "valorOrcamento": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "pagamentoId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "pagamentoConfirmado": {
+            "type": "boolean"
+          },
+          "finalizadoEm": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },
@@ -7369,6 +7745,16 @@
         },
         "additionalProperties": false
       },
+      "CancelamentoOrdemServicoResponse": {
+        "type": "object",
+        "properties": {
+          "sagaId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "additionalProperties": false
+      },
       "CancelarOrdemServicoRequest": {
         "type": "object",
         "properties": {
@@ -7456,6 +7842,14 @@
             "items": {
               "$ref": "#/components/schemas/ServicoStatusResponse"
             },
+            "nullable": true
+          },
+          "execucaoDistribuida": {
+            "type": "boolean"
+          },
+          "preparacaoId": {
+            "type": "string",
+            "format": "uuid",
             "nullable": true
           }
         },
@@ -8094,6 +8488,9 @@
     },
     {
       "name": "Clientes"
+    },
+    {
+      "name": "ClientesMe"
     },
     {
       "name": "Estoque"

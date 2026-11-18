@@ -8,11 +8,13 @@ resource "kubernetes_secret_v1" "oficina_mecanica_api" {
 
   type = "Opaque"
 
-  data = {
+  data = merge({
     Jwt__Secret                          = var.jwt_secret
     Integracoes__Orcamento__WebhookToken = var.webhook_token
     ConnectionStrings__DefaultConnection = var.db_connection_string
-  }
+    }, var.clientes_internos_habilitado ? {
+    Integracoes__ClientesInternos__Token = var.clientes_internos_token
+  } : {})
 
   depends_on = [
     terraform_data.rds_ready

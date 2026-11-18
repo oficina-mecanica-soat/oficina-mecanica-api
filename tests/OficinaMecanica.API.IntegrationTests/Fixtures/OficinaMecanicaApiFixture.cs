@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using OficinaMecanica.Infrastructure.Persistence;
@@ -20,6 +21,12 @@ public sealed class OficinaMecanicaApiFixture : IAsyncLifetime
     public HttpClient CreateClient()
     {
         return Factory.CreateClient();
+    }
+
+    public HttpClient CreateClient(IReadOnlyDictionary<string, string?> configuracao)
+    {
+        return Factory.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(configuracao))).CreateClient();
     }
 
     public async Task InitializeAsync()
@@ -90,7 +97,7 @@ public sealed class OficinaMecanicaApiFixture : IAsyncLifetime
             });
     }
 
-    private OficinaMecanicaDbContext CriarDbContext()
+    public OficinaMecanicaDbContext CriarDbContext()
     {
         var options = new DbContextOptionsBuilder<OficinaMecanicaDbContext>()
             .UseSqlServer(_connectionString)
@@ -123,6 +130,7 @@ public sealed class OficinaMecanicaApiFixture : IAsyncLifetime
             ["ConnectionStrings__DefaultConnection"] = connectionString,
             ["Database__ApplyMigrationsOnStartup"] = "false",
             ["Database__SeedDemoData"] = "false",
+            ["ProcessamentoRemoto__Habilitado"] = "false",
             ["Jwt__Issuer"] = "oficina-mecanica-auth",
             ["Jwt__Audience"] = "oficina-mecanica-api",
             ["Jwt__Secret"] = "oficina-mecanica-api-chave-academica-jwt-2026",

@@ -76,6 +76,24 @@ A proposta limita a alteração às instâncias atuais do node group existente, 
 
 O registro não afirma implantação ou acesso DynamoDB/SQS concluídos. Gabriel faz o merge dos PRs; a execução AWS segue na janela autorizada. Permanecem os requisitos de identidade e prova dentro do Pod descritos acima.
 
+### Extensão expressa da exceção para OS e Orçamento/Pagamento — 14/11/2026
+
+**Status:** ✅ Aceito para implementação, autorizado por Geovanna em 14/11/2026.
+
+A concessão acadêmica passa a abranger explicitamente os workers da OS e de Orçamento/Pagamento, além do Execução. O escopo limita-se ao laboratório AWS Academy e à identidade existente dos nodes, sem criação de roles, mudança de trust policies, ampliação de permissões ou alteração de metadados como efeito desta decisão. A autorização arquitetural não autoriza ativação da AWS, apply, deploy, destroy ou promoção.
+
+| Serviço | Acesso funcional necessário no fluxo | Limite preservado |
+| --- | --- | --- |
+| OS | Consumir, renovar visibilidade e confirmar resultados da sua entrada; publicar comandos nas entradas de Execução e Orçamento/Pagamento; conferir identidade STS. | Persistência, Saga e outbox no SQL próprio; sem ler ou alterar bancos dos outros serviços. |
+| Orçamento/Pagamento | Consumir, renovar visibilidade e confirmar comandos da sua entrada; publicar resultados na entrada de OS; conferir identidade STS. | Banco/login e migrations próprios; sem acesso ao SQL da OS ou DynamoDB do Execução. |
+| Execução | Permanece a matriz já aprovada de DynamoDB próprio, entrada SQS e publicação de resultados à OS. | Nenhuma permissão adicional é presumida por esta extensão. |
+
+A matriz descreve a necessidade funcional, não comprova nem restringe por si só a política efetiva da LabRole. A identidade é compartilhada: não existe isolamento IAM entre Pods que obtenham as credenciais do node, e a role pode conceder mais acesso que o necessário. Esse risco é aceito exclusivamente para a entrega acadêmica e deve constar das evidências; bancos/credenciais separados e validações de URL/conta não substituem uma fronteira IAM. Fora do laboratório, permanece a evolução para identidade própria e menor privilégio por workload.
+
+Cada serviço deve selecionar a fonte explicitamente, verificar conta e role efetivas dentro do Pod e rejeitar fallback para variáveis/perfis do runner ou modo local. Não copiar credenciais AWS do GitHub para o workload, persistir credenciais no Terraform ou registrar valores. As verificações STS já preparadas não comprovam as permissões SQS: a janela autorizada deverá demonstrar consumo, renovação, commit antes de ACK, publicação e retomada da outbox em cada serviço, além dos cenários de duplicação e falha. Identidade divergente ou acesso negado impedem o aceite e devem ser corrigidos pela esteira; healthcheck ou identidade do runner não substituem essa prova.
+
+A decisão elimina a pendência de autorização da exceção para os dois workers; implantação, acesso real, rede/metadados e permissões efetivas continuam pendentes. Este registro não afirma que a validação no laboratório foi executada.
+
 ## 7. Referências
 
 - [DynamoDB: transações](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html)

@@ -1,3 +1,4 @@
+using OficinaMecanica.API.Extensions.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OficinaMecanica.API.Extensions.Responses;
@@ -10,6 +11,7 @@ using OficinaMecanica.Application.GestaoEstoque.EstoqueUseCases.RegistrarEntrada
 namespace OficinaMecanica.API.GestaoEstoque.Controllers;
 
 [ApiController]
+[ExigirFluxoLegado]
 [Authorize(Roles = PerfisAcesso.AdministradorAtendente)]
 [Route("api/v1/gestao-estoque/estoque")]
 public sealed class EstoqueController : ControllerBase
