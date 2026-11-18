@@ -605,7 +605,9 @@ Os módulos legados de VPC, EKS, RDS e ECR, o workflow de import e o arquivo tra
 
 Um ambiente existente não precisa ser destruído para avaliação. Sessão expirada exige credenciais válidas; Reset pode remover recursos sem remover o state. Sem cache compatível, API, Execução, Auth e Orçamento/Pagamento exigem recuperação por destroy dedicado e inventário vazio comprovado antes do primeiro apply. Recursos existentes exigem recuperar o state correto. Consulte o [procedimento operacional](docs/deploy/deploy-aws.md#states-e-planos).
 
-## Mensageria e implantação da OS
+<a id="mensageria-e-implantação-da-os"></a>
+
+## 📨 Mensageria e implantação da OS
 
 A API é responsável pela entrada FIFO de resultados da OS e por sua DLQ, conforme ADR-0025/RFC-0007. Os contratos SSM, parâmetros operacionais e ownership estão em [Mensageria de OS](docs/deploy/mensageria-os.md). Execução e Orçamento/Pagamento publicam resultados nessa entrada; cada participante mantém sua própria fila de comandos.
 
