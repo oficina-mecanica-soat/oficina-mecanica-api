@@ -46,7 +46,7 @@ Após apply autorizado, a esteira comparará atributos FIFO/retenção/redrive e
 
 **Parar produtores/consumidores e preservar dados antes de autorizar destroy.** Contagens SQS são aproximadas; o guardrail não substitui a quiescência operacional. A guarda de contagens SQS não certifica que a outbox SQL ou a Saga estejam sem pendências. Destruir as filas elimina mensagens e evidências ainda retidas; exige preparação e autorização específicas.
 
-Antes de uma janela autorizada, conferir conta, região e validade das credenciais nos Environments. O merge e a CI não comprovam disponibilidade de recursos ou permissões reais. Evidências atuais ficam no backlog canônico, sem transformar este guia em registro de execuções.
+Antes de uma janela autorizada, conferir conta, região e validade das credenciais nos Environments. O merge e a CI não comprovam disponibilidade de recursos ou permissões reais. Evidências atuais ficam no backlog de referência, sem transformar este guia em registro de execuções.
 
 ## Validação
 
@@ -59,7 +59,7 @@ terraform -chdir=infra/terraform/environments/dev validate
 terraform -chdir=infra/terraform/environments/dev test
 ```
 
-O CI repete os gates completos da API, incluindo testes .NET/cobertura, Docker, manifests e Terraform. A validação real exige janela autorizada e deve seguir o [roteiro integrado](../evidencias/validacao-integrada.md); disponibilidade das filas não conclui, isoladamente, a Saga ou o fluxo de negócio ponta a ponta.
+O CI repete os gates completos da API, incluindo testes .NET/cobertura, Docker, manifests e Terraform. A validação real exige janela autorizada e deve seguir o [roteiro integrado](../deploy/deploy-aws.md); disponibilidade das filas não conclui, isoladamente, a Saga ou o fluxo de negócio ponta a ponta.
 
 ## Organização das validações
 

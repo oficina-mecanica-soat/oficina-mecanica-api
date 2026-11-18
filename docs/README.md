@@ -21,7 +21,7 @@ Este é o índice mestre da documentação do projeto. Use este arquivo para nav
 | Projeto | [`projeto/README.md`](projeto/README.md) | Entrada para pendências do projeto. |
 | Backlog técnico | [`projeto/backlog-tecnico.md`](projeto/backlog-tecnico.md) | Estado e critérios da entrega atual, evidências e dívidas técnicas. |
 | Evidências | [`evidencias/`](evidencias/) | Registrar prints e saídas reais de qualidade, segurança e infra. |
-| Aceite e demonstração | [`evidencias/validacao-integrada.md`](evidencias/validacao-integrada.md) | Roteiro integrado, observabilidade, vídeo e conferência do PDF. |
+| Operação e recuperação | [`deploy/deploy-aws.md`](deploy/deploy-aws.md) | Configuração e recuperação do ambiente pelas esteiras oficiais. |
 | Postman | [`evidencias/postman.md`](evidencias/postman.md) | Importar collections, configurar endereços e executar os cenários manualmente. |
 | OpenAPI | [`openapi/`](openapi/) | Consultar contrato versionado da API. |
 | C4 Model | [`architecture/diagrams/c4-model/README.md`](architecture/diagrams/c4-model/README.md) | Consultar a modelagem histórica e seus arquivos Structurizr/SVG; usar o diagrama distribuído para a evolução atual. |
@@ -39,6 +39,4 @@ Este é o índice mestre da documentação do projeto. Use este arquivo para nav
 ## Regras
 
 - Não versionar credenciais, tokens, kubeconfig, secrets ou outputs sensíveis.
-- Diagramas ainda não finalizados devem permanecer apenas como diretórios reservados com `.gitkeep`.
-- Evidências com prints reais devem ser coladas antes da montagem do PDF final.
 - O ambiente AWS Academy é temporário: todo `apply` deve ter plano de `destroy`.

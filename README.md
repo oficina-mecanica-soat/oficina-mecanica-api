@@ -154,7 +154,7 @@ O NLB é interno e encaminha tráfego ao Service `NodePort`; não há acesso pú
 | 🚀 Guias de deploy | [`docs/deploy`](docs/deploy) |
 | 📌 Gestão do projeto | [`docs/projeto`](docs/projeto) |
 
-O diagrama geral representa a divisão atual. Modelos detalhados das fases anteriores devem ser lidos como históricos quando divergirem das ADRs/RFCs vigentes. O [roteiro de validação](docs/evidencias/validacao-integrada.md) distingue código preparado de evidência real.
+O diagrama geral representa a divisão atual. Modelos detalhados das fases anteriores devem ser lidos como históricos quando divergirem das ADRs/RFCs vigentes. O [guia de operação](docs/deploy/deploy-aws.md) descreve configuração e recuperação do ambiente.
 
 ---
 
@@ -188,7 +188,7 @@ O diagrama geral representa a divisão atual. Modelos detalhados das fases anter
 ├── docs/                           # Índice, guias, evidências e diagramas
 ├── infra/terraform/                # Infraestrutura AWS real
 │   ├── environments/dev/           # Ambiente development
-│   └── modules/                    # Módulos AWS: VPC, ECR, RDS e EKS
+│   └── modules/                    # Módulos específicos do workload e da mensageria OS
 ├── k8s/                            # Manifests Kubernetes
 ├── src/                            # Código de produção
 ├── tests/                          # Testes unitários e integração
@@ -318,7 +318,7 @@ A infraestrutura AWS real é provisionada por Terraform para o ambiente `develop
 | 9 | `oficina-mecanica-infra-api-gateway` | Sobe uma vez com todas as rotas, após os três serviços e a Auth estarem prontos. |
 | 10 | `oficina-mecanica-orcamento-pagamento` | Após configurar Webhook e assinatura com a URL real do Gateway, atualiza o mesmo workload com Mercado Pago ligado. |
 
-As duas passagens da API resolvem a dependência circular entre filas de owners diferentes. A atualização final de Orçamento/Pagamento depende da URL pública criada pelo Gateway. São atualizações idempotentes pela mesma esteira; não exigem destroy nem criam serviços adicionais. Não iniciar a jornada de negócio antes da configuração final. O [procedimento detalhado](docs/evidencias/validacao-integrada.md#ordem-de-ativação-coordenada) contém os nomes exatos das flags e as provas exigidas em cada etapa.
+As duas passagens da API resolvem a dependência circular entre filas de owners diferentes. A atualização final de Orçamento/Pagamento depende da URL pública criada pelo Gateway. São atualizações idempotentes pela mesma esteira; não exigem destroy nem criam serviços adicionais. Não iniciar a jornada de negócio antes da configuração final. O [procedimento detalhado](docs/deploy/deploy-aws.md#configuração-dos-serviços) contém os nomes exatos das flags e as provas exigidas em cada etapa.
 
 Todo provisionamento, atualização e destruição na AWS ocorre exclusivamente pelas esteiras. Em cada repositório, usar PR para `develop`, checks aprovados, controle versionado `apply/destroy` e janela AWS autorizada. Durante o aceite, manter promoções retidas; `release/main` não são atalhos para implantar. O Compose local legado não inicia sozinho os três serviços.
 
@@ -593,19 +593,6 @@ VPC, subnets, NAT/Internet Gateway, rotas, EKS, RDS e o ECR compartilhado não s
 
 As oito esteiras são: API/OS, Execução, Orçamento/Pagamento, Auth Lambda, infra-vpc, infra-kubernetes, infra-rds e infra-api-gateway. Os registries pertencem à plataforma Kubernetes; cada aplicação mantém seu workload, filas, contratos e dados próprios conforme o ownership aprovado.
 
-Oficina Mecânica — API: https://github.com/oficina-mecanica-soat/oficina-mecanica-api
-
-Oficina Mecânica — Auth Lambda: https://github.com/oficina-mecanica-soat/oficina-mecanica-auth-lambda
-
-Oficina Mecânica — Infra Kubernetes: https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-kubernetes
-
-Oficina Mecânica — Infra RDS: https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-rds
-
-Oficina Mecânica — Infra VPC: https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-vpc
-
-Oficina Mecânica — Infra API Gateway: https://github.com/oficina-mecanica-soat/oficina-mecanica-infra-api-gateway
-
-Helm não foi introduzido nesta mudança para reduzir risco. A evolução para Helm/manifests centralizados e a possível migração futura do ECR para a API estão registradas no backlog técnico.
 
 Os módulos legados de VPC, EKS, RDS e ECR, o workflow de import e o arquivo transicional de state foram removidos após o primeiro apply seguro. Dockerfile e Docker Compose local permanecem independentes da infraestrutura AWS compartilhada.
 
@@ -614,19 +601,9 @@ Os módulos legados de VPC, EKS, RDS e ECR, o workflow de import e o arquivo tra
 - O deploy para `main` deve usar branch protection e aprovação obrigatória de PR.
 - O projeto prioriza rastreabilidade e simplicidade operacional, sem depender de contexto externo para ser compreendido.
 
-### Reconciliação de destroy após reset do laboratório
+### Recuperação após Reset da AWS Academy
 
-O destroy restaura o cache Terraform existente e usa uma configuração temporária sem data sources de contratos SSM. O state original não é editado nem descartado: o provider confirma os recursos ausentes durante o plano de destruição. Somente o plano salvo, sem criação ou atualização, pode ser aplicado. Ao terminar, a esteira verifica que o state não contém recursos gerenciados antes de persistir o cache final. Falhas de autenticação, permissão ou rede bloqueiam a operação.
-
-Na API, vínculos Kubernetes só podem ser retirados por blocos declarativos removed com destroy=false após ResourceNotFoundException confirmar que o EKS registrado no state não existe. Com EKS existente, permanece a configuração normal de destroy. Não há uso de state rm, import ou mv.
-
-O retorno isolado de terraform-action.env para apply ainda é reconhecido como mudança de infraestrutura pelo detector de CD; não faça esse retorno enquanto não existir separação segura entre rearmar e provisionar. Preserve destroy após a reconciliação e só autorize nova subida em tarefa própria.
-
-#### State isolado por conta AWS
-
-As chaves de cache incluem o ID da conta retornado pela autenticação AWS, antes do ambiente e da execução. A restauração só pesquisa esse escopo, sem fallback para chaves históricas sem conta. Os caches anteriores permanecem preservados como histórico do laboratório encerrado 058264466885, inclusive quando contêm referências que a conta atual não consegue consultar. AccessDenied não é convertido em ausência.
-
-Sem cache no escopo atual, a esteira bloqueia apply. Um destroy dedicado só pode iniciar state novo depois de consultas read-only confirmarem que não existem recursos ou contratos do projeto na conta atual. Recursos internos do laboratório são preservados. Depois disso, o plano exclusivo de destroy e a validação de state vazio produzem o cache usado pelas próximas execuções da mesma conta. Em laboratório com recursos existentes e cache ausente, é necessário recuperar o state correto; a recuperação inicial não libera provisionamento automático.
+Um ambiente existente não precisa ser destruído para avaliação. Sessão expirada exige credenciais válidas; Reset pode remover recursos sem remover o state. Sem cache compatível, API, Execução, Auth e Orçamento/Pagamento exigem recuperação por destroy dedicado e inventário vazio comprovado antes do primeiro apply. Recursos existentes exigem recuperar o state correto. Consulte o [procedimento operacional](docs/deploy/deploy-aws.md#states-e-planos).
 
 ## Mensageria e implantação da OS
 
@@ -636,34 +613,4 @@ A Saga, a outbox SQL, o consumidor SQS e o publicador estão implementados. O wo
 
 O CD exige autorização por `AWS_DEPLOY_ENABLED`, ação válida no controle versionado e branch `develop`. Consome os contratos de Kubernetes/ECR e RDS, restaura o state cifrado da conta e gera um plano salvo. Publica a imagem validada pela CI do PR integrado e aplica o plano da mesma tentativa. O apply inclui o workload da API e suas filas; não transfere ownership de VPC, EKS, ECR ou RDS. Migrations e seed demo são executados na inicialização conforme a configuração existente.
 
-Testes locais e CI não comprovam IAM, FIFO/DLQ ou a jornada na AWS. As evidências e pendências atuais ficam no [backlog](docs/projeto/backlog-tecnico.md); o procedimento de aceite está no [roteiro integrado](docs/evidencias/validacao-integrada.md).
-
-## Estrutura obrigatória dos PRs
-
-Validações operacionais e seus testes ficam nos YAMLs existentes de CI/CD. Não são versionadas pastas de scripts nem diretórios auxiliares adicionais. Trechos necessários à execução são gerados somente no diretório temporário do runner; não são enviados como conteúdo do repositório ou artefato de scripts.
-
-O job obrigatório de Git Flow verifica essa estrutura em todos os PRs, inclusive documentais: bloqueia qualquer pasta chamada `scripts` e diretórios de topo fora da estrutura aprovada do projeto. Funcionalidades devem seguir as camadas existentes. Exceções de estrutura precisam de alinhamento explícito, sem remover o gate para contornar a regra. `AGENTS.md` e as orientações locais registram o mesmo requisito.
-
-## Orientações para trabalho com Codex
-
-### Integração entre OS e Orçamento
-
-A Saga já possui processamento local de resultados de orçamento, recebimentos idempotentes e comandos na outbox SQL. Após uma preparação registrada, `SolicitarOrcamentoSagaUseCase` recebe o snapshot congelado e persiste `GerarOrcamento`; `ProcessadorResultadoOrcamento` confere geração/decisão/cancelamento e grava os próximos comandos atomicamente. Aprovação autoriza o Execução sem iniciar o reparo físico; recusa aguarda confirmações de cancelamento do orçamento e da preparação.
-
-Os contratos e limites estão no [RFC de microsserviços](docs/architecture/rfcs/rfc-0007-evolucao-para-microsservicos.md). `SolicitarOrcamentoDaOrdemServicoUseCase` constrói o snapshot pela OS e pelo catálogo próprios: cliente vem do veículo e valores vêm das instâncias da OS, sem reprecificar pelo catálogo. Linhas repetidas de peças preservam quantidade e preço de cada lançamento. Reentrega reutiliza o comando persistido, mesmo após alteração do catálogo.
-
-O publicador usa um contrato de transporte implementado pelo adaptador SQS em Infrastructure. O worker executa consumo e publicação em escopos de DI separados, com cancelamento e retomada; o processamento remoto permanece condicionado à configuração validada na inicialização. O transporte por arquivos pertence aos testes da jornada distribuída e não substitui SQS no ambiente real.
-
-As suítes `MensagensSagaTests`, `PublicacaoOutboxTests` e `ContratoMensagemTests` verificam persistência, reentrega, validação estrita e retomada. Uma tentativa que falha deve descartar seu escopo de DI antes da reentrega; testes locais não comprovam FIFO/DLQ, acesso AWS ou execução física de estoque.
-
-O `AGENTS.md` mantém as regras obrigatórias e aponta para o procedimento canônico em `oficina-mecanica-api/.agents/skills/oficina-mecanica/SKILL.md`. A skill do Execução é somente um encaminhamento, evitando duas versões do mesmo fluxo. READMEs e documentos de arquitetura continuam sendo as fontes de decisões e comportamento do projeto.
-
-Ao abrir um novo chat, prefira a raiz do repositório correto. Se o chat foi aberto fora do Git, peça a leitura explícita do `AGENTS.md` e da skill antes de implementar; entrar na pasta por um comando não garante descoberta automática. A verificação deste ajuste confirma os arquivos e os caminhos, sem instalar skill pessoal ou mudar a configuração do Codex. O gate do CI continua sendo o bloqueio verificável de estrutura, complementando as instruções.
-
-## Promoção cumulativa — AUD-003
-
-Antes de abrir/manter o PR automático de `develop` para `release`, o CD compara todo o conteúdo implantável pendente com `release` (ou `main` quando release ainda não existe). Detector de deploy e conferência cumulativa usam a mesma lista de caminhos no workflow. Uma alteração somente documental não libera código pendente sem comprovação de operação bem-sucedida em development.
-
-Se houver conteúdo implantável diferente, exige sucesso da operação atual ou do CD do último commit implantável na linha principal de develop, com o job de apply/destroy confirmado na tentativa atual. CD documental com deploy pulado, execução falha/em andamento, histórico ausente ou erro de consulta bloqueiam a abertura. Documentação após operação comprovada continua permitida. A guarda é conservadora: se a evidência do commit exigido não estiver disponível, é necessário concluir/reconciliar o CD antes de promover; não presume deploy a partir do CI ou de uma execução antiga de outro conteúdo. Não consulta AWS.
-
-Mantém os bloqueios `AWS_DEPLOY_ENABLED`/`AUTO_PR_ENABLED`, os environments, o plano salvo e o merge manual. Não altera ancestralidade (PIPE-005), reabre PR fechado ou executa promoção/implantação por conta própria. PRs já existentes continuam sujeitos à revisão humana; este controle protege sua abertura/manutenção pelo CD. Durante a janela de validação, `AUTO_PR_ENABLED=false` retém as promoções para release/main, mesmo com implantação autorizada em development. A uniformização dos outros repositórios permanece pendente e não é declarada concluída por este ajuste da API/Execução.
+Testes locais e CI não comprovam IAM, FIFO/DLQ ou a jornada na AWS. As evidências e pendências atuais ficam no [backlog](docs/projeto/backlog-tecnico.md); o procedimento operacional está no [guia de deploy](docs/deploy/deploy-aws.md).

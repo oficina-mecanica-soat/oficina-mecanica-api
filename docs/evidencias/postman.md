@@ -74,7 +74,7 @@ As instruções abaixo descrevem os arquivos anteriores. Para a entrega final, u
 | [Environment local](../postman/oficina-mecanica-local.postman_environment.json) | API em `http://localhost:5093`; endereços de Execução e Orçamento/Pagamento devem ser preenchidos conforme processos/portas realmente iniciados. |
 | [Environment AWS development](../postman/oficina-mecanica-aws-dev.postman_environment.json) | `baseUrl` vazio para preencher com o Gateway vigente. Os três serviços usam esse endereço público. |
 
-O [roteiro integrado](validacao-integrada.md) define pré-condições, cenários, observabilidade, evidências e gravação. A existência da collection não comprova que essas chamadas passaram no ambiente.
+O [roteiro integrado](../deploy/deploy-aws.md) define pré-condições, cenários, observabilidade, evidências e gravação. A existência da collection não comprova que essas chamadas passaram no ambiente.
 
 ## Importação e preparação
 
